@@ -2,7 +2,7 @@ const { chromium } = require('playwright');
 
 (async () => {
   // Launch the browser in non-headless mode so the user can watch the action
-  const browser = await chromium.launch({ headless: false, slowMo: 1500 });
+  const browser = await chromium.launch({ headless: false, slowMo: 2500 });
   const page = await browser.newPage();
 
   console.log('Navigating to local GST Portal simulation (Demo)...');
