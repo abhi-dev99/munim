@@ -190,7 +190,35 @@ async def handle_text_message(phone: str, text: str):
         await _handle_registration(phone, text)
         return
 
-    # Check conversation state
+    # Check if existing trader hasn't completed onboarding (no GSTIN yet)
+    if not trader.get("gstin"):
+        # Resume the onboarding where we left off
+        conv_state = get_conversation_state(phone)
+        state_name = conv_state.get("state") if conv_state else None
+        if state_name in ["awaiting_name", "awaiting_ca_number", "awaiting_language", "awaiting_gstin"]:
+            await _process_registration_step(phone, text, trader, state_name)
+        else:
+            # State was lost (Redis restart / reload) — figure out where they are
+            if not trader.get("language_pref") or (trader.get("language_pref") == "hi" and not trader.get("name")):
+                set_conversation_state(phone, "awaiting_language")
+                await whatsapp.send_text_message(
+                    phone,
+                    "Namaste! 🙏 Main Munim hun — aapka AI GST compliance agent.\n\n"
+                    "Aap kis bhasha mein baat karna pasand karenge?\n\n"
+                    "1️⃣ Hindi\n2️⃣ English\n3️⃣ Marathi\n4️⃣ Gujarati"
+                )
+            elif not trader.get("name"):
+                set_conversation_state(phone, "awaiting_name")
+                await whatsapp.send_text_message(phone, "Aapka naam aur business ka naam kya hai?")
+            elif not trader.get("ca_whatsapp_number"):
+                set_conversation_state(phone, "awaiting_ca_number")
+                await whatsapp.send_text_message(phone, "Aapke CA ya accountant ka mobile number kya hai?")
+            else:
+                set_conversation_state(phone, "awaiting_gstin")
+                await whatsapp.send_text_message(phone, "Aapka GSTIN number kya hai? (Example: 27AABCU9603R1ZM)")
+        return
+
+    # Check conversation state for registered traders mid-flow
     conv_state = get_conversation_state(phone)
     if conv_state:
         state_name = conv_state.get("state")
@@ -198,7 +226,7 @@ async def handle_text_message(phone: str, text: str):
             await _process_registration_step(phone, text, trader, state_name)
             return
 
-    # Existing user — handle queries via Gemini intent router
+    # Fully registered user — handle queries
     from app.services.gemini import understand_intent
     intent_data = await understand_intent(text_lower)
     intent = intent_data.get("intent", "unknown")
@@ -206,22 +234,23 @@ async def handle_text_message(phone: str, text: str):
     if intent == "itc_status":
         await _send_itc_status(phone, trader)
     elif intent == "help":
-        await _send_help(phone)
+        await _send_help(phone, trader)
     elif intent == "general_query":
         await _answer_general_query(phone, text, trader)
     elif any(kw in text_lower for kw in ["hi", "hello", "namaste", "hey"]):
+        name = trader.get("name") or trader.get("business_name") or "dost"
         await whatsapp.send_text_message(
             phone,
-            f"Namaste {trader.get('name', '')}! 👋\n\n"
-            f"Invoice bhejne ke liye — bas photo forward karo.\n"
-            f"Kuch bhi poochna ho — bas text type karo ya voice note bhejo!"
+            f"Namaste {name}! 👋\n\n"
+            f"Invoice ka photo bhejo — main ITC check kar dunga.\n"
+            f"Ya 'status' likh ke apna ITC summary dekho."
         )
     else:
         gstin_match = text.strip().upper()
         if is_valid_gstin_format(gstin_match):
             await whatsapp.send_text_message(
                 phone,
-                "Yeh GSTIN lag raha hai. Agar aap apna GSTIN update karna chahte ho, 'update gstin' likh ke bhejo."
+                "Yeh GSTIN lag raha hai. Agar apna GSTIN update karna chahte ho toh 'update gstin' likh ke bhejo."
             )
         else:
             await _answer_general_query(phone, text, trader)
@@ -438,7 +467,8 @@ async def _handle_registration(phone: str, text: str):
         await whatsapp.send_text_message(
             phone,
             "Namaste! 🙏 Main Munim hun — aapka AI GST compliance agent.\n\n"
-            "Aap kis bhasha mein baat karna pasand karenge? (Hindi / English / Marathi / Gujarati)"
+            "Kaunsi bhasha mein baat karein?\n\n"
+            "1️⃣ Hindi\n2️⃣ English\n3️⃣ Marathi\n4️⃣ Gujarati"
         )
 
 async def _process_registration_step(phone: str, text: str, trader: dict, state: str):
@@ -570,16 +600,42 @@ async def _send_itc_status(phone: str, trader: dict):
     await whatsapp.send_text_message(phone, msg)
 
 
-async def _send_help(phone: str):
+async def _send_help(phone: str, trader: dict = None):
     """Send help message."""
-    await whatsapp.send_text_message(
-        phone,
-        "🤖 Munim Help:\n\n"
-        "📸 Invoice bhejo → Main ITC check karunga\n"
-        "📊 'status' → ITC ka summary\n"
-        "🎤 Voice note → Main sun lunga\n\n"
-        "Bas itna hi! Invoice bhejte raho, main sab track karunga."
-    )
+    lang = trader.get("language_pref", "hi") if trader else "hi"
+    if lang == "en":
+        msg = (
+            "Munim AI — here's what I can do:\n\n"
+            "📸 Send an invoice photo → I'll check your ITC eligibility instantly\n"
+            "📊 Type 'status' → Get your ITC summary\n"
+            "🎤 Send a voice note → I'll understand and respond\n\n"
+            "Just send your invoices here. I handle the rest."
+        )
+    elif lang == "mr":
+        msg = (
+            "Munim AI — मी काय करतो:\n\n"
+            "📸 इनव्हॉइसचा फोटो पाठवा → मी ITC पात्रता लगेच तपासेन\n"
+            "📊 'status' टाइप करा → ITC सारांश मिळवा\n"
+            "🎤 व्हॉइस नोट पाठवा → मी समजून उत्तर देईन\n\n"
+            "फक्त इनव्हॉइस पाठवत राहा."
+        )
+    elif lang == "gu":
+        msg = (
+            "Munim AI — હું શું કરી શકું:\n\n"
+            "📸 ઇન્વૉઇસ ફોટો મોકલો → હું ITC પાત્રતા તુરંત ચેક કરીશ\n"
+            "📊 'status' ટાઇપ કરો → ITC સારાંશ મેળવો\n"
+            "🎤 વૉઇસ નોટ મોકલો → હું સમજી જઈશ\n\n"
+            "ફક્ત ઇન્વૉઇસ મોકલતા રહો."
+        )
+    else:
+        msg = (
+            "Munim AI — main kya kar sakta hoon:\n\n"
+            "📸 Invoice ka photo bhejo → Main ITC eligibility check karunga\n"
+            "📊 'status' likho → Apna ITC summary dekho\n"
+            "🎤 Voice note bhejo → Main samajh lunga\n\n"
+            "Bas invoices bhejte raho. Baaki sab main karunga."
+        )
+    await whatsapp.send_text_message(phone, msg)
 
 
 async def _send_supplier_check(phone: str, trader: dict, supplier_name: str):
