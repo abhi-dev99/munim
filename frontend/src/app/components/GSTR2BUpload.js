@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Upload, FileText, CheckCircle2, AlertCircle, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function GSTR2BUpload({ traderId, apiBase, onUploadComplete }) {
   const [dragOver, setDragOver] = useState(false);
@@ -99,81 +100,122 @@ export default function GSTR2BUpload({ traderId, apiBase, onUploadComplete }) {
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
-        className={`border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer ${
-          dragOver ? "border-black bg-black/5" : "border-[var(--border-subtle)] hover:border-black/30"
-        }`}
-        onClick={() => document.getElementById("gstr2b-file-input").click()}
       >
-        <input
-          id="gstr2b-file-input"
-          type="file"
-          accept=".json,application/json"
-          className="hidden"
-          onChange={handleFileChange}
-        />
-        {uploading ? (
-          <div className="flex flex-col items-center gap-2">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black" />
-            <p className="text-sm font-medium text-black">Uploading & parsing...</p>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-2">
-            <Upload size={28} className="text-[var(--text-muted)]" />
-            <p className="text-sm font-semibold text-black">Drop GSTR-2B JSON here</p>
-            <p className="text-xs text-[var(--text-muted)]">Download from GST Portal → GSTR-2B → View/Download</p>
-          </div>
-        )}
+        <motion.div
+          animate={{
+            scale: dragOver ? 1.02 : 1,
+            backgroundColor: dragOver ? "rgba(59, 130, 246, 0.05)" : "transparent",
+            borderColor: dragOver ? "var(--blue-primary)" : "var(--border-subtle)",
+          }}
+          transition={{ duration: 0.2 }}
+          className="border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer relative overflow-hidden group hover:border-[var(--blue-primary)]"
+          onClick={() => document.getElementById("gstr2b-file-input").click()}
+        >
+          {dragOver && (
+            <motion.div 
+              layoutId="glow"
+              className="absolute inset-0 bg-gradient-to-tr from-[var(--blue-glow)] to-transparent opacity-50"
+            />
+          )}
+          <input
+            id="gstr2b-file-input"
+            type="file"
+            accept=".json,application/json"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+          {uploading ? (
+            <div className="flex flex-col items-center gap-3 relative z-10">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[var(--blue-primary)]" />
+              <p className="text-sm font-semibold text-black">Uploading & parsing JSON...</p>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-3 relative z-10">
+              <motion.div 
+                whileHover={{ y: -5 }}
+                className="p-4 rounded-full bg-[var(--bg-secondary)] text-[var(--text-secondary)] group-hover:bg-[var(--blue-glow)] group-hover:text-[var(--blue-primary)] transition-colors"
+              >
+                <Upload size={32} />
+              </motion.div>
+              <div>
+                <p className="text-[15px] font-bold text-black mb-1">Drop GSTR-2B JSON here</p>
+                <p className="text-xs text-[var(--text-muted)] font-medium">Or click to browse files</p>
+              </div>
+            </div>
+          )}
+        </motion.div>
       </div>
 
       {/* Success result */}
-      {result && (
-        <div className="mt-4 p-3 bg-white border border-[var(--border-subtle)] rounded-lg space-y-3">
-          <div className="flex items-start gap-3">
-            <CheckCircle2 size={16} className="text-black mt-0.5 flex-shrink-0" />
-            <div className="flex-1">
-              <p className="text-sm font-bold text-black">Upload Complete</p>
-              <p className="text-xs text-[var(--text-secondary)]">
-                {result.inserted} records imported, {result.skipped} skipped · {months.find(m => m.v === result.month)?.l} {result.year}
-              </p>
-            </div>
-            <button onClick={() => setResult(null)} className="text-[var(--text-muted)] hover:text-black">
-              <X size={14} />
-            </button>
-          </div>
-          {/* Re-run reconciliation button */}
-          <button
-            onClick={async () => {
-              try {
-                const res = await fetch(`${apiBase}/api/v1/gstr2b/reconcile/${traderId}?month=${month}&year=${year}`, { method: "POST" });
-                const data = await res.json();
-                setResult(prev => ({ ...prev, reconciliation: data }));
-              } catch (e) { /* ignore */ }
-            }}
-            className="w-full text-xs font-bold py-2 px-3 bg-black text-white rounded hover:bg-black/80 transition-colors"
+      <AnimatePresence>
+        {result && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: 'auto' }}
+            exit={{ opacity: 0, y: -10, height: 0 }}
+            className="mt-6 p-4 bg-[var(--green-glow)] border border-[rgba(16,185,129,0.2)] rounded-xl space-y-4"
           >
-            Re-run Reconciliation
-          </button>
-          {result.reconciliation && (
-            <p className="text-xs text-[var(--text-secondary)]">
-              ✅ {result.reconciliation.newly_matched} invoices matched of {result.reconciliation.invoices_checked} checked
-            </p>
-          )}
-        </div>
-      )}
+            <div className="flex items-start gap-3">
+              <CheckCircle2 size={20} className="text-[var(--green-primary)] mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-bold text-[var(--green-primary)]">Upload Complete</p>
+                <p className="text-xs text-[var(--text-secondary)] mt-1 font-medium">
+                  <strong className="text-black">{result.inserted}</strong> records imported, {result.skipped} skipped <br/>
+                  Period: {months.find(m => m.v === result.month)?.l} {result.year}
+                </p>
+              </div>
+              <button onClick={() => setResult(null)} className="text-[var(--green-primary)] opacity-50 hover:opacity-100 transition-opacity">
+                <X size={16} />
+              </button>
+            </div>
+            {/* Re-run reconciliation button */}
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={async () => {
+                try {
+                  const res = await fetch(`${apiBase}/api/v1/gstr2b/reconcile/${traderId}?month=${month}&year=${year}`, { method: "POST" });
+                  const data = await res.json();
+                  setResult(prev => ({ ...prev, reconciliation: data }));
+                } catch (e) { /* ignore */ }
+              }}
+              className="w-full text-sm font-bold py-2.5 px-4 bg-white text-black border border-[rgba(16,185,129,0.2)] rounded-lg shadow-sm hover:shadow-md transition-all"
+            >
+              Re-run Reconciliation Engine
+            </motion.button>
+            {result.reconciliation && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-xs text-[var(--text-secondary)] font-medium p-3 bg-white/50 rounded-lg border border-white/50"
+              >
+                ✅ <strong className="text-black">{result.reconciliation.newly_matched}</strong> invoices matched out of {result.reconciliation.invoices_checked} checked
+              </motion.div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Error */}
-      {error && (
-        <div className="mt-4 p-3 bg-white border border-[var(--border-subtle)] rounded-lg flex items-start gap-3">
-          <AlertCircle size={16} className="text-black mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="text-sm font-bold text-black">Upload Failed</p>
-            <p className="text-xs text-[var(--text-secondary)]">{error}</p>
-          </div>
-          <button onClick={() => setError(null)} className="ml-auto text-[var(--text-muted)] hover:text-black">
-            <X size={14} />
-          </button>
-        </div>
-      )}
-    </div>
+      <AnimatePresence>
+        {error && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="mt-6 p-4 bg-[var(--red-glow)] border border-[rgba(239,68,68,0.2)] rounded-xl flex items-start gap-3"
+          >
+            <AlertCircle size={20} className="text-[var(--red-primary)] mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-bold text-[var(--red-primary)]">Upload Failed</p>
+              <p className="text-xs text-[var(--red-primary)] opacity-80 mt-1 font-medium">{error}</p>
+            </div>
+            <button onClick={() => setError(null)} className="ml-auto text-[var(--red-primary)] opacity-50 hover:opacity-100 transition-opacity">
+              <X size={16} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }
