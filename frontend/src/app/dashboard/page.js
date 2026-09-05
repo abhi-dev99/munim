@@ -13,6 +13,7 @@ import InvoiceFeed from "../components/InvoiceFeed";
 import GSTR2BUpload from "../components/GSTR2BUpload";
 import ReportsPanel from "../components/ReportsPanel";
 import GeminiKeysModal from "../components/GeminiKeysModal";
+import OnboardTraderModal from "../components/OnboardTraderModal";
 import { useLanguage } from "../context/LanguageContext";
 import {
   ChevronDown,
@@ -27,6 +28,7 @@ import {
   Lightbulb,
   Key,
   Menu,
+  QrCode,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -293,6 +295,7 @@ export default function Home() {
   const [activeTraderGstin, setActiveTraderGstin] = useState("");
   const [actionCount, setActionCount] = useState(0);
   const [showGeminiModal, setShowGeminiModal] = useState(false);
+  const [showOnboardModal, setShowOnboardModal] = useState(false);
   const [geminiStatus, setGeminiStatus] = useState(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -657,6 +660,16 @@ export default function Home() {
                 <span className="text-sm font-semibold text-gray-800">{t("hdr_composition")}</span>
               </button>
 
+              {/* Onboard a new trader — QR code deep link into WhatsApp onboarding */}
+              <button
+                onClick={() => setShowOnboardModal(true)}
+                className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 hover:bg-gray-50 transition-colors shadow-sm"
+                title="Onboard a new trader via WhatsApp QR code"
+              >
+                <QrCode size={15} className="text-gray-400" />
+                <span className="hidden sm:inline text-sm font-semibold text-gray-800">Onboard Trader</span>
+              </button>
+
               {/* GST Portal button — opens the GST portal mockup for IMS + GSTR-3B filing */}
               <a
                 href={`/demo/index.html${traderId && traderId !== 'demo' ? `?traderId=${traderId}` : ''}`}
@@ -749,6 +762,12 @@ export default function Home() {
       <GeminiKeysModal
         isOpen={showGeminiModal}
         onClose={() => setShowGeminiModal(false)}
+        apiBase={API_BASE}
+      />
+
+      <OnboardTraderModal
+        isOpen={showOnboardModal}
+        onClose={() => setShowOnboardModal(false)}
         apiBase={API_BASE}
       />
     </div>
