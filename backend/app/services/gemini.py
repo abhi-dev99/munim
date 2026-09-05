@@ -42,12 +42,24 @@ class GeminiKeyPool:
     All existing call sites (client.models.generate_content / embed_content) work unchanged.
     """
     def __init__(self, keys: list[str]):
-        active = [k.strip() for k in keys if k and k.strip()]
-        if not active:
+        self.raw_keys = [k.strip() for k in keys if k and k.strip()]
+        if not self.raw_keys:
             raise ValueError("GeminiKeyPool: no API keys configured")
-        self._clients = [genai.Client(api_key=k) for k in active]
+        self._clients = [genai.Client(api_key=k) for k in self.raw_keys]
         self._idx = 0
         self.models = _ModelsProxy(self)
+        self.key_stats = [
+            {
+                "index": i,
+                "key_masked": k[:6] + "..." + k[-4:] if len(k) > 10 else "***",
+                "status": "active",
+                "total_calls": 0,
+                "rate_limit_hits": 0,
+                "last_error": None,
+                "last_used_at": None,
+            }
+            for i, k in enumerate(self.raw_keys)
+        ]
         logger.info(f"GeminiKeyPool: {len(self._clients)} key(s) loaded")
 
     def _is_rate_limit(self, exc: Exception) -> bool:
@@ -61,9 +73,17 @@ class GeminiKeyPool:
             try:
                 result = fn(self._clients[idx])
                 self._idx = idx  # stick with the working key
+                if idx < len(self.key_stats):
+                    self.key_stats[idx]["total_calls"] += 1
+                    self.key_stats[idx]["status"] = "active"
+                    self.key_stats[idx]["last_used_at"] = time.time()
                 return result
             except Exception as exc:
                 if self._is_rate_limit(exc):
+                    if idx < len(self.key_stats):
+                        self.key_stats[idx]["rate_limit_hits"] += 1
+                        self.key_stats[idx]["status"] = "rate_limited"
+                        self.key_stats[idx]["last_error"] = str(exc)[:150]
                     logger.warning(
                         f"GeminiKeyPool: key[{idx}] rate-limited, "
                         f"rotating to key[{(idx + 1) % len(self._clients)}]"
@@ -72,6 +92,43 @@ class GeminiKeyPool:
                 raise
         # All keys exhausted
         raise RuntimeError("GeminiKeyPool: all API keys rate-limited (QUOTA_EXCEEDED)")
+
+    def get_status(self) -> dict:
+        total_keys = len(self.raw_keys)
+        rate_limited_count = sum(1 for s in self.key_stats if s["status"] == "rate_limited")
+        return {
+            "total_keys": total_keys,
+            "active_key_index": self._idx,
+            "rate_limited_count": rate_limited_count,
+            "all_exhausted": total_keys > 0 and rate_limited_count == total_keys,
+            "keys": self.key_stats,
+            "model": settings.gemini_model,
+        }
+
+    def add_key(self, api_key: str) -> bool:
+        clean_key = api_key.strip()
+        if not clean_key or clean_key in self.raw_keys:
+            return False
+        self.raw_keys.append(clean_key)
+        self._clients.append(genai.Client(api_key=clean_key))
+        self.key_stats.append({
+            "index": len(self.raw_keys) - 1,
+            "key_masked": clean_key[:6] + "..." + clean_key[-4:] if len(clean_key) > 10 else "***",
+            "status": "active",
+            "total_calls": 0,
+            "rate_limit_hits": 0,
+            "last_error": None,
+            "last_used_at": None,
+        })
+        logger.info(f"GeminiKeyPool: Added new key index {len(self.raw_keys) - 1}")
+        return True
+
+    def reset_limits(self):
+        for stat in self.key_stats:
+            stat["status"] = "active"
+            stat["last_error"] = None
+        logger.info("GeminiKeyPool: Reset rate-limit status for all keys")
+
 
 
 client = GeminiKeyPool(keys=[
@@ -168,6 +225,13 @@ async def extract_invoice_from_image(image_bytes: bytes, mime_type: str = "image
         if invoice_dict:
             return InvoiceJSON(**{k: v for k, v in invoice_dict.items() if k in InvoiceJSON.model_fields})
         return InvoiceJSON(confidence=0.0)
+    except RuntimeError as e:
+        # GeminiKeyPool raises RuntimeError when all keys are rate-limited
+        if "rate-limited" in str(e).lower() or "quota" in str(e).lower():
+            logger.warning(f"All Gemini keys rate-limited during extraction: {e}")
+            return InvoiceJSON(confidence=-1.0)  # sentinel: quota exceeded
+        logger.error(f"Extraction runtime error: {e}")
+        return InvoiceJSON(confidence=0.0)
     except Exception as e:
         logger.error(f"Extraction via router failed: {e}")
         return InvoiceJSON(confidence=0.0)
@@ -178,6 +242,7 @@ async def generate_hindi_diagnosis(
     total_amount: float,
     itc_status: str,
     itc_amount: float,
+    invoice_number: str = "",
     itc_blocked: float = 0.0,
     block_reason: str = "None",
     fix_action: str = "None",
@@ -216,8 +281,11 @@ Rules:
 - Hinglish is fine (mix Hindi + English naturally)
 - No URLs
 - No mention of any dashboard (that is for CA, not trader)"""
+    bill_label = f"Bill #{invoice_number}" if invoice_number else "Invoice"
     context = {
         "supplier_name": supplier_name or "Unknown",
+        "invoice_number": invoice_number or "(not available)",
+        "bill_label": bill_label,
         "total_amount": total_amount or 0,
         "itc_status": itc_status,
         "itc_amount_eligible": itc_amount,

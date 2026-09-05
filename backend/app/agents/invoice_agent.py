@@ -347,6 +347,7 @@ async def generate_diagnosis(state: InvoiceAgentState) -> dict:
         diagnosis_hi = await gemini.generate_hindi_diagnosis(
             supplier_name=invoice.supplier_name,
             total_amount=invoice.total_amount or 0,
+            invoice_number=invoice.invoice_number or "",
             itc_status=verdict.status.value,
             itc_amount=verdict.itc_amount,
             itc_blocked=verdict.itc_blocked,

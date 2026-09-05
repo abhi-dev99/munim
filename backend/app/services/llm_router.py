@@ -161,60 +161,76 @@ IMPORTANT rules:
 - For Composition scheme invoices, there is no GST breakdown — still extract the total
 - Return ONLY the JSON, no markdown, no explanation"""
 
-        try:
-            gemini_response = gemini_client.models.generate_content(
-                model=gemini_settings.gemini_model,
-                contents=[
-                    types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
-                    types.Part.from_text(text=EXTRACTION_PROMPT),
-                ],
-                config=types.GenerateContentConfig(
-                    temperature=0.0,
-                    max_output_tokens=8192,
-                )
-            )
-            raw = gemini_response.text.strip() if gemini_response.text else ""
-            logger.info(f"Gemini raw extraction response (first 300): {raw[:300]}")
-            # Strip markdown code fences if Gemini wraps output
+        # Model fallback chain: try primary model first, then fallback models
+        # This handles daily free-tier quota exhaustion gracefully
+        model_chain = [gemini_settings.gemini_model, "gemini-flash-latest", "gemini-flash-lite-latest"]
+        # Deduplicate while preserving order
+        seen = set()
+        model_chain = [m for m in model_chain if not (m in seen or seen.add(m))]
+
+        def _parse_raw(raw: str):
+            """Parse and salvage JSON from raw Gemini output."""
             if raw.startswith("```"):
                 lines = raw.split("\n")
                 raw = "\n".join(lines[1:])
                 if raw.endswith("```"):
                     raw = raw[:-3].strip()
             try:
-                result = json.loads(raw)
+                return json.loads(raw)
             except json.JSONDecodeError:
-                # Response was truncated mid-JSON — try to salvage it
                 logger.warning("JSON truncated, attempting repair...")
-                # Find the last complete top-level field before truncation
-                # Strategy: find last complete '},\n' or '}\n' and close the JSON
                 salvage = raw
-                # Close any open array
                 open_arrays = salvage.count("[") - salvage.count("]")
                 open_objects = salvage.count("{") - salvage.count("}")
-                # Strip trailing incomplete string (find last complete ",)
-                last_quote = salvage.rfind('",')
+                last_quote = salvage.rfind('",')  
                 last_newline = salvage.rfind('\n', 0, last_quote) if last_quote > 0 else -1
                 if last_newline > 0:
                     salvage = salvage[:last_newline]
                 salvage += "]" * max(0, open_arrays) + "}" * max(0, open_objects)
                 try:
                     result = json.loads(salvage)
-                    result["confidence"] = result.get("confidence", 0.7)  # partial = assume readable
+                    result["confidence"] = result.get("confidence", 0.7)
                     logger.info(f"Salvaged truncated JSON: {list(result.keys())}")
+                    return result
                 except Exception:
-                    logger.error(f"Salvage failed too. Raw (first 500): {raw[:500]}")
+                    logger.error(f"Salvage failed. Raw (first 500): {raw[:500]}")
                     return None
-            logger.info(f"Invoice extracted: supplier={result.get('supplier_name')}, confidence={result.get('confidence')}, items={len(result.get('line_items', []))}")
-            return result
-        except Exception as e:
-            err_str = str(e)
-            logger.error(f"Gemini extraction exception (full): {err_str}")
-            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
-                logger.error("Gemini API quota exceeded — invoice extraction unavailable")
-                return {"__quota_exceeded__": True}
-            logger.error(f"Gemini extraction failed: {e}")
-            return None
+
+        last_err = None
+        for model_name in model_chain:
+            try:
+                logger.info(f"Attempting invoice extraction with model: {model_name}")
+                gemini_response = gemini_client.models.generate_content(
+                    model=model_name,
+                    contents=[
+                        types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+                        types.Part.from_text(text=EXTRACTION_PROMPT),
+                    ],
+                    config=types.GenerateContentConfig(
+                        temperature=0.0,
+                        max_output_tokens=8192,
+                    )
+                )
+                raw = gemini_response.text.strip() if gemini_response.text else ""
+                logger.info(f"Gemini ({model_name}) raw extraction (first 300): {raw[:300]}")
+                result = _parse_raw(raw)
+                if result is not None:
+                    logger.info(f"Invoice extracted via {model_name}: supplier={result.get('supplier_name')}, confidence={result.get('confidence')}, items={len(result.get('line_items', []))}")
+                    return result
+                # If parse failed, try next model
+            except Exception as e:
+                err_str = str(e)
+                last_err = err_str
+                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower() or "all API keys rate-limited" in err_str:
+                    logger.warning(f"Model {model_name} quota exhausted — trying next model in chain")
+                    continue
+                # Non-quota error — log and stop
+                logger.error(f"Gemini extraction exception with {model_name}: {err_str}")
+                return None
+
+        # All models exhausted
+        logger.error(f"All models in fallback chain exhausted. Last error: {last_err}")
+        return {"__quota_exceeded__": True}
 
 llm_router = LLMRouter()
 

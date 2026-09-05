@@ -12,6 +12,7 @@ import Sidebar from "../components/Sidebar";
 import InvoiceFeed from "../components/InvoiceFeed";
 import GSTR2BUpload from "../components/GSTR2BUpload";
 import ReportsPanel from "../components/ReportsPanel";
+import GeminiKeysModal from "../components/GeminiKeysModal";
 import { useLanguage } from "../context/LanguageContext";
 import {
   ChevronDown,
@@ -24,8 +25,10 @@ import {
   PieChart,
   Globe,
   Lightbulb,
+  Key,
 } from "lucide-react";
 import { motion } from "framer-motion";
+
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -288,10 +291,24 @@ export default function Home() {
   const [activeBusinessName, setActiveBusinessName] = useState("");
   const [activeTraderGstin, setActiveTraderGstin] = useState("");
   const [actionCount, setActionCount] = useState(0);
+  const [showGeminiModal, setShowGeminiModal] = useState(false);
+  const [geminiStatus, setGeminiStatus] = useState(null);
 
   const [fullPrefs, setFullPrefs] = useState(null);
   const dragItem = useRef(null);
   const dragOverItem = useRef(null);
+
+  useEffect(() => {
+    const fetchGemini = () => {
+      authFetch(`${API_BASE}/api/v1/admin/gemini-keys`)
+        .then((r) => r.json())
+        .then((d) => setGeminiStatus(d))
+        .catch(() => {});
+    };
+    fetchGemini();
+    const interval = setInterval(fetchGemini, 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (!traderId) return;
@@ -637,9 +654,53 @@ export default function Home() {
                 <Globe size={15} />
                 GST Portal
               </a>
+
+              {/* AI Keys button */}
+              <button
+                onClick={() => setShowGeminiModal(true)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm border ${
+                  geminiStatus?.all_exhausted
+                    ? "bg-red-50 text-red-700 hover:bg-red-100 border-red-300 animate-pulse"
+                    : geminiStatus?.rate_limited_count > 0
+                    ? "bg-amber-50 text-amber-800 hover:bg-amber-100 border-amber-300"
+                    : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border-emerald-200"
+                }`}
+                title="Manage Gemini AI Keys & Quota Pool"
+              >
+                <Key size={15} />
+                <span>
+                  {geminiStatus?.all_exhausted
+                    ? "🚨 AI Quota Alert"
+                    : geminiStatus?.rate_limited_count > 0
+                    ? `⚠️ AI Keys (${geminiStatus.total_keys - geminiStatus.rate_limited_count}/${geminiStatus.total_keys})`
+                    : `✨ AI Keys (${geminiStatus ? `${geminiStatus.total_keys}/${geminiStatus.total_keys}` : "2/2"})`}
+                </span>
+              </button>
             </div>
           </div>
         </header>
+
+        {/* Live Warning Banner if any API Keys hit rate limits */}
+        {geminiStatus && geminiStatus.rate_limited_count > 0 && (
+          <div className={`px-6 py-2 flex items-center justify-between text-xs font-semibold ${
+            geminiStatus.all_exhausted ? "bg-red-500 text-white" : "bg-amber-500 text-white"
+          }`}>
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={15} className={geminiStatus.all_exhausted ? "animate-pulse" : ""} />
+              <span>
+                {geminiStatus.all_exhausted
+                  ? "🚨 CRITICAL: All Gemini API keys hit rate limits (429/Quota Exceeded). Pipeline is running on inference fallback."
+                  : `⚠️ AI Pipeline Alert: ${geminiStatus.rate_limited_count} of ${geminiStatus.total_keys} Gemini API keys hit rate limits and rotated.`}
+              </span>
+            </div>
+            <button
+              onClick={() => setShowGeminiModal(true)}
+              className="px-3 py-0.5 bg-white/20 hover:bg-white/30 rounded text-white transition-colors"
+            >
+              Manage Keys
+            </button>
+          </div>
+        )}
 
         {loading ? (
           <div className="flex-1 grid grid-cols-3 gap-4 p-4">
@@ -713,6 +774,13 @@ export default function Home() {
       {traderDropdown && (
         <div className="fixed inset-0 z-40" onClick={() => setTraderDropdown(false)} />
       )}
+
+      {/* Gemini API Keys & Quota Pool Modal */}
+      <GeminiKeysModal
+        isOpen={showGeminiModal}
+        onClose={() => setShowGeminiModal(false)}
+        apiBase={API_BASE}
+      />
     </div>
   );
 }
