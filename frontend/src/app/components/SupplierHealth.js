@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { AlertTriangle, Activity, CheckCircle2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function SupplierHealth({ traderId, apiBase }) {
   const [suppliers, setSuppliers] = useState([]);
@@ -77,50 +78,69 @@ export default function SupplierHealth({ traderId, apiBase }) {
               <th className="p-4 text-sm font-semibold text-black uppercase tracking-wider text-right">Invoices</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[var(--border-subtle)]">
-            {suppliers.map(sup => (
-              <tr key={sup.id} className="hover:bg-[var(--bg-card-hover)] transition-colors">
-                <td className="p-4">
-                  <div className="font-semibold text-black">{sup.name}</div>
-                  <div className="text-sm text-[var(--text-muted)] font-medium">{sup.gstin}</div>
-                </td>
-                <td className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-full bg-[var(--border-subtle)] rounded-full h-2 max-w-[100px]">
-                      <div 
-                        className={`h-2 rounded-full ${sup.health > 80 ? 'bg-[var(--green-primary)]' : sup.health > 40 ? 'bg-[var(--orange-primary)]' : 'bg-[var(--red-primary)]'}`}
-                        style={{ width: `${sup.health}%` }}
-                      ></div>
+          <motion.tbody 
+            initial="hidden"
+            animate="show"
+            variants={{
+              hidden: { opacity: 0 },
+              show: { opacity: 1, transition: { staggerChildren: 0.05 } }
+            }}
+            className="divide-y divide-[var(--border-subtle)]"
+          >
+            <AnimatePresence>
+              {suppliers.map(sup => (
+                <motion.tr 
+                  key={sup.id} 
+                  layout
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="hover:bg-[var(--bg-card-hover)] transition-colors group"
+                >
+                  <td className="p-4">
+                    <div className="font-semibold text-black group-hover:text-[var(--blue-primary)] transition-colors">{sup.name}</div>
+                    <div className="text-sm text-[var(--text-muted)] font-medium">{sup.gstin}</div>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-full bg-[var(--border-subtle)] rounded-full h-2 max-w-[100px] overflow-hidden">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${sup.health}%` }}
+                          transition={{ duration: 1, delay: 0.2, ease: "easeOut" }}
+                          className={`h-2 rounded-full ${sup.health > 80 ? 'bg-[var(--green-primary)]' : sup.health > 40 ? 'bg-[var(--orange-primary)]' : 'bg-[var(--red-primary)]'}`}
+                        ></motion.div>
+                      </div>
+                      <span className="text-sm font-bold text-black">{sup.health}</span>
                     </div>
-                    <span className="text-sm font-bold text-black">{sup.health}</span>
-                  </div>
-                </td>
-                <td className="p-4">
-                  {sup.status === "GOOD" && <span className="badge badge-confirmed"><CheckCircle2 size={12}/> Compliant</span>}
-                  {sup.status === "RISK" && <span className="badge badge-blocked"><Activity size={12}/> Warning</span>}
-                  {sup.status === "CRITICAL" && <span className="badge badge-risk"><AlertTriangle size={12}/> High Risk</span>}
-                </td>
-                <td className="p-4">
-                  {sup.recentIssues === 0 ? (
-                    <span className="text-[var(--text-muted)]">—</span>
-                  ) : (
-                    <div>
-                      <span className="text-[var(--red-primary)] font-semibold">{sup.recentIssues} Open</span>
-                      {sup.flags && sup.flags.slice(0, 2).map((f, i) => (
-                        <div key={i} className="text-[10px] text-[var(--text-muted)] mt-0.5">{f.flag_type || f}</div>
-                      ))}
-                    </div>
-                  )}
-                </td>
-                <td className="p-4 text-right font-semibold text-black">
-                  {sup.total_amount > 0 ? (
-                    <span>₹{sup.total_amount.toLocaleString('en-IN')}</span>
-                  ) : (
-                    <span className="text-[var(--text-muted)]">{sup.total_invoices} inv</span>
-                  )}
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="p-4">
+                    {sup.status === "GOOD" && <span className="badge badge-confirmed"><CheckCircle2 size={12}/> Compliant</span>}
+                    {sup.status === "RISK" && <span className="badge badge-blocked"><Activity size={12}/> Warning</span>}
+                    {sup.status === "CRITICAL" && <span className="badge badge-risk"><AlertTriangle size={12}/> High Risk</span>}
+                  </td>
+                  <td className="p-4">
+                    {sup.recentIssues === 0 ? (
+                      <span className="text-[var(--text-muted)]">—</span>
+                    ) : (
+                      <div>
+                        <span className="text-[var(--red-primary)] font-semibold">{sup.recentIssues} Open</span>
+                        {sup.flags && sup.flags.slice(0, 2).map((f, i) => (
+                          <div key={i} className="text-[10px] text-[var(--text-muted)] mt-0.5">{f.flag_type || f}</div>
+                        ))}
+                      </div>
+                    )}
+                  </td>
+                  <td className="p-4 text-right font-semibold text-black">
+                    {sup.total_amount > 0 ? (
+                      <span>₹{sup.total_amount.toLocaleString('en-IN')}</span>
+                    ) : (
+                      <span className="text-[var(--text-muted)]">{sup.total_invoices} inv</span>
+                    )}
+                  </td>
+                </motion.tr>
+              ))}
+            </AnimatePresence>
             {suppliers.length === 0 && (
               <tr>
                 <td colSpan="5" className="p-8 text-center text-[var(--text-secondary)]">
@@ -128,7 +148,7 @@ export default function SupplierHealth({ traderId, apiBase }) {
                 </td>
               </tr>
             )}
-          </tbody>
+          </motion.tbody>
         </table>
       </div>
     </div>
