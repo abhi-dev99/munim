@@ -9,7 +9,8 @@ import logging
 from datetime import date
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends
+from app.api.deps import verify_trader_access, get_current_trader_id, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 
 from app.services.supabase_client import get_supabase
@@ -41,7 +42,9 @@ class GSTR2BBulkUpload(BaseModel):
 
 
 @router.post("/upload")
-async def upload_gstr2b_json(payload: GSTR2BBulkUpload):
+async def upload_gstr2b_json(payload: GSTR2BBulkUpload, current_trader_id: str = Depends(get_current_trader_id)):
+    if payload.trader_id != current_trader_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
     """
     Upload GSTR-2B records parsed from GST portal JSON export.
     Use this when you have the JSON data already parsed client-side.
@@ -253,7 +256,7 @@ def _parse_gst_portal_excel(content: bytes) -> list[dict]:
     return records
 
 @router.get("/records/{trader_id}")
-async def get_gstr2b_records(trader_id: str, month: int = None, year: int = None):
+async def get_gstr2b_records(trader_id: str = Depends(verify_trader_access), month: int = None, year: int = None):
     """Get all GSTR-2B records for a trader."""
     try:
         db = get_supabase()
@@ -273,7 +276,7 @@ async def get_gstr2b_records(trader_id: str, month: int = None, year: int = None
 
 
 @router.delete("/records/{trader_id}")
-async def clear_gstr2b_records(trader_id: str, month: int, year: int):
+async def clear_gstr2b_records(trader_id: str = Depends(verify_trader_access), month: int, year: int):
     """Clear GSTR-2B records for a specific month (to re-upload)."""
     try:
         db = get_supabase()
@@ -376,7 +379,7 @@ def _normalize_date(date_str: str) -> Optional[str]:
 
 
 @router.post("/reconcile/{trader_id}")
-async def trigger_reconciliation(trader_id: str, month: int = None, year: int = None):
+async def trigger_reconciliation(trader_id: str = Depends(verify_trader_access), month: int = None, year: int = None):
     """
     Re-run GSTR-2B reconciliation against all unmatched invoices for a trader.
     Useful after uploading new GSTR-2B data.

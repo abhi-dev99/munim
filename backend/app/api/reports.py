@@ -7,7 +7,8 @@ import logging
 from datetime import date
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends
+from app.api.deps import verify_trader_access, get_current_trader_id, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse
 
 from app.services.supabase_client import get_supabase
@@ -66,7 +67,7 @@ async def generate_report(
 
 
 @router.get("/list/{trader_id}")
-async def list_reports(trader_id: str):
+async def list_reports(trader_id: str = Depends(verify_trader_access)):
     """List all generated reports for a trader."""
     db = get_supabase()
     try:

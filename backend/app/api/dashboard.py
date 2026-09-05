@@ -6,7 +6,8 @@ Serves data to the Next.js frontend.
 import logging
 from datetime import date
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends
+from app.api.deps import verify_trader_access, get_current_trader_id, HTTPException
 
 from app.services.supabase_client import (
     get_supabase,
@@ -23,7 +24,7 @@ router = APIRouter(prefix="/api/v1/dashboard", tags=["dashboard"])
 
 
 @router.get("/summary/{trader_id}")
-async def get_dashboard_summary(trader_id: str):
+async def get_dashboard_summary(trader_id: str = Depends(verify_trader_access)):
     """Get the full dashboard summary for a trader."""
     try:
         now = date.today()
@@ -56,7 +57,7 @@ async def get_dashboard_summary(trader_id: str):
 
 
 @router.get("/invoices/{trader_id}")
-async def get_trader_invoices(trader_id: str, month: int = None, year: int = None):
+async def get_trader_invoices(trader_id: str = Depends(verify_trader_access), month: int = None, year: int = None):
     """Get all invoices for a trader."""
     try:
         invoices = await get_invoices_for_trader(trader_id, month, year)
@@ -67,7 +68,7 @@ async def get_trader_invoices(trader_id: str, month: int = None, year: int = Non
 
 
 @router.get("/suppliers/{trader_id}")
-async def get_trader_suppliers(trader_id: str):
+async def get_trader_suppliers(trader_id: str = Depends(verify_trader_access)):
     """Get all suppliers for a trader with health scores and flags."""
     try:
         supplier_links = await get_all_suppliers_for_trader(trader_id)
@@ -102,7 +103,7 @@ async def get_trader_suppliers(trader_id: str):
 
 
 @router.get("/actions/{trader_id}")
-async def get_action_items(trader_id: str):
+async def get_action_items(trader_id: str = Depends(verify_trader_access)):
     """Get prioritized action items (issues sorted by ₹ impact)."""
     try:
         db = get_supabase()
@@ -166,7 +167,7 @@ async def resolve_action_item(invoice_id: str):
 
 
 @router.get("/itc-timeline/{trader_id}")
-async def get_itc_timeline(trader_id: str):
+async def get_itc_timeline(trader_id: str = Depends(verify_trader_access)):
     """Get 6-month ITC timeline data for charts."""
     try:
         db = get_supabase()
@@ -273,11 +274,11 @@ def _month_name(month: int) -> str:
 
 
 @router.get("/traders")
-async def list_traders():
+async def list_traders(current_trader_id: str = Depends(get_current_trader_id)):
     """List all registered traders (for frontend trader selection)."""
     try:
         db = get_supabase()
-        response = db.table("traders").select("id, name, business_name, gstin, whatsapp_number").execute()
+        response = db.table("traders").select("id, name, business_name, gstin, whatsapp_number").eq("id", current_trader_id).execute()
         return {"traders": response.data or []}
     except Exception as e:
         logger.error(f"List traders failed: {e}")
@@ -285,7 +286,7 @@ async def list_traders():
 
 
 @router.get("/gstr2b-status/{trader_id}")
-async def get_gstr2b_status(trader_id: str):
+async def get_gstr2b_status(trader_id: str = Depends(verify_trader_access)):
     """Get GSTR-2B reconciliation status for a trader."""
     try:
         from app.services.supabase_client import get_gstr2b_records
@@ -311,7 +312,7 @@ async def get_gstr2b_status(trader_id: str):
 
 
 @router.post("/reports/generate/{trader_id}")
-async def trigger_report_generation(trader_id: str, month: int = None, year: int = None):
+async def trigger_report_generation(trader_id: str = Depends(verify_trader_access), month: int = None, year: int = None):
     """Trigger Munim Report generation for a trader."""
     try:
         from app.agents.report_agent import generate_munim_report, send_report_to_trader
@@ -341,7 +342,7 @@ async def trigger_report_generation(trader_id: str, month: int = None, year: int
 
 
 @router.get("/reports/{trader_id}")
-async def get_reports(trader_id: str):
+async def get_reports(trader_id: str = Depends(verify_trader_access)):
     """Get all generated reports for a trader."""
     try:
         db = get_supabase()
@@ -384,7 +385,7 @@ async def check_deadlines():
 
 
 @router.get("/gstr3b/{trader_id}")
-async def get_gstr3b_draft(trader_id: str, month: int = None, year: int = None):
+async def get_gstr3b_draft(trader_id: str = Depends(verify_trader_access), month: int = None, year: int = None):
     """
     Compute a GSTR-3B auto-draft from real invoice data.
     Table 4 (ITC) is computed from actual reconciled invoices.
@@ -480,7 +481,7 @@ async def get_gstr3b_draft(trader_id: str, month: int = None, year: int = None):
 
 
 @router.get("/ims/{trader_id}")
-async def get_ims_invoices(trader_id: str, month: int = None, year: int = None):
+async def get_ims_invoices(trader_id: str = Depends(verify_trader_access), month: int = None, year: int = None):
     """
     Invoice Management System (IMS) data feed.
     Returns all invoices with their Munim.ai verdict pre-mapped to an IMS action:

@@ -1,4 +1,6 @@
 "use client";
+import { authFetch } from "@/src/app/utils/api";
+
 
 import { useState, useEffect } from "react";
 import {
@@ -48,7 +50,7 @@ export default function IMSPanel({ traderId, apiBase }) {
   async function load() {
     setLoading(true);
     try {
-      const res = await fetch(`${apiBase}/api/v1/dashboard/ims/${traderId}?month=${month}&year=${year}`);
+      const res = await authFetch(`${apiBase}/api/v1/dashboard/ims/${traderId}?month=${month}&year=${year}`);
       const json = await res.json();
       setData(json);
       // Seed local overrides from engine defaults

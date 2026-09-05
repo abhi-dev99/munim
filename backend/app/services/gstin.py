@@ -18,12 +18,19 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
-# GSTIN format: 2 digits state code + 10 digit PAN + 1 entity code + 1 Z + 1 check digit
+import re
+
+# GSTIN format: 2 digits state code + 10 digit PAN + 1 entity code + 1 Z (usually) + 1 check digit
 def is_valid_gstin_format(gstin: str) -> bool:
     """Basic GSTIN format validation (15 alphanumeric characters)."""
     if not gstin or len(gstin) != 15:
         return False
-    return gstin[:2].isdigit() and gstin.isalnum()
+    # TODO: checksum not yet validated
+    pattern = r"^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}[Z]{1}[0-9A-Z]{1}$"
+    # Some older ones might not have Z at 14th pos, so just alphanumeric check
+    if not gstin[:2].isdigit() or not gstin.isalnum():
+        return False
+    return True
 
 
 async def verify_gstin(gstin: str, use_cache: bool = True) -> GSTINValidation:
@@ -36,6 +43,7 @@ async def verify_gstin(gstin: str, use_cache: bool = True) -> GSTINValidation:
     if not is_valid_gstin_format(gstin):
         return GSTINValidation(
             gstin=gstin,
+            verification_status="VERIFIED_INVALID",
             is_valid=False,
             is_active=False,
         )
@@ -44,16 +52,23 @@ async def verify_gstin(gstin: str, use_cache: bool = True) -> GSTINValidation:
     if use_cache:
         cached = get_cached_gstin(gstin)
         if cached:
+            # If we cached an unverified state previously, we might want to retry, 
+            # but for now we just return the cached result.
             return GSTINValidation(**cached, cached=True)
+
+    # If no API key is configured, intentional demo mode
+    if not settings.gstin_api_key:
+        return _demo_mode_response(gstin)
 
     # Call external API
     try:
         result = await _call_gstin_api(gstin)
 
-        # Cache the result
-        if result.is_valid:
+        # Cache the result if we successfully verified it (valid or invalid, but not UNVERIFIED)
+        if result.verification_status != "UNVERIFIED":
             cache_data = {
                 "gstin": result.gstin,
+                "verification_status": result.verification_status,
                 "is_valid": result.is_valid,
                 "legal_name": result.legal_name,
                 "trade_name": result.trade_name,
@@ -70,8 +85,13 @@ async def verify_gstin(gstin: str, use_cache: bool = True) -> GSTINValidation:
 
     except Exception as e:
         logger.error(f"GSTIN verification failed for {gstin}: {e}")
-        # Return a "mock" valid response for hackathon if API is unavailable
-        return _mock_gstin_response(gstin)
+        # API failed (network error, timeout, non-200) -> Fail closed
+        return GSTINValidation(
+            gstin=gstin,
+            verification_status="UNVERIFIED",
+            is_valid=False,
+            is_active=False,
+        )
 
 
 async def _call_gstin_api(gstin: str) -> GSTINValidation:
@@ -87,24 +107,38 @@ async def _call_gstin_api(gstin: str) -> GSTINValidation:
 
         if response.status_code == 200:
             data = response.json()
+            is_active = data.get("status", "").lower() == "active"
             return GSTINValidation(
                 gstin=gstin,
+                verification_status="VERIFIED_VALID",
                 is_valid=True,
                 legal_name=data.get("legal_name", ""),
                 trade_name=data.get("trade_name", ""),
                 taxpayer_type=data.get("taxpayer_type", "Regular"),
                 registration_date=data.get("registration_date"),
                 business_category=data.get("business_category", ""),
-                is_active=data.get("status", "").lower() == "active",
+                is_active=is_active,
                 is_einvoice_mandated=data.get("einvoice_mandated", False),
                 filing_status=data.get("filing_status"),
             )
+        elif response.status_code == 404:
+            return GSTINValidation(
+                gstin=gstin,
+                verification_status="VERIFIED_INVALID",
+                is_valid=False,
+                is_active=False,
+            )
         else:
             logger.warning(f"GSTIN API returned {response.status_code} for {gstin}")
-            return _mock_gstin_response(gstin)
+            return GSTINValidation(
+                gstin=gstin,
+                verification_status="UNVERIFIED",
+                is_valid=False,
+                is_active=False,
+            )
 
 
-def _mock_gstin_response(gstin: str) -> GSTINValidation:
+def _demo_mode_response(gstin: str) -> GSTINValidation:
     """
     Return a mock GSTIN validation for hackathon demo purposes.
     Uses the GSTIN format to infer state and generate plausible data.
@@ -126,6 +160,7 @@ def _mock_gstin_response(gstin: str) -> GSTINValidation:
 
     return GSTINValidation(
         gstin=gstin,
+        verification_status="VERIFIED_VALID",
         is_valid=is_valid_gstin_format(gstin),
         legal_name=f"Demo Business ({state})",
         trade_name=f"Demo Trade ({state})",

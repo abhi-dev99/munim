@@ -202,23 +202,34 @@ class ITCRulesEngine:
             )
 
         # --- Check 3: GSTIN validity ---
-        if gstin_validation and not gstin_validation.is_valid:
-            return ITCVerdict(
-                status=ITCStatus.INELIGIBLE,
-                itc_amount=0.0,
-                itc_blocked=total_tax,
-                reason=f"Supplier GSTIN {invoice.gstin_supplier} is invalid or cancelled",
-                legal_section="16(2)",
-            )
+        if gstin_validation:
+            if gstin_validation.verification_status == "VERIFIED_INVALID" or (gstin_validation.verification_status != "UNVERIFIED" and not gstin_validation.is_valid):
+                return ITCVerdict(
+                    status=ITCStatus.INELIGIBLE,
+                    itc_amount=0.0,
+                    itc_blocked=total_tax,
+                    reason=f"Supplier GSTIN {invoice.gstin_supplier} is invalid or cancelled",
+                    legal_section="16(2)",
+                )
+            
+            if gstin_validation.verification_status == "UNVERIFIED":
+                return ITCVerdict(
+                    status=ITCStatus.AT_RISK,
+                    itc_amount=0.0,
+                    itc_blocked=total_tax,
+                    reason=f"Supplier GSTIN {invoice.gstin_supplier} could not be verified due to API failure",
+                    legal_section="16(2)",
+                    fix_action="Manually verify this supplier's GSTIN status",
+                )
 
-        if gstin_validation and not gstin_validation.is_active:
-            return ITCVerdict(
-                status=ITCStatus.INELIGIBLE,
-                itc_amount=0.0,
-                itc_blocked=total_tax,
-                reason=f"Supplier GSTIN {invoice.gstin_supplier} is cancelled/suspended",
-                legal_section="16(2)",
-            )
+            if not gstin_validation.is_active:
+                return ITCVerdict(
+                    status=ITCStatus.INELIGIBLE,
+                    itc_amount=0.0,
+                    itc_blocked=total_tax,
+                    reason=f"Supplier GSTIN {invoice.gstin_supplier} is cancelled/suspended",
+                    legal_section="16(2)",
+                )
 
         # --- Check 4: Time limit (Section 16(4)) ---
         if not self.is_within_time_limit(invoice.invoice_date):
@@ -245,27 +256,22 @@ class ITCRulesEngine:
             pass
 
         # --- Check 7 & 8: GSTR-2B reconciliation (only for regular taxpayers) ---
-        elif gstr2b_match:
+        gstr2b_pending = False
+        if (not is_rcm and not self.supplier_is_composition_dealer(gstin_validation)) and gstr2b_match:
             if gstr2b_match.status == GSTR2BMatchStatus.ITC_AT_RISK:
                 # Gate: is GSTR-2B even available yet for this invoice period?
                 if not self.is_gstr2b_available_for_period(invoice.invoice_date):
                     # Too early to conclude non-filing — data not yet published by portal
+                    gstr2b_pending = True
+                else:
                     return ITCVerdict(
                         status=ITCStatus.AT_RISK,
                         itc_amount=total_tax,
                         itc_blocked=0.0,
-                        reason="Invoice not yet reflected in GSTR-2B — portal data is pending (published after 14th of next month)",
+                        reason="Invoice not found in GSTR-2B — supplier may not have filed GSTR-1",
                         legal_section="16(2)(c)",
-                        fix_action="Check again after the 14th. If still missing, contact supplier to file their GSTR-1.",
+                        fix_action="Contact supplier and ask them to file their GSTR-1",
                     )
-                return ITCVerdict(
-                    status=ITCStatus.AT_RISK,
-                    itc_amount=total_tax,
-                    itc_blocked=0.0,
-                    reason="Invoice not found in GSTR-2B — supplier may not have filed GSTR-1",
-                    legal_section="16(2)(c)",
-                    fix_action="Contact supplier and ask them to file their GSTR-1",
-                )
 
         # --- Check 9: 180-day payment rule (Section 16(2) second proviso) ---
         if not self.is_within_payment_window(invoice.invoice_date):
@@ -302,6 +308,16 @@ class ITCRulesEngine:
             )
 
         # --- All checks passed ---
+        if gstr2b_pending:
+            return ITCVerdict(
+                status=ITCStatus.CONFIRMED,
+                itc_amount=total_tax,
+                itc_blocked=0.0,
+                reason="Pending supplier filing window (GSTR-2B not yet available) - assuming eligible",
+                legal_section="16(2)(c)",
+                fix_action="Check again after the 14th of next month",
+            )
+            
         return ITCVerdict(
             status=ITCStatus.CONFIRMED,
             itc_amount=total_tax,

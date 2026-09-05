@@ -145,7 +145,7 @@ app = FastAPI(
 # CORS — allow frontend access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Restrict in production
+    allow_origins=[origin.strip() for origin in settings.allowed_origins.split(",") if origin.strip()],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -186,3 +186,4 @@ async def root():
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
+

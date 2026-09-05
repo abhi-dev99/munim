@@ -1,4 +1,6 @@
 "use client";
+import { authFetch } from "@/src/app/utils/api";
+
 
 import { useState, useEffect } from "react";
 import { Trash2, Loader2, AlertCircle } from "lucide-react";
@@ -14,7 +16,7 @@ export default function AdminPage() {
   useEffect(() => {
     async function fetchTraders() {
       try {
-        const res = await fetch(`${API_BASE}/api/v1/dashboard/traders`);
+        const res = await authFetch(`${API_BASE}/api/v1/dashboard/traders`);
         if (!res.ok) throw new Error("Failed to fetch traders");
         const data = await res.json();
         setTraders(data.traders || []);
@@ -37,7 +39,7 @@ export default function AdminPage() {
     async function fetchInvoices() {
       setLoading(true);
       try {
-        const res = await fetch(`${API_BASE}/api/v1/dashboard/invoices/${selectedTrader}`);
+        const res = await authFetch(`${API_BASE}/api/v1/dashboard/invoices/${selectedTrader}`);
         if (!res.ok) throw new Error("Failed to fetch invoices");
         const data = await res.json();
         setInvoices(data.invoices || []);
@@ -54,7 +56,7 @@ export default function AdminPage() {
     if (!window.confirm("Are you sure you want to delete this invoice?")) return;
     
     try {
-      const res = await fetch(`${API_BASE}/api/v1/admin/invoices/${id}`, {
+      const res = await authFetch(`${API_BASE}/api/v1/admin/invoices/${id}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Delete failed");

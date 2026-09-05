@@ -1,4 +1,6 @@
 "use client";
+import { authFetch } from "@/src/app/utils/api";
+
 
 import { useState, useEffect } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -13,7 +15,7 @@ export default function ITCTrendChart({ traderId, apiBase, compact = false }) {
 
     async function fetchTimeline() {
       try {
-        const res = await fetch(`${apiBase}/api/v1/dashboard/itc-timeline/${traderId}`);
+        const res = await authFetch(`${apiBase}/api/v1/dashboard/itc-timeline/${traderId}`);
         if (!res.ok) throw new Error("Failed to fetch");
         const json = await res.json();
         if (json.timeline && json.timeline.length > 0) {

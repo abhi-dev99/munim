@@ -1,4 +1,6 @@
 "use client";
+import { authFetch } from "@/src/app/utils/api";
+
 
 import { useState, useEffect } from "react";
 import { Phone, CheckCircle2, ShieldAlert, ArrowUpRight } from "lucide-react";
@@ -34,7 +36,7 @@ export default function ActionQueue({ traderId, apiBase, traderPhone }) {
 
   async function fetchActions() {
     try {
-      const res = await fetch(`${apiBase}/api/v1/dashboard/actions/${traderId}`);
+      const res = await authFetch(`${apiBase}/api/v1/dashboard/actions/${traderId}`);
       const data = await res.json();
       const list = (data.actions || []).map((a, i) => ({
         id:          a.id || i,
@@ -55,7 +57,7 @@ export default function ActionQueue({ traderId, apiBase, traderPhone }) {
   async function handleResolve(id) {
     setResolving(id);
     try {
-      await fetch(`${apiBase}/api/v1/dashboard/actions/${id}/resolve`, { method: "PATCH" });
+      await authFetch(`${apiBase}/api/v1/dashboard/actions/${id}/resolve`, { method: "PATCH" });
       setActions(prev => prev.filter(a => a.id !== id));
     } catch { /* ignore */ }
     finally { setResolving(null); }

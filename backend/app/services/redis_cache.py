@@ -179,3 +179,4 @@ def check_rate_limit(key: str, max_requests: int = 10, window_seconds: int = 60)
     except Exception as e:
         logger.error(f"Redis rate_limit check failed: {e}")
         return True
+
