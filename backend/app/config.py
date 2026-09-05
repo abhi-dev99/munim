@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     meta_verify_token: str = "munim_verify_2026"
     meta_app_secret: str = ""
     meta_api_version: str = "v21.0"
+    # Dialable WhatsApp number behind meta_phone_number_id, used to build
+    # wa.me deep links (the Graph API phone_number_id itself isn't dialable).
+    whatsapp_business_number: str = ""
 
     # --- Supabase ---
     supabase_url: str = ""

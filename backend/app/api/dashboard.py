@@ -4,10 +4,13 @@ Serves data to the Next.js frontend.
 """
 
 import logging
+import secrets
+import string
 from datetime import date
 
 from fastapi import APIRouter, Depends
 from app.api.deps import verify_trader_access, get_current_trader_id, HTTPException
+from app.config import get_settings
 
 from app.services.supabase_client import (
     get_supabase,
@@ -15,6 +18,7 @@ from app.services.supabase_client import (
     get_invoices_for_trader,
     get_all_suppliers_for_trader,
     get_active_supplier_flags,
+    update_trader,
 )
 from app.models.trader import DashboardSummary, ITCBucket, ActionItem
 from app.utils.errors import safe_http_error
@@ -599,4 +603,43 @@ async def save_preferences(payload: PreferencesModel, trader_id: str = Depends(v
     }
     _save_prefs(prefs)
     return {"message": "Preferences saved successfully"}
+
+
+_SHORT_CODE_ALPHABET = string.ascii_uppercase + string.digits
+
+
+def _generate_short_code(db, length: int = 6) -> str:
+    """Random short_code, retried against the DB on collision. There's no
+    separate CAs table -- any trader row can be the CA side of a QR link
+    (see deps.py:verify_trader_access), so short_code lives on traders."""
+    for _ in range(5):
+        candidate = "".join(secrets.choice(_SHORT_CODE_ALPHABET) for _ in range(length))
+        existing = db.table("traders").select("id").eq("short_code", candidate).execute()
+        if not existing.data:
+            return candidate
+    raise RuntimeError("Could not generate a unique short_code after 5 attempts")
+
+
+@router.get("/onboard-link")
+async def get_onboard_link(current_trader_id: str = Depends(get_current_trader_id)):
+    """Return the caller's WhatsApp QR-onboarding deep link, generating and
+    persisting their short_code on first request."""
+    try:
+        db = get_supabase()
+        res = db.table("traders").select("id, short_code").eq("id", current_trader_id).execute()
+        if not res.data:
+            raise HTTPException(status_code=404, detail="Trader not found")
+
+        short_code = res.data[0].get("short_code")
+        if not short_code:
+            short_code = _generate_short_code(db)
+            await update_trader(current_trader_id, {"short_code": short_code})
+
+        business_number = get_settings().whatsapp_business_number
+        deep_link = f"https://wa.me/{business_number}?text=JOIN-{short_code}"
+        return {"short_code": short_code, "deep_link": deep_link}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise safe_http_error(logger, "Failed to build onboarding link", e)
 

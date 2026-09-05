@@ -36,6 +36,20 @@ async def get_trader_by_phone(phone: str) -> Optional[dict]:
         logger.error(f"Failed to get trader by phone: {e}")
         return None
 
+async def get_trader_by_short_code(short_code: str) -> Optional[dict]:
+    """Find a trader by their QR-onboarding short_code (used as the CA
+    identifier in JOIN-<code> deep links)."""
+    try:
+        db = get_supabase()
+        response = db.table("traders").select("*").eq("short_code", short_code).execute()
+        if response.data and len(response.data) > 0:
+            return response.data[0]
+        return None
+    except Exception as e:
+        logger.error(f"Failed to get trader by short code: {e}")
+        return None
+
+
 async def get_trader_by_inbound_email(email: str) -> Optional[dict]:
     """Find a trader by their inbound virtual email address."""
     try:
