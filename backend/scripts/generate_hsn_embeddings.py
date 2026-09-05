@@ -31,8 +31,8 @@ db = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 EMBEDDING_MODEL = "models/gemini-embedding-001"
 BATCH_SIZE = 20        # Gemini batch embed limit
-REQUESTS_PER_MINUTE = 1500  # Free tier: 1500 RPM
-SLEEP_BETWEEN_BATCHES = 60 / (REQUESTS_PER_MINUTE / BATCH_SIZE)  # ~0.8s per batch
+REQUESTS_PER_MINUTE = 14  # Free tier strict limit: 15 RPM
+SLEEP_BETWEEN_BATCHES = 60 / REQUESTS_PER_MINUTE  # ~4.2s per batch
 
 
 def embed_texts_batch(texts: list[str]) -> list[list[float]]:
