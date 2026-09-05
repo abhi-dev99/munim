@@ -39,18 +39,23 @@ export default function InvoiceFeed({ traderId, apiBase }) {
   const getStatusIcon = (status) => {
     switch (status) {
       case "CONFIRMED": return <CheckCircle2 size={16} className="text-black" />;
-      case "AT_RISK": return <AlertTriangle size={16} className="text-[var(--text-secondary)]" />;
-      case "FRAUD_FLAGGED": return <ShieldAlert size={16} className="text-black" />;
+      case "FIXABLE_BLOCKED": return <AlertTriangle size={16} className="text-[var(--orange-primary)]" />;
+      case "AT_RISK": return <AlertTriangle size={16} className="text-[var(--red-primary)]" />;
+      case "FRAUD_FLAGGED": return <ShieldAlert size={16} className="text-[var(--red-primary)]" />;
+      case "RESOLVED": return <CheckCircle2 size={16} className="text-[var(--text-muted)]" />;
       default: return <Clock size={16} className="text-[var(--text-secondary)]" />;
     }
   };
 
   const getStatusLabel = (status) => {
     switch (status) {
-      case "CONFIRMED": return "Confirmed";
-      case "AT_RISK": return "At Risk";
-      case "FRAUD_FLAGGED": return "Fraud Flagged";
-      default: return status;
+      case "CONFIRMED": return "✓ Confirmed";
+      case "FIXABLE_BLOCKED": return "⚠ Blocked";
+      case "AT_RISK": return "↯ At Risk";
+      case "FRAUD_FLAGGED": return "✕ Fraud";
+      case "RESOLVED": return "✓ Resolved";
+      case "INELIGIBLE": return "— Ineligible";
+      default: return status || "Pending";
     }
   };
 
