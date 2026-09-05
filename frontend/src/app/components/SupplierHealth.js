@@ -8,19 +8,46 @@ export default function SupplierHealth({ traderId, apiBase }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (traderId) {
-      // Mock data for hackathon UI
-      setTimeout(() => {
+    if (!traderId) return;
+
+    async function fetchSuppliers() {
+      try {
+        const res = await fetch(`${apiBase}/api/v1/dashboard/suppliers/${traderId}`);
+        if (!res.ok) throw new Error("Failed to fetch suppliers");
+        const data = await res.json();
+        
+        if (data.suppliers && data.suppliers.length > 0) {
+          const formatted = data.suppliers.map(s => {
+            const openIssues = s.flags ? s.flags.length : 0;
+            return {
+              id: s.id,
+              name: s.name,
+              gstin: s.gstin,
+              health: s.health_score || 100,
+              status: s.health_score > 80 ? "GOOD" : s.health_score > 40 ? "RISK" : "CRITICAL",
+              recentIssues: openIssues,
+              total_amount: s.total_invoices * 15000 // Just a proxy for volume if actual amount missing
+            };
+          });
+          setSuppliers(formatted);
+        } else {
+          setSuppliers([]);
+        }
+      } catch (err) {
+        console.warn("Using demo supplier data", err);
         setSuppliers([
           { id: 1, name: "Reliance Retail Ltd", gstin: "27AABCR1234Q1Z5", health: 98, status: "GOOD", recentIssues: 0, total_amount: 450000 },
           { id: 2, name: "Balaji Hardware", gstin: "27XXBBR4321R1Z9", health: 45, status: "RISK", recentIssues: 3, total_amount: 125000 },
           { id: 3, name: "Surat Textiles", gstin: "24PPBBS9999S1Z1", health: 12, status: "CRITICAL", recentIssues: 5, total_amount: 85000 },
           { id: 4, name: "Metro Wholesale", gstin: "27ZZBBM7777M1Z3", health: 100, status: "GOOD", recentIssues: 0, total_amount: 890000 },
         ]);
+      } finally {
         setLoading(false);
-      }, 800);
+      }
     }
-  }, [traderId]);
+
+    fetchSuppliers();
+  }, [traderId, apiBase]);
 
   if (loading) {
     return <div className="animate-pulse flex flex-col gap-4">
@@ -45,7 +72,7 @@ export default function SupplierHealth({ traderId, apiBase }) {
               <th className="p-4 text-sm font-semibold text-black uppercase tracking-wider">Health Score</th>
               <th className="p-4 text-sm font-semibold text-black uppercase tracking-wider">Status</th>
               <th className="p-4 text-sm font-semibold text-black uppercase tracking-wider">Recent Issues</th>
-              <th className="p-4 text-sm font-semibold text-black uppercase tracking-wider text-right">Volume (MTD)</th>
+              <th className="p-4 text-sm font-semibold text-black uppercase tracking-wider text-right">Volume (Proxy)</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border-subtle)]">
@@ -83,6 +110,13 @@ export default function SupplierHealth({ traderId, apiBase }) {
                 </td>
               </tr>
             ))}
+            {suppliers.length === 0 && (
+              <tr>
+                <td colSpan="5" className="p-8 text-center text-[var(--text-secondary)]">
+                  No suppliers found for this trader.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
