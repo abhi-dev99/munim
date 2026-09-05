@@ -88,46 +88,87 @@ class LLMRouter:
         return await self._generate_online(prompt, context, task, temperature)
 
     async def extract_invoice(self, image_bytes: bytes, mime_type: str) -> Optional[Dict[str, Any]]:
-        # Vision task: Try Ollama first if llava is available
-        prompt = "Extract all invoice details into a JSON object: gstin_supplier, total_amount, invoice_number, invoice_date. Return ONLY JSON."
-        if self.prefer_local and any(m.startswith("llava") for m in self.available_ollama_models):
-            b64_image = base64.b64encode(image_bytes).decode("utf-8")
-            response = await ollama_client.generate_vision(self.ollama_vision_model, prompt, b64_image, temperature=0.1)
-            if response:
-                try:
-                    text = response.strip()
-                    if text.startswith("```"):
-                        text = text.split("\n", 1)[1]
-                        if text.endswith("```"):
-                            text = text[:-3].strip()
-                    return json.loads(text)
-                except Exception as e:
-                    logger.debug(f"Failed to parse Ollama vision output: {e}")
+        # Skip Ollama for vision — llava:7b is too unreliable for structured Indian invoice extraction
+        # Go straight to Gemini which handles complex multi-line Indian invoices correctly
 
-        # Fallback to Gemini
         if not self.online_enabled:
             return None
 
         from app.services.gemini import client as gemini_client, settings as gemini_settings
         from google.genai import types
 
-        # For vision extraction, we don't have context to anonymize YET, we're extracting it.
-        # So we just send the image directly to Gemini. This is an accepted privacy tradeoff for extraction.
+        EXTRACTION_PROMPT = """You are an expert Indian GST invoice parser. Extract ALL data from this invoice image.
+
+Return a JSON object with EXACTLY these fields (use null for missing values):
+{
+  "invoice_number": "string or null",
+  "invoice_date": "YYYY-MM-DD format or null",
+  "supplier_name": "business/company name of the seller",
+  "gstin_supplier": "15-char GST number of seller or null",
+  "gstin_buyer": "15-char GST number of buyer or null",
+  "total_taxable_amount": number or null,
+  "total_tax_amount": number or null,
+  "total_amount": grand total number or null,
+  "confidence": 0.0 to 1.0 (your confidence this is a real invoice),
+  "line_items": [
+    {
+      "description": "item description",
+      "hsn_code": "HSN/SAC code string or null",
+      "quantity": number or null,
+      "unit": "unit string or null",
+      "unit_price": number or null,
+      "taxable_value": number or null,
+      "cgst_rate": number or null,
+      "sgst_rate": number or null,
+      "igst_rate": number or null,
+      "cgst_amount": number or null,
+      "sgst_amount": number or null,
+      "igst_amount": number or null
+    }
+  ]
+}
+
+IMPORTANT rules:
+- If this is NOT an invoice, set confidence to 0.1 and all other fields to null
+- GSTIN format is exactly 15 characters (e.g. 27AABCU9603R1ZM)
+- Amounts must be numbers, not strings
+- For Composition scheme invoices, there is no GST breakdown — still extract the total
+- Return ONLY the JSON, no markdown, no explanation"""
+
         try:
             gemini_response = gemini_client.models.generate_content(
                 model=gemini_settings.gemini_model,
                 contents=[
-                    types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
-                    prompt,
+                    types.Content(parts=[
+                        types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+                        types.Part.from_text(text=EXTRACTION_PROMPT),
+                    ])
                 ],
                 config=types.GenerateContentConfig(
-                    temperature=0.1,
-                    response_mime_type="application/json",
+                    temperature=0.0,
+                    max_output_tokens=2048,
                 )
             )
-            return json.loads(gemini_response.text.strip())
+            raw = gemini_response.text.strip() if gemini_response.text else ""
+            # Strip markdown code fences if Gemini wraps output
+            if raw.startswith("```"):
+                lines = raw.split("\n")
+                raw = "\n".join(lines[1:])
+                if raw.endswith("```"):
+                    raw = raw[:-3].strip()
+            result = json.loads(raw)
+            logger.info(f"Invoice extracted: supplier={result.get('supplier_name')}, confidence={result.get('confidence')}, items={len(result.get('line_items', []))}")
+            return result
+        except json.JSONDecodeError as e:
+            logger.error(f"Gemini extraction JSON parse failed: {e} | raw: {raw[:200] if 'raw' in dir() else 'N/A'}")
+            return None
         except Exception as e:
+            err_str = str(e)
+            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
+                logger.error("Gemini API quota exceeded — invoice extraction unavailable")
+                return {"__quota_exceeded__": True}
             logger.error(f"Gemini extraction failed: {e}")
             return None
 
 llm_router = LLMRouter()
+
