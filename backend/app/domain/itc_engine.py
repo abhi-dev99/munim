@@ -90,12 +90,21 @@ class ITCRulesEngine:
 
     def is_valid_tax_invoice(self, invoice: InvoiceJSON) -> bool:
         """Check basic validity of the tax invoice."""
-        return all([
+        if not all([
             invoice.invoice_number,
             invoice.invoice_date,
             invoice.gstin_supplier,
             invoice.total_amount and invoice.total_amount > 0,
-        ])
+        ]):
+            return False
+
+        try:
+            if date.fromisoformat(invoice.invoice_date) > date.today():
+                return False
+        except (ValueError, TypeError):
+            pass
+
+        return True
 
     def is_within_time_limit(self, invoice_date_str: Optional[str]) -> bool:
         """
