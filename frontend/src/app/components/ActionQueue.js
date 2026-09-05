@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Phone, CheckCircle2, ShieldAlert, ArrowUpRight } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useLanguage } from "../context/LanguageContext";
 
 function WhatsAppIcon({ size = 14 }) {
   return (
@@ -13,12 +14,13 @@ function WhatsAppIcon({ size = 14 }) {
 }
 
 const URGENCY = {
-  CRITICAL: { dot: "bg-red-500",   chip: "bg-red-50 text-red-700 border-red-200",   label: "Critical" },
-  HIGH:     { dot: "bg-amber-500", chip: "bg-amber-50 text-amber-700 border-amber-200", label: "High" },
-  MEDIUM:   { dot: "bg-blue-400",  chip: "bg-blue-50 text-blue-700 border-blue-200",  label: "Medium" },
+  CRITICAL: { dot: "bg-red-500",   chip: "bg-red-50 text-red-700 border-red-200",   labelKey: "aq_critical" },
+  HIGH:     { dot: "bg-amber-500", chip: "bg-amber-50 text-amber-700 border-amber-200", labelKey: "aq_high" },
+  MEDIUM:   { dot: "bg-blue-400",  chip: "bg-blue-50 text-blue-700 border-blue-200",  labelKey: "aq_medium" },
 };
 
 export default function ActionQueue({ traderId, apiBase, traderPhone }) {
+  const { t } = useLanguage();
   const [actions, setActions]   = useState([]);
   const [loading, setLoading]   = useState(true);
   const [resolving, setResolving] = useState(null);
@@ -94,7 +96,7 @@ export default function ActionQueue({ traderId, apiBase, traderPhone }) {
           <ShieldAlert size={24} className="text-emerald-500" />
         </div>
         <h3 className="text-base font-bold text-gray-900">All Clear!</h3>
-        <p className="text-sm text-gray-400 mt-1">No issues requiring attention right now.</p>
+        <p className="text-sm text-gray-400 mt-1">{t("aq_no_actions")}</p>
       </div>
     );
   }
@@ -109,8 +111,8 @@ export default function ActionQueue({ traderId, apiBase, traderPhone }) {
       {/* Header row */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-base font-bold text-gray-900">Action Queue</h2>
-          <p className="text-xs text-gray-400 mt-0.5">{actions.length} issue{actions.length !== 1 ? "s" : ""} pending</p>
+          <h2 className="text-base font-bold text-gray-900">{t("nav_action_queue")}</h2>
+          <p className="text-xs text-gray-400 mt-0.5">{actions.length} {t("sup_issues")}</p>
         </div>
         {/* Filter chips */}
         <div className="flex items-center gap-1.5">
@@ -130,7 +132,7 @@ export default function ActionQueue({ traderId, apiBase, traderPhone }) {
                   : "bg-white text-gray-500 border-gray-200 hover:border-gray-400"
               }`}
             >
-              {f === "ALL" ? `All (${actions.length})` : `${f.charAt(0) + f.slice(1).toLowerCase()} (${counts[f]})`}
+              {f === "ALL" ? `${t("aq_all")} (${actions.length})` : `${t(URGENCY[f].labelKey)} (${counts[f]})`}
             </button>
           ))}
         </div>
@@ -164,7 +166,7 @@ export default function ActionQueue({ traderId, apiBase, traderPhone }) {
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-bold text-gray-900 truncate">{action.supplier}</span>
                       <span className={`hidden sm:inline text-[10px] font-bold px-1.5 py-0.5 rounded border ${cfg.chip}`}>
-                        {cfg.label}
+                        {t(cfg.labelKey)}
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 truncate mt-0.5">{action.description}</p>
@@ -175,7 +177,7 @@ export default function ActionQueue({ traderId, apiBase, traderPhone }) {
                     <p className="text-sm font-bold text-gray-900">
                       {action.amount > 0 ? `₹${action.amount.toLocaleString("en-IN")}` : "—"}
                     </p>
-                    <p className="text-[10px] text-gray-400">ITC at stake</p>
+                    <p className="text-[10px] text-gray-400">{t("sup_itc")}</p>
                   </div>
 
                   {/* Expand chevron */}
@@ -247,7 +249,7 @@ export default function ActionQueue({ traderId, apiBase, traderPhone }) {
                         ) : (
                           <CheckCircle2 size={12} />
                         )}
-                        {resolving === action.id ? "Resolving…" : "Mark Resolved"}
+                        {resolving === action.id ? t("loading") : t("aq_resolve")}
                       </button>
                     </div>
                   </motion.div>
