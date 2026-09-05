@@ -672,7 +672,7 @@ export default function Home() {
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.08, duration: 0.3 }}
-              className="flex flex-col gap-4 min-h-0 overflow-y-auto pr-1"
+              className="flex flex-col gap-4 min-h-0 overflow-hidden pr-1"
             >
               {activeTab === "money-meter" && (
                 <MoneyMeter summary={summary} apiBase={API_BASE} isComposition={isComposition} onSwitchTab={setActiveTab} prefs={fullPrefs} onSortTop={handleMoneyMeterSortTop} onSortBottom={handleMoneyMeterSortBottom} />
