@@ -85,7 +85,7 @@ export default function InvoiceFeed({ traderId, apiBase }) {
         <div className="p-4 border-b border-[var(--border-subtle)] flex items-center justify-between sticky top-0 bg-white">
           <h3 className="font-bold text-sm uppercase tracking-wider text-black">Live Invoice Feed</h3>
           <span className="flex items-center gap-2 text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest">
-            <span className="w-2 h-2 rounded-full bg-black animate-pulse"></span>
+            <span className="w-2 h-2 rounded-none bg-black animate-pulse"></span>
             Live Sync
           </span>
         </div>
@@ -114,7 +114,7 @@ export default function InvoiceFeed({ traderId, apiBase }) {
                   <span className="text-sm font-bold text-black">
                     ₹{Number(inv.total_amount || 0).toLocaleString('en-IN')}
                   </span>
-                  <div className="flex items-center gap-1.5 px-2 py-0.5 bg-white border border-[var(--border-subtle)] rounded-full">
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 bg-white border border-[var(--border-subtle)] rounded-none">
                     {getStatusIcon(inv.itc_status)}
                     <span className="text-[10px] font-bold uppercase tracking-wider">
                       {getStatusLabel(inv.itc_status)}

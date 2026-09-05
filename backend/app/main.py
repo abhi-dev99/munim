@@ -15,6 +15,7 @@ from app.api.dashboard import router as dashboard_router
 from app.api.gstr2b import router as gstr2b_router
 from app.api.reports import router as reports_router
 from app.api.privacy import router as privacy_router
+from app.api.admin import router as admin_router
 from app.services.llm_router import llm_router
 
 # Configure logging
@@ -159,6 +160,7 @@ app.include_router(dashboard_router)
 app.include_router(gstr2b_router)
 app.include_router(reports_router)
 app.include_router(privacy_router)
+app.include_router(admin_router)
 
 
 @app.get("/")
