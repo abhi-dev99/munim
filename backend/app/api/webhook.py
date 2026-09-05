@@ -7,7 +7,7 @@ import re
 import logging
 import uuid
 
-from fastapi import APIRouter, Request, Response, BackgroundTasks, HTTPException
+from fastapi import APIRouter, Request, Response, BackgroundTasks, HTTPException, UploadFile, File, Form
 
 from app.config import get_settings
 from app.services import whatsapp
@@ -37,6 +37,60 @@ router = APIRouter(prefix="/api/v1", tags=["webhook"])
 
 # GSTIN regex: 2 digits + 5 alpha + 4 digits + 1 alpha + 1 alphanumeric + Z + 1 alphanumeric
 GSTIN_REGEX = re.compile(r"^\d{2}[A-Z]{5}\d{4}[A-Z]\d[Z][A-Z\d]$")
+
+
+@router.post("/webhook/upload-invoice")
+async def upload_invoice_direct(
+    file: UploadFile = File(...),
+    trader_id: str = Form(...),
+):
+    """
+    Direct invoice upload from the Trader PWA (no WhatsApp).
+    Accepts image or PDF, runs the full LangGraph pipeline, returns diagnosis.
+    """
+    try:
+        file_bytes = await file.read()
+        mime_type = file.content_type or "image/jpeg"
+
+        # Upload to Supabase Storage first
+        filename = f"invoices/{trader_id}/{uuid.uuid4()}_{file.filename or 'invoice'}"
+        image_url = await upload_file("invoices", filename, file_bytes, mime_type)
+
+        # Run the full invoice processing pipeline
+        diagnosis = await process_invoice(
+            trader_id=trader_id,
+            image_bytes=file_bytes,
+            mime_type=mime_type,
+            image_url=image_url,
+        )
+
+        if not diagnosis:
+            raise HTTPException(status_code=500, detail="Invoice processing failed")
+
+        # Store invoice in DB
+        await store_invoice(trader_id, diagnosis, image_url)
+
+        return {
+            "status": "processed",
+            "trader_id": trader_id,
+            "itc_verdict": {
+                "status": diagnosis.itc_verdict.status,
+                "itc_amount": diagnosis.itc_verdict.itc_amount,
+                "itc_blocked": diagnosis.itc_verdict.itc_blocked,
+                "reason": diagnosis.itc_verdict.reason,
+            },
+            "diagnosis_hi": diagnosis.diagnosis_hi,
+            "diagnosis_en": diagnosis.diagnosis_en,
+            "action_items": diagnosis.action_items,
+            "processing_duration_ms": diagnosis.processing_duration_ms,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Direct invoice upload failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @router.get("/webhook")
