@@ -19,6 +19,10 @@ COPY . .
 # Next.js telemetry is disabled
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Inject the backend API URL at build time so the frontend knows where to fetch
+ARG NEXT_PUBLIC_API_URL=https://munim-backend-1051889700424.us-central1.run.app
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 RUN npm run build
 
 # Production image, copy all the files and run next
