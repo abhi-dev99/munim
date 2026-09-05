@@ -8,12 +8,185 @@ import Sidebar from "../components/Sidebar";
 import InvoiceFeed from "../components/InvoiceFeed";
 import GSTR2BUpload from "../components/GSTR2BUpload";
 import ReportsPanel from "../components/ReportsPanel";
-import GSTTimeline from "../components/GSTTimeline";
 import ITCTrendChart from "../components/ITCTrendChart";
-import { ChevronDown, Users, ToggleLeft, ToggleRight } from "lucide-react";
+import {
+  ChevronDown,
+  Users,
+  ToggleLeft,
+  ToggleRight,
+  Upload,
+  AlertTriangle,
+  CheckCircle2,
+  PieChart,
+} from "lucide-react";
 import { motion } from "framer-motion";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+function formatINR(amount) {
+  if (!amount && amount !== 0) return "—";
+  if (amount >= 100000) return `₹${(amount / 100000).toFixed(1)}L`;
+  if (amount >= 1000) return `₹${(amount / 1000).toFixed(0)}K`;
+  return `₹${amount}`;
+}
+
+// Right-rail: Supplier Risk Summary card
+function SupplierRiskCard({ traderId, onSwitchTab }) {
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    if (!traderId) return;
+    fetch(`${API_BASE}/api/v1/dashboard/suppliers/${traderId}`)
+      .then((r) => r.json())
+      .then((d) => setData(d))
+      .catch(() => setData(null));
+  }, [traderId]);
+
+  const suppliers = data?.suppliers || [];
+  const good = suppliers.filter((s) => s.health_status === "GOOD").length;
+  const atRisk = suppliers.filter((s) => s.health_status === "AT_RISK").length;
+  const blocked = suppliers.filter((s) => s.health_status === "BLOCKED").length;
+  const total = suppliers.length;
+
+  const riskiest = [...suppliers]
+    .filter((s) => s.health_status !== "GOOD")
+    .sort((a, b) => (b.itc_at_risk || 0) - (a.itc_at_risk || 0))
+    .slice(0, 3);
+
+  const hasIssues = atRisk + blocked > 0;
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <PieChart size={15} className="text-gray-400" />
+        <h3 className="text-sm font-bold text-gray-900">Supplier Risk</h3>
+      </div>
+
+      {/* Mini stat row */}
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        <div className="text-center bg-emerald-50 rounded-lg py-2">
+          <p className="text-base font-bold text-emerald-700">{good}</p>
+          <p className="text-[10px] text-emerald-600">Good</p>
+        </div>
+        <div className="text-center bg-amber-50 rounded-lg py-2">
+          <p className="text-base font-bold text-amber-700">{atRisk}</p>
+          <p className="text-[10px] text-amber-600">At Risk</p>
+        </div>
+        <div className="text-center bg-red-50 rounded-lg py-2">
+          <p className="text-base font-bold text-red-700">{blocked}</p>
+          <p className="text-[10px] text-red-600">Blocked</p>
+        </div>
+      </div>
+
+      {/* Riskiest suppliers */}
+      {riskiest.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Needs Attention</p>
+          {riskiest.map((s, i) => (
+            <button
+              key={i}
+              onClick={() => onSwitchTab?.("actions")}
+              className="w-full flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0 hover:bg-gray-50 rounded transition-colors text-left"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <div
+                  className={`w-2 h-2 rounded-full flex-none ${
+                    s.health_status === "BLOCKED" ? "bg-red-500" : "bg-amber-500"
+                  }`}
+                />
+                <span className="text-xs text-gray-700 truncate hover:text-[#10b981] transition-colors">{s.name || s.legal_name}</span>
+              </div>
+              <span className="text-xs font-bold text-gray-900 ml-2 flex-none">
+                {formatINR(s.itc_at_risk)}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {total === 0 && (
+        <p className="text-xs text-gray-400 text-center py-2">No supplier data yet.</p>
+      )}
+    </div>
+  );
+}
+
+// Right-rail: Filing Readiness card
+function FilingReadinessCard({ traderId, summary, onSwitchTab }) {
+  const invoicesProcessed = summary?.invoices_processed || 0;
+  const issuesOpen = summary?.issues_open || 0;
+
+  // Simple heuristic readiness: 100% if no issues, lower if there are issues or low invoice count
+  let readiness = 100;
+  if (issuesOpen > 0) readiness = Math.max(30, 100 - issuesOpen * 10);
+  if (invoicesProcessed === 0) readiness = 0;
+
+  const barColor =
+    readiness >= 80
+      ? "bg-emerald-500"
+      : readiness >= 50
+      ? "bg-amber-500"
+      : "bg-red-500";
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <CheckCircle2 size={15} className="text-gray-400" />
+        <h3 className="text-sm font-bold text-gray-900">Filing Readiness</h3>
+      </div>
+
+      <div className="mb-3">
+        <div className="flex justify-between items-center mb-1.5">
+          <span className="text-[11px] text-gray-500">GSTR-3B Readiness</span>
+          <span className={`text-sm font-bold ${readiness >= 80 ? "text-emerald-600" : readiness >= 50 ? "text-amber-600" : "text-red-600"}`}>
+            {readiness}%
+          </span>
+        </div>
+        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+            style={{ width: `${readiness}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex justify-between text-xs">
+          <span className="text-gray-500">Invoices processed</span>
+          <span className="font-semibold text-gray-900">{invoicesProcessed}</span>
+        </div>
+        {issuesOpen > 0 && (
+          <button
+            onClick={() => onSwitchTab?.("actions")}
+            className="flex items-center gap-1.5 bg-amber-50 rounded-lg px-3 py-2 w-full hover:bg-amber-100 transition-colors group"
+          >
+            <AlertTriangle size={12} className="text-amber-600 flex-none" />
+            <span className="text-[11px] text-amber-700 font-medium group-hover:underline">
+              {issuesOpen} issue{issuesOpen > 1 ? "s" : ""} need attention →
+            </span>
+          </button>
+        )}
+        {readiness === 0 && (
+          <div className="flex items-center gap-1.5 bg-red-50 rounded-lg px-3 py-2">
+            <AlertTriangle size={12} className="text-red-600 flex-none" />
+            <span className="text-[11px] text-red-700 font-medium">Upload GSTR-2B to start</span>
+          </div>
+        )}
+        {readiness >= 80 && issuesOpen === 0 && (
+          <div className="flex items-center gap-1.5 bg-emerald-50 rounded-lg px-3 py-2">
+            <CheckCircle2 size={12} className="text-emerald-600 flex-none" />
+            <span className="text-[11px] text-emerald-700 font-medium">Ready to file!</span>
+          </div>
+        )}
+      </div>
+
+      {/* GSTR-2B upload shortcut */}
+      <div className="mt-3 pt-3 border-t border-gray-100">
+        <GSTR2BUpload traderId={traderId} apiBase={API_BASE} compact />
+      </div>
+    </div>
+  );
+}
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("money-meter");
@@ -48,9 +221,8 @@ export default function Home() {
       const list = data.traders || [];
       setTraders(list);
       if (list.length > 0) {
-        const matched = defaultId ? list.find(t => t.id === defaultId) : null;
+        const matched = defaultId ? list.find((t) => t.id === defaultId) : null;
         const selected = matched || list[0];
-        
         setTraderId(selected.id);
         setActiveTraderName(selected.name || selected.business_name || "Trader 1");
         setTraderPhone(selected.whatsapp_number || null);
@@ -95,7 +267,6 @@ export default function Home() {
   }
 
   function loadDemoSummary() {
-    // If no trader or backend is empty, return zeroed state, not fake demo data
     setSummary({
       trader_id: traderId || "demo",
       month: new Date().getMonth() + 1,
@@ -116,19 +287,47 @@ export default function Home() {
     setTraderDropdown(false);
   }
 
+  // Portfolio stats for sidebar — derived from current trader summary
+  // A CA would see aggregate stats; for now reflect current trader's data
+  const portfolioStats = {
+    totalClients: traders.length || "—",
+    clientsWithIssues: summary?.issues_open > 0 ? 1 : 0,
+    totalITCAtRisk: formatINR(summary?.itc_buckets?.at_risk),
+    avgScore:
+      summary?.itc_buckets?.confirmed && summary?.itc_buckets?.confirmed > 0
+        ? `${Math.round(
+            (summary.itc_buckets.confirmed /
+              Math.max(
+                1,
+                summary.itc_buckets.confirmed +
+                  summary.itc_buckets.at_risk +
+                  summary.itc_buckets.missed
+              )) *
+              100
+          )}%`
+        : "—",
+  };
+
   return (
-    <div className="flex h-screen overflow-hidden bg-[var(--bg-primary)]">
-      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} actionCount={actionCount} />
+    <div className="flex h-screen overflow-hidden bg-[#f8f9fa]">
+      <Sidebar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        actionCount={actionCount}
+        portfolioStats={portfolioStats}
+      />
 
       <main className="flex-1 ml-64 flex flex-col overflow-hidden">
-        <header className="flex-none px-6 pt-4 pb-3 border-b border-[var(--border-subtle)] bg-white">
+        {/* Header */}
+        <header className="flex-none px-6 pt-4 pb-3 border-b border-gray-200 bg-white">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold">
-                <span className="gradient-text">{activeTraderName} Dashboard</span>
+              <h1 className="text-xl font-bold text-gray-900">
+                {activeTraderName}
+                <span className="text-gray-400 font-normal text-base ml-2">— GST Dashboard</span>
               </h1>
-              <p className="text-[var(--text-secondary)] mt-1">
-                GST Compliance Dashboard — {new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" })}
+              <p className="text-sm text-gray-500 mt-0.5">
+                {new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" })} · Compliance Overview
               </p>
             </div>
 
@@ -137,31 +336,37 @@ export default function Home() {
               <div className="relative">
                 <button
                   onClick={() => setTraderDropdown((v) => !v)}
-                  className="flex items-center gap-2 glass-card px-4 py-2 hover:bg-[var(--bg-secondary)] transition-colors"
+                  className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 hover:bg-gray-50 transition-colors shadow-sm"
                 >
-                  <Users size={16} className="text-[var(--text-secondary)]" />
-                  <span className="text-sm font-semibold text-black max-w-[150px] truncate">{activeTraderName}</span>
-                  <ChevronDown size={14} className="text-[var(--text-secondary)]" />
+                  <Users size={15} className="text-gray-400" />
+                  <span className="text-sm font-semibold text-gray-800 max-w-[140px] truncate">
+                    {activeTraderName}
+                  </span>
+                  <ChevronDown size={13} className="text-gray-400" />
                 </button>
 
                 {traderDropdown && (
-                  <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-[var(--border-subtle)] rounded-xl shadow-xl z-50 overflow-hidden">
-                    <div className="p-2 border-b border-[var(--border-subtle)]">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2">Switch Trader</p>
+                  <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
+                    <div className="p-2 border-b border-gray-100">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-2">
+                        Switch Trader
+                      </p>
                     </div>
                     {traders.length === 0 ? (
-                      <div className="px-4 py-3 text-sm text-[var(--text-muted)]">No traders found</div>
+                      <div className="px-4 py-3 text-sm text-gray-400">No traders found</div>
                     ) : (
                       traders.map((t) => (
                         <button
                           key={t.id}
                           onClick={() => switchTrader(t)}
-                          className={`w-full text-left px-4 py-3 text-sm hover:bg-[var(--bg-primary)] transition-colors flex items-center justify-between ${
-                            t.id === traderId ? "font-bold text-black" : "text-[var(--text-secondary)]"
+                          className={`w-full text-left px-4 py-3 text-sm hover:bg-gray-50 transition-colors flex items-center justify-between ${
+                            t.id === traderId ? "font-bold text-gray-900" : "text-gray-600"
                           }`}
                         >
                           <span>{t.name || t.business_name || t.id.slice(0, 8)}</span>
-                          <span className="text-[10px] text-[var(--text-muted)] font-mono">{t.gstin ? t.gstin.slice(0, 10) : "Setup Incomplete"}</span>
+                          <span className="text-[10px] text-gray-400 font-mono">
+                            {t.gstin ? t.gstin.slice(0, 10) : "Setup Incomplete"}
+                          </span>
                         </button>
                       ))
                     )}
@@ -169,19 +374,23 @@ export default function Home() {
                 )}
               </div>
 
-              <div className="flex items-center gap-2 glass-card px-4 py-2 border-[var(--border-subtle)]">
-                <button 
-                  onClick={() => setIsComposition(!isComposition)}
-                  className="flex items-center gap-2"
-                >
-                  {isComposition ? <ToggleRight size={20} className="text-[var(--green-primary)]" /> : <ToggleLeft size={20} className="text-[var(--text-muted)]" />}
-                  <span className="text-sm font-semibold text-black">Composition Scheme</span>
-                </button>
-              </div>
+              {/* Composition toggle */}
+              <button
+                onClick={() => setIsComposition(!isComposition)}
+                className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 hover:bg-gray-50 transition-colors shadow-sm"
+              >
+                {isComposition ? (
+                  <ToggleRight size={18} className="text-[#10b981]" />
+                ) : (
+                  <ToggleLeft size={18} className="text-gray-400" />
+                )}
+                <span className="text-sm font-semibold text-gray-800">Composition</span>
+              </button>
 
-              <div className="flex items-center gap-2 glass-card px-4 py-2">
-                <div className="pulse-dot pulse-dot-green"></div>
-                <span className="text-sm text-[var(--text-secondary)]">Live</span>
+              {/* Live indicator */}
+              <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-sm text-gray-600">Live</span>
               </div>
             </div>
           </div>
@@ -189,47 +398,55 @@ export default function Home() {
 
         {loading ? (
           <div className="flex items-center justify-center flex-1">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#10b981]" />
           </div>
         ) : (
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="flex-1 grid grid-cols-3 gap-4 p-4 pt-3 overflow-hidden"
+            className="flex-1 grid grid-cols-3 gap-4 p-4 overflow-hidden"
           >
-            {/* Left Column — Content + InvoiceFeed */}
-            <motion.div 
-              initial={{ opacity: 0, x: -10 }}
+            {/* Left (2/3) — Main content + Invoice Feed */}
+            <motion.div
+              initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1, duration: 0.3 }}
-              className="col-span-2 flex flex-col gap-4 min-h-0"
+              transition={{ delay: 0.08, duration: 0.3 }}
+              className="col-span-2 flex flex-col gap-4 min-h-0 overflow-y-auto pr-1"
             >
-              <div className="flex-none max-h-[400px] overflow-y-auto pr-2 pb-4">
-                {activeTab === "money-meter" && (
-                  <>
-                    <MoneyMeter summary={summary} apiBase={API_BASE} isComposition={isComposition} />
-                    <ITCTrendChart traderId={traderId} apiBase={API_BASE} />
-                  </>
-                )}
-                {activeTab === "suppliers" && <SupplierHealth traderId={traderId} apiBase={API_BASE} />}
-                {activeTab === "actions" && <ActionQueue traderId={traderId} apiBase={API_BASE} traderPhone={traderPhone} />}
-                {activeTab === "reports" && <ReportsPanel traderId={traderId} apiBase={API_BASE} />}
-              </div>
-              <div className="flex-1 min-h-0 overflow-hidden flex flex-col border border-[var(--border-subtle)] bg-white rounded-xl">
-                <InvoiceFeed traderId={traderId} apiBase={API_BASE} />
-              </div>
+              {activeTab === "money-meter" && (
+                <>
+                  <MoneyMeter summary={summary} apiBase={API_BASE} isComposition={isComposition} />
+                  <ITCTrendChart traderId={traderId} apiBase={API_BASE} />
+                </>
+              )}
+              {activeTab === "suppliers" && (
+                <SupplierHealth traderId={traderId} apiBase={API_BASE} onSwitchTab={setActiveTab} />
+              )}
+              {activeTab === "actions" && (
+                <ActionQueue traderId={traderId} apiBase={API_BASE} traderPhone={traderPhone} />
+              )}
+              {activeTab === "reports" && (
+                <ReportsPanel traderId={traderId} apiBase={API_BASE} />
+              )}
+
+              {/* Invoice feed — always visible on money-meter tab */}
+              {activeTab === "money-meter" && (
+                <div className="flex-1 min-h-[200px] overflow-hidden flex flex-col border border-gray-200 bg-white rounded-xl">
+                  <InvoiceFeed traderId={traderId} apiBase={API_BASE} />
+                </div>
+              )}
             </motion.div>
-            
-            {/* Right Column — Timeline + GSTR-2B */}
-            <motion.div 
-              initial={{ opacity: 0, x: 10 }}
+
+            {/* Right (1/3) — Supplier Risk + Filing Readiness */}
+            <motion.div
+              initial={{ opacity: 0, x: 8 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.15, duration: 0.3 }}
+              transition={{ delay: 0.12, duration: 0.3 }}
               className="col-span-1 flex flex-col gap-3 min-h-0 overflow-y-auto pr-1"
             >
-              <GSTTimeline isComposition={isComposition} traderId={traderId} />
-              <GSTR2BUpload traderId={traderId} apiBase={API_BASE} />
+              <SupplierRiskCard traderId={traderId} onSwitchTab={setActiveTab} />
+              <FilingReadinessCard traderId={traderId} summary={summary} onSwitchTab={setActiveTab} />
             </motion.div>
           </motion.div>
         )}

@@ -105,20 +105,14 @@ export default function GSTR2BUpload({ traderId, apiBase, onUploadComplete }) {
       >
         <motion.div
           animate={{
-            scale: dragOver ? 1.02 : 1,
-            backgroundColor: dragOver ? "rgba(59, 130, 246, 0.05)" : "transparent",
-            borderColor: dragOver ? "var(--blue-primary)" : "var(--border-subtle)",
+            scale: dragOver ? 1.01 : 1,
+            backgroundColor: dragOver ? "rgba(16, 185, 129, 0.05)" : "#f9fafb",
+            borderColor: dragOver ? "#10b981" : "#e5e7eb",
           }}
-          transition={{ duration: 0.2 }}
-          className="border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer relative overflow-hidden group hover:border-[var(--blue-primary)]"
+          transition={{ duration: 0.15 }}
+          className="border-2 border-dashed rounded-lg p-3 text-center cursor-pointer group hover:border-[#10b981] hover:bg-emerald-50/50 transition-all"
           onClick={() => document.getElementById("gstr2b-file-input").click()}
         >
-          {dragOver && (
-            <motion.div 
-              layoutId="glow"
-              className="absolute inset-0 bg-gradient-to-tr from-[var(--blue-glow)] to-transparent opacity-50"
-            />
-          )}
           <input
             id="gstr2b-file-input"
             type="file"
@@ -127,22 +121,16 @@ export default function GSTR2BUpload({ traderId, apiBase, onUploadComplete }) {
             onChange={handleFileChange}
           />
           {uploading ? (
-            <div className="flex flex-col items-center gap-3 relative z-10">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[var(--blue-primary)]" />
-              <p className="text-sm font-semibold text-black">Uploading & parsing file...</p>
+            <div className="flex items-center justify-center gap-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#10b981]" />
+              <p className="text-xs font-semibold text-gray-700">Uploading...</p>
             </div>
           ) : (
-            <div className="flex flex-col items-center gap-3 relative z-10">
-              <motion.div 
-                whileHover={{ y: -5 }}
-                className="p-4 rounded-full bg-[var(--bg-secondary)] text-[var(--text-secondary)] group-hover:bg-[var(--blue-glow)] group-hover:text-[var(--blue-primary)] transition-colors"
-              >
-                <Upload size={32} />
-              </motion.div>
-              <div>
-                <p className="text-[15px] font-bold text-black mb-1">Drop GSTR-2B JSON/Excel here</p>
-                <p className="text-xs text-[var(--text-muted)] font-medium">Or click to browse files</p>
-              </div>
+            <div className="flex items-center justify-center gap-2">
+              <Upload size={14} className="text-gray-400 group-hover:text-[#10b981] transition-colors" />
+              <p className="text-xs font-medium text-gray-500 group-hover:text-[#10b981] transition-colors">
+                Drop GSTR-2B JSON/Excel · or click
+              </p>
             </div>
           )}
         </motion.div>
