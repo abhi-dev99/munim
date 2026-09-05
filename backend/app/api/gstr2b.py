@@ -14,6 +14,7 @@ from app.api.deps import verify_trader_access, get_current_trader_id, HTTPExcept
 from pydantic import BaseModel
 
 from app.services.supabase_client import get_supabase
+from app.utils.errors import safe_http_error
 
 logger = logging.getLogger(__name__)
 
@@ -275,8 +276,7 @@ async def get_gstr2b_records(trader_id: str = Depends(verify_trader_access), mon
             "total": len(response.data or []),
         }
     except Exception as e:
-        logger.error(f"Get GSTR-2B records failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise safe_http_error(logger, "Failed to fetch GSTR-2B records", e)
 
 
 @router.delete("/records/{trader_id}")
@@ -289,8 +289,7 @@ async def clear_gstr2b_records(month: int, year: int, trader_id: str = Depends(v
         ).eq("month", month).eq("year", year).execute()
         return {"status": "cleared", "month": month, "year": year}
     except Exception as e:
-        logger.error(f"Clear GSTR-2B records failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise safe_http_error(logger, "Failed to clear GSTR-2B records", e)
 
 
 def _parse_gst_portal_json(data: dict) -> list[dict]:
@@ -512,5 +511,4 @@ async def trigger_reconciliation(trader_id: str = Depends(verify_trader_access),
         }
 
     except Exception as e:
-        logger.error(f"Reconciliation trigger failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise safe_http_error(logger, "GSTR-2B reconciliation run failed", e)
