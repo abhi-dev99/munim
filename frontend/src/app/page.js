@@ -7,6 +7,7 @@ import ActionQueue from "./components/ActionQueue";
 import Sidebar from "./components/Sidebar";
 import InvoiceFeed from "./components/InvoiceFeed";
 import GSTR2BUpload from "./components/GSTR2BUpload";
+import ReportsPanel from "./components/ReportsPanel";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -91,6 +92,7 @@ export default function Home() {
               {activeTab === "money-meter" && <MoneyMeter summary={summary} apiBase={API_BASE} />}
               {activeTab === "suppliers" && <SupplierHealth traderId={traderId} apiBase={API_BASE} />}
               {activeTab === "actions" && <ActionQueue traderId={traderId} apiBase={API_BASE} />}
+              {activeTab === "reports" && <ReportsPanel traderId={traderId} apiBase={API_BASE} />}
             </div>
             {/* Right Column - Upload + Live Feed */}
             <div className="lg:col-span-1 space-y-6">
