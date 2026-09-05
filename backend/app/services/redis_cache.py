@@ -185,6 +185,81 @@ def mark_message_processed(message_id: str, ttl: int = 3600) -> bool:
     return True
 
 
+# --- Token Revocation ---
+
+def revoke_token(jti: str, ttl: int) -> None:
+    """
+    Revoke a JWT by its jti claim. TTL should match the token's remaining
+    lifetime so the revocation record expires alongside the token it guards,
+    instead of accumulating forever.
+    """
+    r = get_redis()
+    key = f"revoked_jti:{jti}"
+    ttl = max(int(ttl), 1)
+    if r:
+        try:
+            r.set(key, "1", ex=ttl)
+            return
+        except Exception as e:
+            logger.error(f"Redis revoke_token failed: {e}")
+    _mem_set(key, "1", ex=ttl)
+
+
+def is_token_revoked(jti: Optional[str]) -> bool:
+    """Check whether a jti has been revoked. Tokens with no jti (issued
+    before revocation support existed) can't be individually revoked —
+    callers should treat a falsy jti as "not revoked" rather than calling
+    this at all."""
+    if not jti:
+        return False
+    r = get_redis()
+    key = f"revoked_jti:{jti}"
+    if r:
+        try:
+            return r.get(key) is not None
+        except Exception as e:
+            logger.error(f"Redis is_token_revoked failed: {e}")
+    return _mem_get(key) is not None
+
+
+# --- Per-Phone Processing Lock ---
+
+def acquire_phone_lock(phone: str, ttl: int = 15) -> bool:
+    """
+    Claim an exclusive processing slot for a phone number's in-flight
+    webhook message. Returns True the first caller to acquire it; False if
+    another message from the same number is already being processed
+    (SETNX-with-TTL, same pattern as mark_message_processed). The TTL is a
+    backstop against a crashed/hung handler — normal completion releases
+    the lock explicitly via release_phone_lock.
+    """
+    r = get_redis()
+    key = f"phone_lock:{phone}"
+    if r:
+        try:
+            return bool(r.set(key, "1", nx=True, ex=ttl))
+        except Exception as e:
+            logger.error(f"Redis acquire_phone_lock failed: {e}")
+            return True
+    if _mem_get(key) is not None:
+        return False
+    _mem_set(key, "1", ex=ttl)
+    return True
+
+
+def release_phone_lock(phone: str) -> None:
+    """Release the per-phone processing lock."""
+    r = get_redis()
+    key = f"phone_lock:{phone}"
+    if r:
+        try:
+            r.delete(key)
+            return
+        except Exception as e:
+            logger.error(f"Redis release_phone_lock failed: {e}")
+    _mem_delete(key)
+
+
 # --- Rate Limiting ---
 
 def check_rate_limit(key: str, max_requests: int = 10, window_seconds: int = 60) -> bool:

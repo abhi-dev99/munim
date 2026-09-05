@@ -8,6 +8,7 @@ All notable changes to Munim.ai are documented here. Format loosely follows [Kee
 
 ### Added
 - The trader app is now a real, installable PWA (`frontend/public/manifest.json`, app icons, a minimal app-shell service worker) — previously it was only styled to *look* like a mobile app (a hardcoded fake iOS status bar) with no manifest, no service worker, and nothing for a browser's installability check to find.
+- JWT revocation: tokens now carry a `jti` claim, checked against a Redis-backed revocation list on every request; `POST /api/v1/auth/logout` revokes the caller's current token. Tokens issued before this migration have no `jti` and can't be individually revoked (an accepted limitation, not a bug).
 - First real backend test suite: 48 tests across `itc_engine`, `fraud`, `reconciler`, `gstin`, and a new shared error-handling helper — this repo had zero test infrastructure before today.
 - `safe_http_error()` helper (`backend/app/utils/errors.py`) — logs the real exception server-side with a correlation ID, returns a generic client-safe message. Applied across all 27 previously-leaky call sites.
 - GSTIN check-digit validation (`has_valid_checksum()` in `gstin.py`) — previously only format/length was checked, never the actual checksum algorithm.
@@ -37,6 +38,8 @@ All notable changes to Munim.ai are documented here. Format loosely follows [Kee
 - Webhook signature verification (`verify_webhook_signature`) existed but was never actually called on incoming WhatsApp payloads.
 - Direct invoice-upload endpoint (`webhook.py:/upload-invoice`) had no authentication or rate limiting despite triggering a paid Gemini OCR call per request.
 - Four `async def` functions made synchronous, blocking Gemini SDK calls (`.generate_content()` / `.embed_content()`) with no `await`/`asyncio.to_thread`, stalling FastAPI's single event loop — and every other concurrent request — for the full multi-second duration of each call: `llm_router.py`'s `_generate_online()` and `extract_invoice()` (the OCR path, the slowest call in the system), and `gemini.py`'s `transcribe_voice_note()` and `embed_text()`. Wrapped each in `asyncio.to_thread(...)`, matching the existing pattern already used for the Resend email send in `webhook.py`/`communications.py`. Added `backend/tests/services/test_gemini_concurrency.py`, which mocks the SDK call with a real (non-`asyncio`) `time.sleep` and asserts two concurrent calls finish in ~1x a single call's duration rather than ~2x.
+- `request-otp` returned a different response (404 vs 200) for unregistered vs. registered phone numbers — a direct enumeration oracle. Now returns an identical response either way.
+- Two fast WhatsApp messages from the same number during onboarding could both read stale conversation state before either wrote its transition — added a per-phone processing lock.
 
 ### Security
 - Removed three hardcoded, live-looking third-party API keys (`sandbox_api_key`, `sandbox_api_secret`, `gstin_api_key`) from `config.py` source defaults.

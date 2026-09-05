@@ -2,27 +2,44 @@ from fastapi import HTTPException, Header, Depends, UploadFile, File, Form, Back
 import jwt
 from typing import Optional
 from app.config import get_settings
+from app.services.redis_cache import is_token_revoked
 import logging
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-def get_current_trader_id(authorization: str = Header(None)) -> str:
+def _decode_token(authorization: Optional[str]) -> dict:
     if not authorization:
         raise HTTPException(status_code=401, detail="Missing Authorization header")
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid token format")
     token = authorization.replace("Bearer ", "")
     try:
-        payload = jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
-        trader_id = payload.get("sub")
-        if not trader_id:
-            raise HTTPException(status_code=401, detail="Invalid token payload")
-        return trader_id
+        return jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token has expired")
     except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
+
+def get_current_token_payload(authorization: str = Header(None)) -> dict:
+    """Full decoded JWT payload for the caller's token (used where the
+    caller needs claims beyond `sub`, e.g. `jti` for logout/revocation)."""
+    return _decode_token(authorization)
+
+def get_current_trader_id(authorization: str = Header(None)) -> str:
+    payload = _decode_token(authorization)
+    trader_id = payload.get("sub")
+    if not trader_id:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+
+    # Tokens issued before jti support was added have no jti and so can't
+    # be individually revoked — that's an accepted limitation of the
+    # migration, not a bug. Skip the check rather than crash on None.
+    jti = payload.get("jti")
+    if jti and is_token_revoked(jti):
+        raise HTTPException(status_code=401, detail="Token has been revoked")
+
+    return trader_id
 
 async def verify_trader_access(trader_id: str, current_trader_id: str = Depends(get_current_trader_id)) -> str:
     if trader_id == current_trader_id:
