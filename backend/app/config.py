@@ -50,8 +50,8 @@ class Settings(BaseSettings):
     upstash_redis_token: str = ""
 
     # --- GSTIN Verification API ---
-    gstin_api_key: str = ""
-    gstin_api_base_url: str = "https://api.deepvue.tech/v1"
+    gstin_api_key: str = "gk_4nGXN4cDcAQ8OZ4IixguSz1ZgeHoTLVHfgJTehGaTTKdtVTj"
+    gstin_api_base_url: str = "https://api.gstverify.dubey.app"
 
     # --- Resend API ---
     resend_api_key: str = ""
