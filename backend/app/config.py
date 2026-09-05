@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     # --- Meta WhatsApp ---
     meta_whatsapp_token: str = ""
     meta_phone_number_id: str = ""
+    meta_whatsapp_business_account_id: str = ""
     meta_verify_token: str = "munim_verify_2026"
     meta_app_secret: str = ""
     meta_api_version: str = "v21.0"
