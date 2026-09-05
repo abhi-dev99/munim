@@ -11,6 +11,7 @@ from app.services.supabase_client import get_supabase
 from app.config import get_settings
 from app.models.invoice import InvoiceJSON, LineItem
 from app.agents.invoice_agent import invoice_agent, InvoiceAgentState
+from app.utils.errors import safe_http_error
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +37,7 @@ async def delete_invoice(invoice_id: str):
         db.table("invoices").delete().eq("id", invoice_id).execute()
         return {"status": "success", "deleted_id": invoice_id}
     except Exception as e:
-        logger.error(f"Failed to delete invoice {invoice_id}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise safe_http_error(logger, f"Failed to delete invoice {invoice_id}", e)
 
 
 @router.get("/system-status")
@@ -479,8 +479,7 @@ async def test_recon_pipeline(mode: str = Query("mock", description="'mock' for 
             "action_items": accumulated_state.get("action_items", [])
         }
     except Exception as e:
-        logger.error(f"Recon pipeline dev test failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise safe_http_error(logger, "Recon pipeline dev test failed", e)
 
 
 class AddKeyRequest(BaseModel):
@@ -494,8 +493,7 @@ async def get_gemini_keys_status():
         from app.services.gemini import client as gemini_pool
         return gemini_pool.get_status()
     except Exception as e:
-        logger.error(f"Failed to get gemini keys status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise safe_http_error(logger, "Failed to get Gemini key pool status", e)
 
 
 @router.post("/gemini-keys/add")
@@ -510,8 +508,7 @@ async def add_gemini_key(payload: AddKeyRequest):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to add gemini key: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise safe_http_error(logger, "Failed to add Gemini API key to rotation pool", e)
 
 
 @router.post("/gemini-keys/reset")
@@ -522,5 +519,4 @@ async def reset_gemini_keys():
         gemini_pool.reset_limits()
         return {"status": "success", "message": "All API keys reset to active", "pool_status": gemini_pool.get_status()}
     except Exception as e:
-        logger.error(f"Failed to reset gemini keys: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise safe_http_error(logger, "Failed to reset Gemini API key rate limits", e)

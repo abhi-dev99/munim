@@ -31,6 +31,7 @@ from app.services.gstin import is_valid_gstin_format
 from app.agents.invoice_agent import process_invoice
 from app.models.invoice import ITCStatus
 from app.domain.reconciler import GSTR2BReconciler
+from app.utils.errors import safe_http_error
 
 logger = logging.getLogger(__name__)
 
@@ -132,8 +133,7 @@ async def upload_invoice_direct(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Direct invoice upload failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise safe_http_error(logger, "Direct invoice upload failed", e)
 
 
 
