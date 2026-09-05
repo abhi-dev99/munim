@@ -36,6 +36,18 @@ async def get_trader_by_phone(phone: str) -> Optional[dict]:
         logger.error(f"Failed to get trader by phone: {e}")
         return None
 
+async def get_trader_by_inbound_email(email: str) -> Optional[dict]:
+    """Find a trader by their inbound virtual email address."""
+    try:
+        db = get_supabase()
+        response = db.table("traders").select("*").eq("inbound_email", email).execute()
+        if response.data and len(response.data) > 0:
+            return response.data[0]
+        return None
+    except Exception as e:
+        logger.error(f"Failed to get trader by inbound email: {e}")
+        return None
+
 
 async def create_trader(phone: str, gstin: str = None, name: str = None, business_name: str = None) -> Optional[dict]:
     """Register a new trader."""

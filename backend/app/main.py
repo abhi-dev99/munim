@@ -150,8 +150,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from app.api.email_webhook import router as email_webhook_router
+
 # Mount routers
 app.include_router(webhook_router)
+app.include_router(email_webhook_router)
 app.include_router(dashboard_router)
 app.include_router(gstr2b_router)
 app.include_router(reports_router)

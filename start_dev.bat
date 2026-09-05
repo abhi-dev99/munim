@@ -24,7 +24,7 @@ timeout /t 2 /nobreak >nul
 echo.
 echo [2/3] Starting Backend FastAPI on port 8000...
 cd backend
-start "Munim.ai Backend" cmd /k "title Munim.ai Backend && uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload"
+start "Munim.ai Backend" cmd /k "title Munim.ai Backend && .\venv\Scripts\uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload"
 cd ..
 
 echo.
