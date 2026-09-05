@@ -31,5 +31,10 @@ Thumbs.db
 .idea/
 .gemini/
 .agents/
-.tasks/
+
+# Task files
 .tasks
+seed_hsn_only.py
+
+# Large binary data files (seed locally, don't commit)
+backend/HSN_SAC.xlsx
