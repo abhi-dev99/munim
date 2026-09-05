@@ -4,6 +4,11 @@ All notable changes to Munim.ai are documented here. Format loosely follows [Kee
 
 ---
 
+## 2026-09-04
+
+### Added
+- Haptic feedback on invoice scan results in the trader PWA — `navigator.vibrate()` fires a single short pulse for `CONFIRMED`, a double pulse for `AT_RISK`/`FIXABLE_BLOCKED`, and a distinct longer triple pulse for `FRAUD_FLAGGED`, once per scan result. `frontend/src/app/utils/haptics.js` no-ops silently on browsers without vibration support (e.g. iOS Safari). On branch `iqoo/haptic-feedback`, not yet merged to `main`.
+
 ## 2026-09-03
 
 ### Added

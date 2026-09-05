@@ -58,6 +58,19 @@ Each entry: **ID · name** — mechanism → why → effort (S/M/L) → tags →
 
 **VOI-3 · Voice-note context capture** — trader adds a short voice memo alongside a photo ("cash payment, Ramesh Traders") transcribed on-device to enrich extraction context (e.g. payment method for the 180-day reversal rule). → Nice-to-have, addresses a real gap (payment status is currently manual), but adds a new data-capture UX mid-hackathon with no existing hook to hang it on. → **M–L** → `PRODUCT` → **catalog.**
 
+### UX — Haptic feedback
+
+**UX-1 · Haptic feedback on invoice scan results** — `navigator.vibrate()` fires a short pattern the instant a scan result renders in the trader PWA: single pulse for a clean `CONFIRMED` result, double pulse for `AT_RISK`/`FIXABLE_BLOCKED`, and a distinct longer triple pulse for `FRAUD_FLAGGED`. → A trader glancing away from the screen mid-scan (common on a shop counter) still gets an instant, wordless signal of good/bad/urgent before they read the text — and it's a real device-capability touchpoint (vibration motor) that costs almost nothing to add on top of an already-working scan-result flow. → **S** → `PRODUCT` + `SCORE` (device hardware, on-device only, no network) → **BUILD — trivial effort, real UX value, no risk to the existing flow.**
+
+  **Status: BUILT** (branch `iqoo/haptic-feedback`). `frontend/src/app/utils/haptics.js`
+  wraps `navigator.vibrate()` behind a feature check with `vibrateSuccess()`,
+  `vibrateWarning()`, and `vibrateAlert()`, each a no-op (never throws) on
+  browsers without vibration support (notably iOS Safari). Wired into
+  `frontend/src/app/trader/page.js` via a `useEffect` keyed on
+  `[scanState, scanResult]` so it fires exactly once per new scan result, not
+  on unrelated re-renders. Unit-tested in
+  `frontend/src/app/utils/haptics.test.js`.
+
 ### OFK — Office Kit (build-time usage, not a product dependency)
 
 Be explicit about this distinction in the pitch: **Office Kit is a hackathon build tool provided by iQOO, not something a real trader's CA has installed.** Do not present any of these as end-user product features — that's a fabricated claim a technical judge will catch instantly. All OFK items are pure `SCORE`.
