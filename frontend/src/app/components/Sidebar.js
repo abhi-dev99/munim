@@ -12,6 +12,8 @@ import {
   TrendingUp,
   LogOut,
   UserCircle,
+  ClipboardList,
+  BarChart3,
 } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext";
 
@@ -63,10 +65,12 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, trade
   }, [traderId, apiBase]);
 
   const navItems = [
-    { id: "money-meter", label: t("nav_money_meter"), icon: LayoutDashboard },
-    { id: "suppliers", label: t("nav_supplier_trust"), icon: Users },
-    { id: "actions", label: t("nav_action_queue"), icon: AlertCircle, badge: actionCount },
-    { id: "reports", label: t("nav_monthly_reports"), icon: FileText },
+    { id: "money-meter", label: t("nav_money_meter"),       icon: LayoutDashboard },
+    { id: "suppliers",   label: t("nav_supplier_trust"),    icon: Users            },
+    { id: "actions",     label: t("nav_action_queue"),      icon: AlertCircle, badge: actionCount },
+    { id: "ims",         label: "IMS",                      icon: ClipboardList    },
+    { id: "gstr3b",      label: "GSTR-3B",                  icon: BarChart3        },
+    { id: "reports",     label: t("nav_monthly_reports"),   icon: FileText         },
   ];
 
   // Upcoming GST deadlines
