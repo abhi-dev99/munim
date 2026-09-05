@@ -7,9 +7,10 @@ import re
 import logging
 import uuid
 
-from fastapi import APIRouter, Request, Response, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Request, Response, HTTPException, UploadFile, File, Form, Depends
 import asyncio
 
+from app.api.deps import get_current_trader_id
 from app.config import get_settings
 from app.services import whatsapp
 from app.services.redis_cache import (
@@ -30,6 +31,7 @@ from app.services.gstin import is_valid_gstin_format
 from app.agents.invoice_agent import process_invoice
 from app.models.invoice import ITCStatus
 from app.domain.reconciler import GSTR2BReconciler
+from app.utils.errors import safe_http_error
 
 logger = logging.getLogger(__name__)
 
@@ -45,11 +47,18 @@ GSTIN_REGEX = re.compile(r"^\d{2}[A-Z]{5}\d{4}[A-Z]\d[Z][A-Z\d]$")
 async def upload_invoice_direct(
     file: UploadFile = File(...),
     trader_id: str = Form(...),
+    current_trader_id: str = Depends(get_current_trader_id),
 ):
     """
     Direct invoice upload from the Trader PWA (no WhatsApp).
     Accepts image or PDF, runs the full LangGraph pipeline, returns diagnosis.
     """
+    if trader_id != current_trader_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    if not check_rate_limit(f"upload:{current_trader_id}", max_requests=10, window_seconds=60):
+        raise HTTPException(status_code=429, detail="Too many upload requests. Please wait a minute.")
+
     try:
         file_bytes = await file.read()
         mime_type = file.content_type or "image/jpeg"
@@ -124,8 +133,7 @@ async def upload_invoice_direct(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Direct invoice upload failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise safe_http_error(logger, "Direct invoice upload failed", e)
 
 
 

@@ -20,15 +20,49 @@ settings = get_settings()
 
 import re
 
-# GSTIN format: 2 digits state code + 10 digit PAN + 1 entity code + 1 Z (usually) + 1 check digit
-def is_valid_gstin_format(gstin: str) -> bool:
-    """Basic GSTIN format validation (15 alphanumeric characters)."""
+_GSTIN_CHARSET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+
+def _char_value(char: str) -> int:
+    """Map a GSTIN character (0-9, A-Z) to its 0-35 value."""
+    return _GSTIN_CHARSET.index(char)
+
+
+def has_valid_checksum(gstin: str) -> bool:
+    """
+    Validate the GSTIN check-digit (15th character) using the official
+    algorithm: a modulo-36 weighted checksum over the first 14 characters.
+    """
     if not gstin or len(gstin) != 15:
         return False
-    # TODO: checksum not yet validated
+    gstin = gstin.upper()
+    try:
+        total = 0
+        for i in range(14):
+            value = _char_value(gstin[i])
+            factor = 2 if i % 2 == 1 else 1
+            product = value * factor
+            if product >= 36:
+                product = (product // 36) + (product % 36)
+            total += product
+        checksum_value = (36 - (total % 36)) % 36
+        expected_char = _GSTIN_CHARSET[checksum_value]
+    except ValueError:
+        # A character outside 0-9A-Z can't be scored
+        return False
+    return gstin[14] == expected_char
+
+
+# GSTIN format: 2 digits state code + 10 digit PAN + 1 entity code + 1 Z (usually) + 1 check digit
+def is_valid_gstin_format(gstin: str) -> bool:
+    """GSTIN format validation (15 alphanumeric characters + real checksum)."""
+    if not gstin or len(gstin) != 15:
+        return False
     pattern = r"^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}[Z]{1}[0-9A-Z]{1}$"
     # Some older ones might not have Z at 14th pos, so just alphanumeric check
     if not gstin[:2].isdigit() or not gstin.isalnum():
+        return False
+    if not has_valid_checksum(gstin):
         return False
     return True
 
