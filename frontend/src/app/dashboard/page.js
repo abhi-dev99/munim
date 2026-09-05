@@ -8,6 +8,7 @@ import Sidebar from "../components/Sidebar";
 import InvoiceFeed from "../components/InvoiceFeed";
 import GSTR2BUpload from "../components/GSTR2BUpload";
 import ReportsPanel from "../components/ReportsPanel";
+import ITCTrendChart from "../components/ITCTrendChart";
 import {
   ChevronDown,
   Users,
@@ -195,6 +196,7 @@ export default function Home() {
   const [traders, setTraders] = useState([]);
   const [traderDropdown, setTraderDropdown] = useState(false);
   const [activeTraderName, setActiveTraderName] = useState("Loading...");
+  const [activeBusinessName, setActiveBusinessName] = useState("");
   const [actionCount, setActionCount] = useState(0);
   const [isComposition, setIsComposition] = useState(false);
   const [traderPhone, setTraderPhone] = useState(null);
@@ -224,6 +226,7 @@ export default function Home() {
         const selected = matched || list[0];
         setTraderId(selected.id);
         setActiveTraderName(selected.name || selected.business_name || "Trader 1");
+        setActiveBusinessName(selected.business_name || selected.name || "");
         setTraderPhone(selected.whatsapp_number || null);
         setIsComposition(selected.is_composition || false);
       } else {
@@ -281,6 +284,7 @@ export default function Home() {
   function switchTrader(trader) {
     setTraderId(trader.id);
     setActiveTraderName(trader.name || trader.business_name || trader.id.slice(0, 8));
+    setActiveBusinessName(trader.business_name || trader.name || "");
     setTraderPhone(trader.whatsapp_number || null);
     setIsComposition(trader.is_composition || false);
     setTraderDropdown(false);
@@ -330,7 +334,11 @@ export default function Home() {
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-3">
               <h1 className="text-base font-bold text-gray-900">{tabLabels[activeTab]}</h1>
-              <span className="text-xs text-gray-400 font-medium bg-gray-100 px-2 py-0.5 rounded-full">{activeTraderName}</span>
+              {activeBusinessName && (
+                <span className="text-xs text-gray-500 font-medium bg-gray-100 px-2 py-0.5 rounded-full truncate max-w-[180px]">
+                  {activeBusinessName}
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-3">
@@ -431,7 +439,10 @@ export default function Home() {
               className="col-span-2 flex flex-col gap-4 min-h-0 overflow-y-auto pr-1"
             >
               {activeTab === "money-meter" && (
-                <MoneyMeter summary={summary} apiBase={API_BASE} isComposition={isComposition} onSwitchTab={setActiveTab} />
+                <>
+                  <MoneyMeter summary={summary} apiBase={API_BASE} isComposition={isComposition} onSwitchTab={setActiveTab} />
+                  <ITCTrendChart traderId={traderId} apiBase={API_BASE} compact />
+                </>
               )}
               {activeTab === "suppliers" && (
                 <SupplierHealth traderId={traderId} apiBase={API_BASE} onSwitchTab={setActiveTab} />
