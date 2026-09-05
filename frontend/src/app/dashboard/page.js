@@ -43,18 +43,22 @@ function SupplierRiskCard({ traderId, onSwitchTab }) {
       .catch(() => setData(null));
   }, [traderId]);
 
-  const suppliers = data?.suppliers || [];
-  const good = suppliers.filter((s) => s.health_status === "GOOD").length;
-  const atRisk = suppliers.filter((s) => s.health_status === "AT_RISK").length;
-  const blocked = suppliers.filter((s) => s.health_status === "BLOCKED").length;
-  const total = suppliers.length;
+  // Derive status from health_score — mirrors SupplierHealth.js logic exactly
+  const withStatus = (s) => ({
+    ...s,
+    _status: (s.health_score ?? 100) > 80 ? "GOOD" : (s.health_score ?? 100) > 40 ? "RISK" : "CRITICAL",
+  });
+
+  const suppliers = (data?.suppliers || []).map(withStatus);
+  const good    = suppliers.filter((s) => s._status === "GOOD").length;
+  const atRisk  = suppliers.filter((s) => s._status === "RISK").length;
+  const blocked = suppliers.filter((s) => s._status === "CRITICAL").length;
+  const total   = suppliers.length;
 
   const riskiest = [...suppliers]
-    .filter((s) => s.health_status !== "GOOD")
-    .sort((a, b) => (b.itc_at_risk || 0) - (a.itc_at_risk || 0))
+    .filter((s) => s._status !== "GOOD")
+    .sort((a, b) => (a.health_score ?? 100) - (b.health_score ?? 100)) // lowest score = worst
     .slice(0, 3);
-
-  const hasIssues = atRisk + blocked > 0;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4">
@@ -86,19 +90,21 @@ function SupplierRiskCard({ traderId, onSwitchTab }) {
           {riskiest.map((s, i) => (
             <button
               key={i}
-              onClick={() => onSwitchTab?.("actions")}
+              onClick={() => onSwitchTab?.("suppliers")}
               className="w-full flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0 hover:bg-gray-50 rounded transition-colors text-left"
             >
               <div className="flex items-center gap-2 min-w-0">
                 <div
                   className={`w-2 h-2 rounded-full flex-none ${
-                    s.health_status === "BLOCKED" ? "bg-red-500" : "bg-amber-500"
+                    s._status === "CRITICAL" ? "bg-red-500" : "bg-amber-500"
                   }`}
                 />
-                <span className="text-xs text-gray-700 truncate hover:text-[#10b981] transition-colors">{s.name || s.legal_name}</span>
+                <span className="text-xs text-gray-700 truncate hover:text-[#10b981] transition-colors">
+                  {s.legal_name || s.name || s.gstin || "Unknown"}
+                </span>
               </div>
-              <span className="text-xs font-bold text-gray-900 ml-2 flex-none">
-                {formatINR(s.itc_at_risk)}
+              <span className="text-xs font-semibold text-gray-400 ml-2 flex-none">
+                {s.health_score ?? "—"}
               </span>
             </button>
           ))}
