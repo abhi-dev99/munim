@@ -61,7 +61,6 @@ async def upload_invoice_direct(
             trader_id=trader_id,
             image_bytes=file_bytes,
             mime_type=mime_type,
-            image_url=image_url,
         )
 
         if not diagnosis:
