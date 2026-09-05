@@ -209,7 +209,7 @@ export default function GeminiKeysModal({ isOpen, onClose, apiBase = "http://loc
           )}
 
           {/* Quick Metrics Grid */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="p-4 bg-gray-50 rounded-xl border border-gray-200/80">
               <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
                 Total Keys in Pool

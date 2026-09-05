@@ -258,7 +258,7 @@ export default function SupplierHealth({ traderId, apiBase, onSwitchTab }) {
 
   if (loading) return (
     <div className="flex flex-col h-[calc(100vh-80px)] w-full">
-      <div className="grid grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
         {[1,2,3,4].map(i => <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />)}
       </div>
       <div className="h-12 bg-gray-100 rounded-xl animate-pulse mb-6" />
@@ -283,7 +283,7 @@ export default function SupplierHealth({ traderId, apiBase, onSwitchTab }) {
         <div className="flex flex-col h-[calc(100vh-120px)] w-full overflow-hidden">
           <div className="z-10 bg-[#f8fafc] pt-2 pb-4 space-y-4 flex-none">
             {/* Summary stat cards */}
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {cardOrder.map((f, idx) => (
             <button
               key={f}

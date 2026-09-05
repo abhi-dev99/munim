@@ -26,6 +26,7 @@ import {
   Globe,
   Lightbulb,
   Key,
+  Menu,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -293,6 +294,7 @@ export default function Home() {
   const [actionCount, setActionCount] = useState(0);
   const [showGeminiModal, setShowGeminiModal] = useState(false);
   const [geminiStatus, setGeminiStatus] = useState(null);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const [fullPrefs, setFullPrefs] = useState(null);
   const dragItem = useRef(null);
@@ -564,16 +566,25 @@ export default function Home() {
         traderId={traderId}
         apiBase={API_BASE}
         onTourClick={startTour}
+        mobileOpen={mobileNavOpen}
+        onMobileClose={() => setMobileNavOpen(false)}
       />
 
-      <main className="flex-1 ml-64 flex flex-col overflow-hidden">
+      <main className="flex-1 md:ml-64 flex flex-col overflow-hidden">
         {/* Header — h-[65px] matches sidebar logo bar */}
-        <header className="flex-none h-[65px] px-6 border-b border-gray-200 bg-white flex items-center">
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-3">
-              <h1 className="text-base font-bold text-gray-900">{tabLabels[activeTab]}</h1>
+        <header className="flex-none h-[65px] px-4 md:px-6 border-b border-gray-200 bg-white flex items-center">
+          <div className="flex items-center justify-between w-full gap-2">
+            <div className="flex items-center gap-3 min-w-0">
+              <button
+                onClick={() => setMobileNavOpen(true)}
+                className="md:hidden flex-none p-1.5 -ml-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                aria-label="Open menu"
+              >
+                <Menu size={20} />
+              </button>
+              <h1 className="text-base font-bold text-gray-900 truncate">{tabLabels[activeTab]}</h1>
               {activeBusinessName && (
-                <span className="text-xs text-gray-500 font-medium bg-gray-100 px-2 py-0.5 rounded-full truncate max-w-[180px]">
+                <span className="hidden sm:inline-block text-xs text-gray-500 font-medium bg-gray-100 px-2 py-0.5 rounded-full truncate max-w-[180px]">
                   {activeBusinessName}
                 </span>
               )}
@@ -581,22 +592,22 @@ export default function Home() {
                 <span
                   onClick={() => { navigator.clipboard.writeText(activeTraderGstin); }}
                   title="Click to copy GSTIN"
-                  className="text-[10px] font-mono font-bold text-gray-400 cursor-pointer hover:text-gray-600 transition-colors select-none"
+                  className="hidden sm:inline text-[10px] font-mono font-bold text-gray-400 cursor-pointer hover:text-gray-600 transition-colors select-none"
                 >
                   {activeTraderGstin}
                 </span>
               )}
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-3 flex-none">
               {/* Trader Selector */}
               <div className="relative">
                 <button
                   onClick={() => setTraderDropdown((v) => !v)}
-                  className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 hover:bg-gray-50 transition-colors shadow-sm"
+                  className="flex items-center gap-1.5 sm:gap-2 bg-white border border-gray-200 rounded-lg px-2 sm:px-3 py-2 hover:bg-gray-50 transition-colors shadow-sm"
                 >
                   <Users size={15} className="text-gray-400" />
-                  <span className="text-sm font-semibold text-gray-800 max-w-[140px] truncate">
+                  <span className="hidden sm:inline text-sm font-semibold text-gray-800 max-w-[140px] truncate">
                     {activeTraderName}
                   </span>
                   <ChevronDown size={13} className="text-gray-400" />
@@ -663,19 +674,19 @@ export default function Home() {
         </header>
 
         {loading ? (
-          <div className="flex-1 grid grid-cols-3 gap-4 p-4">
+          <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 p-4 overflow-y-auto lg:overflow-hidden">
             {/* Skeleton wireframe */}
-            <div className="col-span-2 flex flex-col gap-4">
-              <div className="grid grid-cols-3 gap-3">
+            <div className="lg:col-span-2 flex flex-col gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {[1,2,3].map(i => <div key={i} className="h-32 bg-white border border-gray-200 rounded-xl animate-pulse" />)}
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {[1,2,3].map(i => <div key={i} className="h-24 bg-white border border-gray-200 rounded-xl animate-pulse" />)}
               </div>
               <div className="h-48 bg-white border border-gray-200 rounded-xl animate-pulse" />
               <div className="flex-1 min-h-[160px] bg-white border border-gray-200 rounded-xl animate-pulse" />
             </div>
-            <div className="col-span-1 flex flex-col gap-3">
+            <div className="lg:col-span-1 flex flex-col gap-3">
               <div className="h-44 bg-white border border-gray-200 rounded-xl animate-pulse" />
               <div className="h-52 bg-white border border-gray-200 rounded-xl animate-pulse" />
             </div>
@@ -685,15 +696,14 @@ export default function Home() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="flex-1 grid gap-4 p-4 overflow-hidden"
-            style={{ gridTemplateColumns: "minmax(0, 1fr) 280px" }}
+            className="flex-1 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] gap-4 p-4 overflow-y-auto lg:overflow-hidden"
           >
             {/* Left (2/3) — Main content + Invoice Feed */}
             <motion.div
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.08, duration: 0.3 }}
-              className="flex flex-col gap-4 min-h-0 overflow-hidden pr-1"
+              className="flex flex-col gap-4 min-h-0 lg:overflow-hidden pr-1"
             >
               {activeTab === "money-meter" && (
                 <MoneyMeter summary={summary} apiBase={API_BASE} isComposition={isComposition} onSwitchTab={setActiveTab} prefs={fullPrefs} onSortTop={handleMoneyMeterSortTop} onSortBottom={handleMoneyMeterSortBottom} />
