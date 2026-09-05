@@ -404,6 +404,7 @@ async def trigger_reconciliation(trader_id: str, month: int = None, year: int = 
             )
 
         matched_count = 0
+        failed_invoices = []
         from app.api.communications import email_vendor_warning, whatsapp_vendor_warning
 
         for inv in unmatched:
@@ -425,6 +426,10 @@ async def trigger_reconciliation(trader_id: str, month: int = None, year: int = 
             if is_matched:
                 matched_count += 1
             else:
+                failed_invoices.append({
+                    "supplier_name": inv.get("supplier_name") or "Unknown Vendor",
+                    "invoice_number": inv.get("invoice_number", "N/A"),
+                })
                 # If still unmatched and auto-warning is enabled, send warnings
                 if auto_warn_vendors:
                     inv_id = inv["id"]
@@ -442,6 +447,7 @@ async def trigger_reconciliation(trader_id: str, month: int = None, year: int = 
             "invoices_checked": len(unmatched),
             "newly_matched": matched_count,
             "gstr2b_records": len(gstr2b_records),
+            "failed_invoices": failed_invoices,
         }
 
     except Exception as e:
