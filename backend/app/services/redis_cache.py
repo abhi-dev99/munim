@@ -77,13 +77,15 @@ def _mem_delete(key: str) -> None:
 def cache_gstin(gstin: str, data: dict, ttl: int = None) -> None:
     """Cache GSTIN verification result permanently (invalidated on state change)."""
     r = get_redis()
-    if not r:
-        return
-    try:
-        key = f"gstin:{gstin}"
-        r.set(key, json.dumps(data), ex=ttl or settings.gstin_cache_ttl_seconds)
-    except Exception as e:
-        logger.error(f"Redis cache_gstin failed: {e}")
+    key = f"gstin:{gstin}"
+    encoded = json.dumps(data)
+    if r:
+        try:
+            r.set(key, encoded, ex=ttl or settings.gstin_cache_ttl_seconds)
+            return
+        except Exception as e:
+            logger.error(f"Redis cache_gstin failed: {e}")
+    _mem_set(key, encoded, ex=ttl or settings.gstin_cache_ttl_seconds)
 
 
 def get_cached_gstin(gstin: str) -> Optional[dict]:
