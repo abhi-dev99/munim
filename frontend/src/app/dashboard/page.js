@@ -1,5 +1,5 @@
 "use client";
-import { authFetch } from "@/src/app/utils/api";
+import { authFetch, adminHeaders } from "@/src/app/utils/api";
 
 
 import { useState, useEffect, useRef } from "react";
@@ -302,7 +302,7 @@ export default function Home() {
 
   useEffect(() => {
     const fetchGemini = () => {
-      authFetch(`${API_BASE}/api/v1/admin/gemini-keys`)
+      authFetch(`${API_BASE}/api/v1/admin/gemini-keys`, { headers: adminHeaders() })
         .then((r) => r.json())
         .then((d) => setGeminiStatus(d))
         .catch(() => {});

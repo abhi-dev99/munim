@@ -14,6 +14,7 @@ import {
   XCircle,
   HelpCircle,
 } from "lucide-react";
+import { adminHeaders } from "../utils/api";
 
 export default function GeminiKeysModal({ isOpen, onClose, apiBase = "http://localhost:8000" }) {
   const [statusData, setStatusData] = useState(null);
@@ -26,7 +27,7 @@ export default function GeminiKeysModal({ isOpen, onClose, apiBase = "http://loc
 
   const fetchStatus = async () => {
     try {
-      const res = await fetch(`${apiBase}/api/v1/admin/gemini-keys`);
+      const res = await fetch(`${apiBase}/api/v1/admin/gemini-keys`, { headers: adminHeaders() });
       if (res.ok) {
         const data = await res.json();
         setStatusData(data);
@@ -56,7 +57,7 @@ export default function GeminiKeysModal({ isOpen, onClose, apiBase = "http://loc
     try {
       const res = await fetch(`${apiBase}/api/v1/admin/gemini-keys/add`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...adminHeaders() },
         body: JSON.stringify({ api_key: newKey.trim() }),
       });
       const data = await res.json();
@@ -81,6 +82,7 @@ export default function GeminiKeysModal({ isOpen, onClose, apiBase = "http://loc
     try {
       const res = await fetch(`${apiBase}/api/v1/admin/gemini-keys/reset`, {
         method: "POST",
+        headers: adminHeaders(),
       });
       if (res.ok) {
         setSuccessMsg("Rate-limit status reset across all keys!");

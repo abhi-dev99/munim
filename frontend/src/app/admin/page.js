@@ -1,5 +1,5 @@
 "use client";
-import { authFetch } from "@/src/app/utils/api";
+import { authFetch, adminHeaders } from "@/src/app/utils/api";
 
 
 import { useState, useEffect } from "react";
@@ -58,6 +58,7 @@ export default function AdminPage() {
     try {
       const res = await authFetch(`${API_BASE}/api/v1/admin/invoices/${id}`, {
         method: "DELETE",
+        headers: adminHeaders(),
       });
       if (!res.ok) throw new Error("Delete failed");
       
