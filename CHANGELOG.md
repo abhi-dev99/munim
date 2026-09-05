@@ -8,6 +8,8 @@ All notable changes to Munim.ai are documented here. Format loosely follows [Kee
 
 ### Added
 - On-device voice queries in the trader PWA ("Munim se poochein") — tap the mic, ask about ITC balance/invoice count/supplier status in Hindi or English, get an instant answer from data already loaded on the page (no new network call, no cloud speech round trip on supporting browsers).
+- The trader app is now a real, installable PWA (`frontend/public/manifest.json`, app icons, a minimal app-shell service worker) — previously it was only styled to *look* like a mobile app (a hardcoded fake iOS status bar) with no manifest, no service worker, and nothing for a browser's installability check to find.
+- JWT revocation: tokens now carry a `jti` claim, checked against a Redis-backed revocation list on every request; `POST /api/v1/auth/logout` revokes the caller's current token. Tokens issued before this migration have no `jti` and can't be individually revoked (an accepted limitation, not a bug).
 - First real backend test suite: 48 tests across `itc_engine`, `fraud`, `reconciler`, `gstin`, and a new shared error-handling helper — this repo had zero test infrastructure before today.
 - `safe_http_error()` helper (`backend/app/utils/errors.py`) — logs the real exception server-side with a correlation ID, returns a generic client-safe message. Applied across all 27 previously-leaky call sites.
 - GSTIN check-digit validation (`has_valid_checksum()` in `gstin.py`) — previously only format/length was checked, never the actual checksum algorithm.
@@ -21,6 +23,7 @@ All notable changes to Munim.ai are documented here. Format loosely follows [Kee
   - `iqoo/photo-quality-gate` — on-device blur/glare detection (Laplacian-variance sharpness + overexposure ratio) on a scanned invoice photo before it's uploaded for OCR, with a retake prompt.
 
 ### Fixed
+- CA dashboard was not responsive at all — fixed sidebar, unresponsive two-column grid, and multiple bare `grid-cols-3`/`grid-cols-4` stat tiles squeezed a 375px phone screen into a broken desktop layout. Sidebar is now an off-canvas drawer below `md`, the main grid stacks to one column below `lg`, and every stat-tile grid found in a full sweep of `dashboard/` and `components/` (not just the originally-flagged three files) now has a responsive breakpoint. Verified live at a 375×812 viewport via Chrome DevTools, not just by reading the CSS — screenshotted both the stacked layout and the drawer actually opening over a backdrop.
 - **Reconciliation could never succeed on the automatic (WhatsApp/PWA) ingestion path** — `reconciler.match_invoice()` was being called without its required `consumed_ids` argument, throwing a `TypeError` on every single call that a broad `except` silently swallowed. Every invoice was landing as `UNRECONCILED` regardless of whether a real GSTR-2B match existed.
 - The manual reconcile endpoint found matches but never persisted `gstr2b_records.matched_invoice_id` — fixed by wiring in the existing (previously unused) `mark_gstr2b_record_matched()`.
 - GSTIN not normalized (upper/strip) on the OCR-extraction path before matching, while the upload path already was — silently broke matches on any lowercase/whitespace variance.
@@ -35,6 +38,9 @@ All notable changes to Munim.ai are documented here. Format loosely follows [Kee
 - Full API schema was publicly exposed via `/openapi.json` despite `/docs`/`/redoc` looking disabled (`docs_url=None` didn't also disable `openapi_url`).
 - Webhook signature verification (`verify_webhook_signature`) existed but was never actually called on incoming WhatsApp payloads.
 - Direct invoice-upload endpoint (`webhook.py:/upload-invoice`) had no authentication or rate limiting despite triggering a paid Gemini OCR call per request.
+- Four `async def` functions made synchronous, blocking Gemini SDK calls (`.generate_content()` / `.embed_content()`) with no `await`/`asyncio.to_thread`, stalling FastAPI's single event loop — and every other concurrent request — for the full multi-second duration of each call: `llm_router.py`'s `_generate_online()` and `extract_invoice()` (the OCR path, the slowest call in the system), and `gemini.py`'s `transcribe_voice_note()` and `embed_text()`. Wrapped each in `asyncio.to_thread(...)`, matching the existing pattern already used for the Resend email send in `webhook.py`/`communications.py`. Added `backend/tests/services/test_gemini_concurrency.py`, which mocks the SDK call with a real (non-`asyncio`) `time.sleep` and asserts two concurrent calls finish in ~1x a single call's duration rather than ~2x.
+- `request-otp` returned a different response (404 vs 200) for unregistered vs. registered phone numbers — a direct enumeration oracle. Now returns an identical response either way.
+- Two fast WhatsApp messages from the same number during onboarding could both read stale conversation state before either wrote its transition — added a per-phone processing lock.
 
 ### Security
 - Removed three hardcoded, live-looking third-party API keys (`sandbox_api_key`, `sandbox_api_secret`, `gstin_api_key`) from `config.py` source defaults.
