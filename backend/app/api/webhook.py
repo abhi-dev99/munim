@@ -228,7 +228,32 @@ async def handle_text_message(phone: str, text: str):
             await _process_registration_step(phone, text, trader, state_name)
             return
 
-    # Fully registered user — handle queries
+    # Fully registered user — check for direct commands first
+    if text_lower.startswith("update gstin"):
+        parts = text.strip().split()
+        if len(parts) >= 3 and is_valid_gstin_format(parts[2].upper()):
+            new_gstin = parts[2].upper()
+            from app.services.supabase_client import update_trader
+            res = await update_trader(trader["id"], {"gstin": new_gstin})
+            if res:
+                await whatsapp.send_text_message(
+                    phone,
+                    f"✅ Aapka GSTIN update hokar {new_gstin} save ho gaya hai!"
+                )
+            else:
+                await whatsapp.send_text_message(
+                    phone,
+                    f"⚠️ Yeh GSTIN ({new_gstin}) pehle se kisi aur user ke paas registered hai ya update error aayi."
+                )
+            return
+        else:
+            set_conversation_state(phone, "awaiting_gstin")
+            await whatsapp.send_text_message(
+                phone,
+                "Theek hai, apna naya 15-character GSTIN number bhejo (Example: 27AABCU9603R1ZM):"
+            )
+            return
+
     from app.services.gemini import understand_intent
     intent_data = await understand_intent(text_lower)
     intent = intent_data.get("intent", "unknown")
