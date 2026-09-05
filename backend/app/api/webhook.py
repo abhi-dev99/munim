@@ -438,7 +438,7 @@ async def _handle_registration(phone: str, text: str):
         await whatsapp.send_text_message(
             phone,
             "Namaste! 🙏 Main Munim hun — aapka AI GST compliance agent.\n\n"
-            "Aap kis bhasha mein baat karna pasand karenge? (Hindi / English)"
+            "Aap kis bhasha mein baat karna pasand karenge? (Hindi / English / Marathi / Gujarati)"
         )
 
 async def _process_registration_step(phone: str, text: str, trader: dict, state: str):
@@ -446,37 +446,83 @@ async def _process_registration_step(phone: str, text: str, trader: dict, state:
     text_clean = text.strip()
     
     if state == "awaiting_language":
-        lang = "en" if "english" in text_clean.lower() else "hi"
+        text_lower = text_clean.lower()
+        if "english" in text_lower or "en" in text_lower:
+            lang = "en"
+        elif "marathi" in text_lower:
+            lang = "mr"
+        elif "gujarati" in text_lower:
+            lang = "gu"
+        else:
+            lang = "hi"
+            
         await update_trader(trader["id"], {"language_pref": lang})
         set_conversation_state(phone, "awaiting_name")
-        msg = "Awesome! What is your name and business name?" if lang == "en" else "Bahut badhiya! Aapka naam aur business ka naam kya hai?"
+        
+        if lang == "en":
+            msg = "Awesome! What is your name and business name?"
+        elif lang == "mr":
+            msg = "उत्तम! तुमचे नाव आणि व्यवसायाचे नाव काय आहे?"
+        elif lang == "gu":
+            msg = "સરસ! તમારું નામ અને વ્યવસાયનું નામ શું છે?"
+        else:
+            msg = "Bahut badhiya! Aapka naam aur business ka naam kya hai?"
         await whatsapp.send_text_message(phone, msg)
 
     elif state == "awaiting_name":
         await update_trader(trader["id"], {"name": text_clean, "business_name": text_clean})
         set_conversation_state(phone, "awaiting_ca_number")
         lang = trader.get("language_pref", "hi")
-        msg = "What is your CA or accountant's mobile number? (So I can send them reports)" if lang == "en" else "Aapke CA ya accountant ka mobile number kya hai? (Toh main reports unhe bhej saku)"
+        if lang == "en":
+            msg = "What is your CA or accountant's mobile number? (So I can send them reports)"
+        elif lang == "mr":
+            msg = "तुमच्या CA किंवा अकाउंटंटचा मोबाईल नंबर काय आहे? (जेणेकरून मी त्यांना अहवाल पाठवू शकेन)"
+        elif lang == "gu":
+            msg = "તમારા CA અથવા એકાઉન્ટન્ટનો મોબાઈલ નંબર શું છે? (જેથી હું તેમને રિપોર્ટ મોકલી શકું)"
+        else:
+            msg = "Aapke CA ya accountant ka mobile number kya hai? (Toh main reports unhe bhej saku)"
         await whatsapp.send_text_message(phone, msg)
     
     elif state == "awaiting_ca_number":
         await update_trader(trader["id"], {"ca_whatsapp_number": text_clean})
         set_conversation_state(phone, "awaiting_gstin")
         lang = trader.get("language_pref", "hi")
-        msg = "What is your GSTIN number?" if lang == "en" else "Aapka GSTIN number kya hai?"
+        if lang == "en":
+            msg = "What is your GSTIN number?"
+        elif lang == "mr":
+            msg = "तुमचा GSTIN नंबर काय आहे?"
+        elif lang == "gu":
+            msg = "તમારો GSTIN નંબર શું છે?"
+        else:
+            msg = "Aapka GSTIN number kya hai?"
         await whatsapp.send_text_message(phone, msg)
         
     elif state == "awaiting_gstin":
         gstin = text_clean.upper()
         if not is_valid_gstin_format(gstin):
             lang = trader.get("language_pref", "hi")
-            msg = "⚠️ Invalid GSTIN. Example: 27AABCU9603R1ZM\n\nSend again:" if lang == "en" else "⚠️ Yeh sahi GSTIN nahi lag raha. Example: 27AABCU9603R1ZM\n\nDubara bhejo:"
+            if lang == "en":
+                msg = "⚠️ Invalid GSTIN. Example: 27AABCU9603R1ZM\n\nSend again:"
+            elif lang == "mr":
+                msg = "⚠️ हा वैध GSTIN वाटत नाही. उदाहरण: 27AABCU9603R1ZM\n\nपुन्हा पाठवा:"
+            elif lang == "gu":
+                msg = "⚠️ આ માન્ય GSTIN લાગતું નથી. ઉદાહરણ: 27AABCU9603R1ZM\n\nફરીથી મોકલો:"
+            else:
+                msg = "⚠️ Yeh sahi GSTIN nahi lag raha. Example: 27AABCU9603R1ZM\n\nDubara bhejo:"
             await whatsapp.send_text_message(phone, msg)
             return
+            
         await update_trader(trader["id"], {"gstin": gstin})
         set_conversation_state(phone, "idle")
         lang = trader.get("language_pref", "hi")
-        msg = f"✅ GSTIN {gstin} saved!\n\nJust send photos of your invoices here and I'll handle the rest.\n\nSend your first invoice! 📸" if lang == "en" else f"✅ GSTIN {gstin} save ho gaya!\n\nAb bas karo: jab bhi koi invoice aaye — yahan WhatsApp pe photo bhej do. Main baaki sab handle karunga.\n\nAaj ke invoices bhejne shuru karo! 📸"
+        if lang == "en":
+            msg = f"✅ GSTIN {gstin} saved!\n\nJust send photos of your invoices here and I'll handle the rest.\n\nSend your first invoice! 📸"
+        elif lang == "mr":
+            msg = f"✅ GSTIN {gstin} सेव्ह झाला!\n\nआता फक्त तुमचे इनव्हॉइसचे फोटो येथे पाठवा आणि मी बाकी सर्व हाताळेन.\n\nतुमचे पहिले इनव्हॉइस पाठवा! 📸"
+        elif lang == "gu":
+            msg = f"✅ GSTIN {gstin} સેવ થઈ ગયો છે!\n\nહવે ફક્ત તમારા ઇન્વૉઇસના ફોટા અહીં મોકલો અને હું બાકીનું સંભાળીશ.\n\nતમારું પહેલું ઇન્વૉઇસ મોકલો! 📸"
+        else:
+            msg = f"✅ GSTIN {gstin} save ho gaya!\n\nAb bas karo: jab bhi koi invoice aaye — yahan WhatsApp pe photo bhej do. Main baaki sab handle karunga.\n\nAaj ke invoices bhejne shuru karo! 📸"
         await whatsapp.send_text_message(phone, msg)
 
 async def _answer_general_query(phone: str, text: str, trader: dict):

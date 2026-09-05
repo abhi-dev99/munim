@@ -118,10 +118,19 @@ async def generate_hindi_diagnosis(
     fraud_score: int = 0,
     fraud_signals: str = "None",
     gstr2b_status: str = "Unreconciled",
+    language_pref: str = "hi",
 ) -> str:
-    """Generate a Hindi WhatsApp diagnosis message."""
-    prompt = "Generate a WhatsApp message in Hindi (Hinglish script) explaining this invoice diagnosis. Emojis: ✅⚠️🚨🚫. Max 300 words. No Devanagari."
-    
+    """Generate a localized WhatsApp diagnosis message."""
+    if language_pref == "en":
+        lang_str = "English"
+    elif language_pref == "mr":
+        lang_str = "Marathi (in Devanagari script)"
+    elif language_pref == "gu":
+        lang_str = "Gujarati (in Gujarati script)"
+    else:
+        lang_str = "Hindi (in Hinglish/Roman script. No Devanagari)"
+        
+    prompt = f"Generate a WhatsApp message in {lang_str} explaining this invoice diagnosis. Emojis: ✅⚠️🚨🚫. Provide response on single lines separated by double newlines. DO NOT write paragraphs. Keep it extremely SHORT, crisp, and to the point. End with a single clear Call to Action (CTA)."
     context = {
         "supplier_name": supplier_name or "Unknown",
         "total_amount": total_amount or 0,

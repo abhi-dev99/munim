@@ -298,6 +298,16 @@ async def generate_diagnosis(state: InvoiceAgentState) -> dict:
     gstr2b_match = state.get("gstr2b_match")
     gstr2b_status = gstr2b_match.status.value if gstr2b_match else "Unreconciled"
 
+    language_pref = "hi"
+    try:
+        from app.services.supabase_client import get_supabase
+        db = get_supabase()
+        trader_res = db.table("traders").select("language_pref").eq("id", state.get("trader_id")).execute()
+        if trader_res.data and trader_res.data[0].get("language_pref"):
+            language_pref = trader_res.data[0]["language_pref"]
+    except Exception as e:
+        logger.error(f"Failed to fetch language_pref: {e}")
+
     try:
         diagnosis_hi = await gemini.generate_hindi_diagnosis(
             supplier_name=invoice.supplier_name,
@@ -313,6 +323,7 @@ async def generate_diagnosis(state: InvoiceAgentState) -> dict:
             fraud_score=fraud.total_score,
             fraud_signals=fraud_signals,
             gstr2b_status=gstr2b_status,
+            language_pref=language_pref,
         )
     except Exception as e:
         logger.error(f"Hindi diagnosis generation failed: {e}")
