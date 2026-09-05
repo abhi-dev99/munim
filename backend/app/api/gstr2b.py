@@ -106,11 +106,15 @@ async def upload_gstr2b_file(
     month: int = Form(...),
     year: int = Form(...),
     file: UploadFile = File(...),
+    current_trader_id: str = Depends(get_current_trader_id),
 ):
     """
     Upload GSTR-2B as a raw JSON file or Excel file (downloaded from GST portal).
     Handles the standard GST portal GSTR-2B formats.
     """
+    if trader_id != current_trader_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
     is_excel = file.filename.endswith(('.xlsx', '.xls')) or "spreadsheet" in file.content_type or "excel" in file.content_type
     if not is_excel and file.content_type not in ("application/json", "text/plain", "application/octet-stream"):
         raise HTTPException(
