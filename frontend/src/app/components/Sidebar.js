@@ -11,17 +11,17 @@ export default function Sidebar({ activeTab, onTabChange }) {
   ];
 
   return (
-    <aside className="w-64 fixed h-full glass-card rounded-none border-t-0 border-b-0 border-l-0 z-10 flex flex-col">
+    <aside className="w-64 fixed h-full bg-[var(--bg-primary)] border-r border-[var(--border-subtle)] z-10 flex flex-col">
       <div className="p-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] flex items-center justify-center font-bold text-xl gradient-text">
+          <div className="w-10 h-10 rounded bg-black text-white flex items-center justify-center font-bold text-xl">
             M
           </div>
-          <span className="font-bold text-xl tracking-tight">Munim.ai</span>
+          <span className="font-bold text-xl tracking-tight text-black">Munim.ai</span>
         </div>
       </div>
 
-      <nav className="flex-1 px-4 py-6 space-y-2">
+      <nav className="flex-1 px-4 py-6 space-y-1">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
@@ -30,17 +30,19 @@ export default function Sidebar({ activeTab, onTabChange }) {
             <button
               key={item.id}
               onClick={() => onTabChange(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-md transition-all duration-200 ${
                 isActive 
-                  ? "bg-[var(--bg-secondary)] border border-[var(--border-accent)] text-[var(--blue-primary)] shadow-[var(--shadow-glow-blue)]" 
-                  : "text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)]"
+                  ? "bg-black text-white" 
+                  : "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-black"
               }`}
             >
-              <Icon size={20} className={isActive ? "text-[var(--blue-primary)]" : ""} />
-              <span className="font-medium text-sm">{item.label}</span>
+              <Icon size={20} className={isActive ? "text-white" : ""} />
+              <span className="font-semibold text-sm">{item.label}</span>
               
               {item.id === "actions" && (
-                <span className="ml-auto bg-[var(--red-primary)] text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">
+                <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded ${
+                  isActive ? "bg-white text-black" : "bg-black text-white"
+                }`}>
                   3
                 </span>
               )}
@@ -49,14 +51,14 @@ export default function Sidebar({ activeTab, onTabChange }) {
         })}
       </nav>
 
-      <div className="p-4 border-t border-[var(--border-subtle)] space-y-2">
-        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)] transition-all">
+      <div className="p-4 border-t border-[var(--border-subtle)] space-y-1">
+        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-black transition-all">
           <Settings size={20} />
-          <span className="font-medium text-sm">Settings</span>
+          <span className="font-semibold text-sm">Settings</span>
         </button>
-        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)] hover:text-[var(--red-primary)] transition-all">
+        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--red-primary)] transition-all">
           <LogOut size={20} />
-          <span className="font-medium text-sm">Sign Out</span>
+          <span className="font-semibold text-sm">Sign Out</span>
         </button>
       </div>
     </aside>

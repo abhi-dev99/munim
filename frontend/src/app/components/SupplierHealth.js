@@ -24,7 +24,7 @@ export default function SupplierHealth({ traderId, apiBase }) {
 
   if (loading) {
     return <div className="animate-pulse flex flex-col gap-4">
-      {[1, 2, 3].map(i => <div key={i} className="h-24 bg-[var(--bg-card)] rounded-xl opacity-50"></div>)}
+      {[1, 2, 3].map(i => <div key={i} className="h-24 bg-[var(--bg-card)] rounded-xl opacity-50 border border-[var(--border-subtle)]"></div>)}
     </div>;
   }
 
@@ -32,7 +32,7 @@ export default function SupplierHealth({ traderId, apiBase }) {
     <div className="space-y-6">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h2 className="text-2xl font-bold">Supplier Health Monitor</h2>
+          <h2 className="text-2xl font-bold text-black">Supplier Health Monitor</h2>
           <p className="text-[var(--text-secondary)] mt-1">Real-time compliance tracking for your vendors</p>
         </div>
       </div>
@@ -40,30 +40,30 @@ export default function SupplierHealth({ traderId, apiBase }) {
       <div className="glass-card overflow-hidden">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-[var(--border-subtle)] bg-[rgba(0,0,0,0.2)]">
-              <th className="p-4 text-sm font-semibold text-[var(--text-secondary)]">Supplier</th>
-              <th className="p-4 text-sm font-semibold text-[var(--text-secondary)]">Health Score</th>
-              <th className="p-4 text-sm font-semibold text-[var(--text-secondary)]">Status</th>
-              <th className="p-4 text-sm font-semibold text-[var(--text-secondary)]">Recent Issues</th>
-              <th className="p-4 text-sm font-semibold text-[var(--text-secondary)] text-right">Volume (MTD)</th>
+            <tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-secondary)]">
+              <th className="p-4 text-sm font-semibold text-black uppercase tracking-wider">Supplier</th>
+              <th className="p-4 text-sm font-semibold text-black uppercase tracking-wider">Health Score</th>
+              <th className="p-4 text-sm font-semibold text-black uppercase tracking-wider">Status</th>
+              <th className="p-4 text-sm font-semibold text-black uppercase tracking-wider">Recent Issues</th>
+              <th className="p-4 text-sm font-semibold text-black uppercase tracking-wider text-right">Volume (MTD)</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border-subtle)]">
             {suppliers.map(sup => (
-              <tr key={sup.id} className="hover:bg-[rgba(255,255,255,0.02)] transition-colors">
+              <tr key={sup.id} className="hover:bg-[var(--bg-card-hover)] transition-colors">
                 <td className="p-4">
-                  <div className="font-medium text-white">{sup.name}</div>
-                  <div className="text-sm text-[var(--text-muted)]">{sup.gstin}</div>
+                  <div className="font-semibold text-black">{sup.name}</div>
+                  <div className="text-sm text-[var(--text-muted)] font-medium">{sup.gstin}</div>
                 </td>
                 <td className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-full bg-[var(--bg-secondary)] rounded-full h-2 max-w-[100px]">
+                    <div className="w-full bg-[var(--border-subtle)] rounded-full h-2 max-w-[100px]">
                       <div 
                         className={`h-2 rounded-full ${sup.health > 80 ? 'bg-[var(--green-primary)]' : sup.health > 40 ? 'bg-[var(--orange-primary)]' : 'bg-[var(--red-primary)]'}`}
                         style={{ width: `${sup.health}%` }}
                       ></div>
                     </div>
-                    <span className="text-sm font-bold">{sup.health}</span>
+                    <span className="text-sm font-bold text-black">{sup.health}</span>
                   </div>
                 </td>
                 <td className="p-4">
@@ -75,10 +75,10 @@ export default function SupplierHealth({ traderId, apiBase }) {
                   {sup.recentIssues === 0 ? (
                     <span className="text-[var(--text-muted)]">-</span>
                   ) : (
-                    <span className="text-[var(--orange-primary)] font-medium">{sup.recentIssues} Open</span>
+                    <span className="text-[var(--red-primary)] font-semibold">{sup.recentIssues} Open</span>
                   )}
                 </td>
-                <td className="p-4 text-right font-medium">
+                <td className="p-4 text-right font-semibold text-black">
                   ₹{sup.total_amount.toLocaleString('en-IN')}
                 </td>
               </tr>
