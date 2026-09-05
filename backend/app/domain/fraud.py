@@ -296,6 +296,15 @@ class FraudScorer:
         Compute composite fraud score from all available signals.
         Returns FraudResult with individual signal breakdowns.
         """
+        # Skip fraud scoring for Composition Scheme / Bill of Supply (Zero Tax)
+        if not invoice.total_tax_amount or invoice.total_tax_amount == 0.0:
+            return FraudResult(
+                total_score=0,
+                signals=[],
+                is_hard_flag=False,
+                is_soft_flag=False,
+            )
+
         signals = []
         total_amount = invoice.total_amount or 0.0
 
