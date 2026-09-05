@@ -217,11 +217,12 @@ async def reconcile_gstr2b(state: InvoiceAgentState) -> dict:
 
         reconciler = GSTR2BReconciler()
         result = reconciler.match_invoice(
-            supplier_gstin=invoice.gstin_supplier,
+            supplier_gstin=(invoice.gstin_supplier or "").upper().strip(),
             invoice_number=invoice.invoice_number,
             invoice_date_str=invoice.invoice_date,
             total_amount=invoice.total_amount or 0,
             gstr2b_records=records,
+            consumed_ids=set(),
         )
 
         return {"gstr2b_match": result}
@@ -380,7 +381,6 @@ async def handle_error(state: InvoiceAgentState) -> dict:
     error = state.get("error", "Unknown error")
     diagnosis = (
         f"⚠️ Invoice process nahi ho paya.\n\n"
-        f"Problem: {error}\n\n"
         f"Kya karein: Invoice ki photo dubara bhejo — achhi light mein, "
         f"poori invoice dikhni chahiye."
     )
