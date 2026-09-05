@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
 from app.api.deps import verify_trader_access, get_current_trader_id, HTTPException
+import html
 import logging
 import asyncio
 from datetime import datetime, timedelta, timezone
@@ -50,11 +51,12 @@ def _stamp_notified(db, invoice_id: str) -> None:
 async def email_vendor_warning(invoice_id: str, current_trader_id: str = Depends(get_current_trader_id)):
     """Send an automated warning email to the vendor regarding missed GSTR-1 filing."""
     db = get_supabase()
-    # Fetch invoice
-    inv_resp = db.table("invoices").select("*, traders(business_name)").eq("id", invoice_id).execute()
+    # Fetch invoice — scoped to the caller's own trader_id so one trader can't
+    # trigger vendor communications using another trader's invoice data.
+    inv_resp = db.table("invoices").select("*, traders(business_name)").eq("id", invoice_id).eq("trader_id", current_trader_id).execute()
     if not inv_resp.data:
         raise HTTPException(status_code=404, detail="Invoice not found")
-    
+
     invoice = inv_resp.data[0]
 
     # Rate-limit guard: don't spam the same supplier
@@ -64,17 +66,18 @@ async def email_vendor_warning(invoice_id: str, current_trader_id: str = Depends
     if not supplier_email:
         raise HTTPException(status_code=400, detail="No supplier email available for this invoice")
 
-    trader_name = invoice.get("traders", {}).get("business_name", "your client")
-    inv_number = invoice.get("invoice_number", "Unknown")
-    inv_date = invoice.get("invoice_date", "Unknown")
-    image_url = invoice.get("image_url", "#")
+    trader_name = html.escape(invoice.get("traders", {}).get("business_name") or "your client")
+    supplier_name = html.escape(invoice.get("supplier_name") or "Vendor")
+    inv_number = html.escape(str(invoice.get("invoice_number", "Unknown")))
+    inv_date = html.escape(str(invoice.get("invoice_date", "Unknown")))
+    image_url = html.escape(invoice.get("image_url") or "#", quote=True)
 
     subject = f"ITC Alert: Invoice {inv_number} Requires Your Attention"
-    
+
     html_content = f"""
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <h2>Invoice Status Check</h2>
-        <p>Dear {invoice.get('supplier_name', 'Vendor')},</p>
+        <p>Dear {supplier_name},</p>
         <p>This is a system test notification regarding an invoice issued to <strong>{trader_name}</strong>.</p>
         <p>We are verifying the GSTR-2B reconciliation status for the following document:</p>
         <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin: 15px 0;">
@@ -91,20 +94,13 @@ async def email_vendor_warning(invoice_id: str, current_trader_id: str = Depends
 
     try:
         # If in debug mode, override the destination to a verified address
-        # so Resend doesn't block the email
+        # so Resend doesn't block the email. (Previously also wrote the
+        # rendered HTML to frontend/public/latest_email.html for preview —
+        # removed: that path is served as a public static file with no
+        # auth, so it leaked whichever trader's data was last previewed.)
         if settings.debug:
             supplier_email = "shahaditya0710@gmail.com"
             logger.info(f"Debug mode: Routing warning email to {supplier_email}")
-            
-            # Save the email locally so the user can preview it instantly without waiting for Resend
-            try:
-                import os
-                preview_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "frontend", "public", "latest_email.html")
-                with open(preview_path, "w", encoding="utf-8") as f:
-                    f.write(html_content)
-                logger.info(f"Saved email preview to {preview_path}")
-            except Exception as e:
-                logger.error(f"Failed to save email preview: {e}")
 
         params = {
             "from": "Munim AI <onboarding@resend.dev>",
@@ -138,7 +134,7 @@ async def email_vendor_warning(invoice_id: str, current_trader_id: str = Depends
 async def whatsapp_vendor_warning(invoice_id: str, lang: str = "en", current_trader_id: str = Depends(get_current_trader_id)):
     """Send an automated WhatsApp warning to the vendor regarding missed GSTR-1 filing."""
     db = get_supabase()
-    inv_resp = db.table("invoices").select("*, traders(business_name)").eq("id", invoice_id).execute()
+    inv_resp = db.table("invoices").select("*, traders(business_name)").eq("id", invoice_id).eq("trader_id", current_trader_id).execute()
     if not inv_resp.data:
         raise HTTPException(status_code=404, detail="Invoice not found")
     
@@ -243,21 +239,21 @@ async def send_test_alert(trader_id: str = Depends(verify_trader_access), lang: 
 
 
 @router.post("/remind-gstin/{trader_id}")
-async def remind_gstin_whatsapp(trader_id: str, lang: str = "en", current_trader_id: str = Depends(get_current_trader_id)):
+async def remind_gstin_whatsapp(trader_id: str = Depends(verify_trader_access), lang: str = "en"):
     db = get_supabase()
     res = db.table("traders").select("*").eq("id", trader_id).execute()
     if not res.data:
         raise HTTPException(status_code=404, detail="Client not found")
-        
+
     client = res.data[0]
     phone = client.get("whatsapp_number")
     if not phone:
         raise HTTPException(status_code=400, detail="Client does not have a registered WhatsApp number")
-        
+
     # Send WhatsApp reminder
     msg = f"Hello {client.get('name', 'there')}!\n\nThis is a gentle reminder from your Chartered Accountant to please update your GSTIN in the Munim.ai portal so we can automate your compliance checks and ITC reconciliation.\n\nPlease reply to this message with your 15-digit GSTIN."
     try:
-        await send_whatsapp_message(phone, msg)
+        await send_text_message(phone, msg)
         return {"status": "success", "message": "GSTIN reminder sent"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
