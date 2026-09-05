@@ -67,14 +67,47 @@ async def upload_invoice_direct(
         if not diagnosis:
             raise HTTPException(status_code=500, detail="Invoice processing failed")
 
-        # Store invoice in DB
-        await store_invoice(trader_id, diagnosis, image_url)
+        # Store invoice in DB — build the same dict structure as WhatsApp handler
+        inv_json = diagnosis.invoice_json
+        invoice_data = {
+            "trader_id": trader_id,
+            "image_url": image_url,
+            "status": "validated" if diagnosis.itc_verdict.status == ITCStatus.CONFIRMED else "flagged",
+            "itc_status": diagnosis.itc_verdict.status.value,
+            "itc_amount_eligible": diagnosis.itc_verdict.itc_amount,
+            "itc_amount_blocked": diagnosis.itc_verdict.itc_blocked,
+            "itc_block_reason": diagnosis.itc_verdict.reason,
+            "processing_duration_ms": diagnosis.processing_duration_ms,
+        }
+        if diagnosis.gstr2b_match:
+            invoice_data["gstr2b_match_status"] = diagnosis.gstr2b_match.status.value
+            invoice_data["gstr2b_match_confidence"] = diagnosis.gstr2b_match.confidence
+        if inv_json:
+            invoice_data["gstin_supplier"] = inv_json.gstin_supplier
+            invoice_data["gstin_buyer"] = inv_json.gstin_buyer
+            invoice_data["invoice_number"] = inv_json.invoice_number
+            invoice_data["invoice_date"] = inv_json.invoice_date
+            invoice_data["supplier_name"] = inv_json.supplier_name
+            invoice_data["taxable_amount"] = inv_json.total_taxable_amount
+            invoice_data["total_amount"] = inv_json.total_amount
+            invoice_data["cgst_amount"] = sum((li.cgst_amount or 0) for li in inv_json.line_items)
+            invoice_data["sgst_amount"] = sum((li.sgst_amount or 0) for li in inv_json.line_items)
+            invoice_data["igst_amount"] = sum((li.igst_amount or 0) for li in inv_json.line_items)
+        if diagnosis.fraud_result:
+            invoice_data["fraud_score"] = diagnosis.fraud_result.total_score
+        stored_invoice = await store_invoice(invoice_data)
+
+        # Store line items
+        if stored_invoice and inv_json and inv_json.line_items:
+            from app.services.supabase_client import store_invoice_line_items
+            await store_invoice_line_items(stored_invoice["id"], inv_json.line_items, diagnosis.hsn_validations)
 
         return {
             "status": "processed",
+            "invoice_id": stored_invoice["id"] if stored_invoice else None,
             "trader_id": trader_id,
             "itc_verdict": {
-                "status": diagnosis.itc_verdict.status,
+                "status": diagnosis.itc_verdict.status.value,
                 "itc_amount": diagnosis.itc_verdict.itc_amount,
                 "itc_blocked": diagnosis.itc_verdict.itc_blocked,
                 "reason": diagnosis.itc_verdict.reason,
