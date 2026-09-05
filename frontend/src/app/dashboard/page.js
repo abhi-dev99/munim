@@ -8,7 +8,6 @@ import Sidebar from "../components/Sidebar";
 import InvoiceFeed from "../components/InvoiceFeed";
 import GSTR2BUpload from "../components/GSTR2BUpload";
 import ReportsPanel from "../components/ReportsPanel";
-import ITCTrendChart from "../components/ITCTrendChart";
 import {
   ChevronDown,
   Users,
@@ -429,20 +428,18 @@ export default function Home() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="flex-1 grid grid-cols-3 gap-4 p-4 overflow-hidden"
+            className="flex-1 grid gap-4 p-4 overflow-hidden"
+            style={{ gridTemplateColumns: "minmax(0, 1fr) 280px" }}
           >
             {/* Left (2/3) — Main content + Invoice Feed */}
             <motion.div
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.08, duration: 0.3 }}
-              className="col-span-2 flex flex-col gap-4 min-h-0 overflow-y-auto pr-1"
+              className="flex flex-col gap-4 min-h-0 overflow-y-auto pr-1"
             >
               {activeTab === "money-meter" && (
-                <>
-                  <MoneyMeter summary={summary} apiBase={API_BASE} isComposition={isComposition} onSwitchTab={setActiveTab} />
-                  <ITCTrendChart traderId={traderId} apiBase={API_BASE} compact />
-                </>
+                <MoneyMeter summary={summary} apiBase={API_BASE} isComposition={isComposition} onSwitchTab={setActiveTab} />
               )}
               {activeTab === "suppliers" && (
                 <SupplierHealth traderId={traderId} apiBase={API_BASE} onSwitchTab={setActiveTab} />
@@ -467,7 +464,7 @@ export default function Home() {
               initial={{ opacity: 0, x: 8 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.12, duration: 0.3 }}
-              className="col-span-1 flex flex-col gap-3 min-h-0 overflow-y-auto pr-1"
+              className="flex flex-col gap-3 min-h-0 overflow-y-auto"
             >
               <SupplierRiskCard traderId={traderId} onSwitchTab={setActiveTab} />
               <FilingReadinessCard traderId={traderId} summary={summary} onSwitchTab={setActiveTab} />
