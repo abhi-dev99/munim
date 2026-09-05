@@ -114,6 +114,7 @@ function SupplierRiskCard({ traderId, onSwitchTab }) {
 
 // Right-rail: Filing Readiness card
 function FilingReadinessCard({ traderId, summary, onSwitchTab }) {
+  const { t } = useLanguage();
   const invoicesProcessed = summary?.invoices_processed || 0;
   const issuesOpen = summary?.issues_open || 0;
 
@@ -121,11 +122,6 @@ function FilingReadinessCard({ traderId, summary, onSwitchTab }) {
   let readiness = 100;
   if (issuesOpen > 0) readiness = Math.max(30, 100 - issuesOpen * 10);
   if (invoicesProcessed === 0) readiness = 0;
-function FilingReadinessCard({ summary, onSwitchTab, traderId }) {
-  const { t } = useLanguage();
-  const readiness = summary?.readiness?.gstr3b_readiness || 0;
-  const invoicesProcessed = summary?.readiness?.invoices_processed || 0;
-  const issuesOpen = summary?.readiness?.issues_open || 0;
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
