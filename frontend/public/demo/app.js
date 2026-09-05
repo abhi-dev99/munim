@@ -546,49 +546,81 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize IMS state colors
     const urlParams = new URLSearchParams(window.location.search);
     const traderId = urlParams.get('traderId');
+
+    // Detect API base — works both in dev (port 3000 → backend 8000) and standalone
+    const apiBase = (window.location.port === '3000' || window.location.port === '')
+        ? 'http://localhost:8000'
+        : 'http://localhost:8000';
+
     if (traderId) {
-        // Fetch actual data
-        fetch(`http://localhost:8000/api/v1/dashboard/invoices/${traderId}`)
+        // Use the IMS endpoint — engine verdicts are already mapped to ims_action
+        fetch(`${apiBase}/api/v1/dashboard/ims/${traderId}`)
             .then(res => res.json())
             .then(data => {
-                if (data.invoices) {
+                if (data.invoices && data.invoices.length > 0) {
                     inwardSupplies = data.invoices.map(inv => ({
-                        id: inv.id,
-                        gstin: inv.gstin_supplier,
+                        id: inv.invoice_id,
+                        gstin: inv.supplier_gstin,
                         name: inv.supplier_name,
                         invNo: inv.invoice_number,
                         date: inv.invoice_date,
-                        taxable: inv.taxable_amount || 0,
-                        tax: (inv.igst_amount || 0) + (inv.cgst_amount || 0) + (inv.sgst_amount || 0),
-                        type: inv.igst_amount > 0 ? 'IGST' : 'CGST_SGST',
-                        action: 'pending'
+                        taxable: inv.taxable_value || 0,
+                        tax: inv.total_tax || 0,
+                        type: inv.igst > 0 ? 'IGST' : 'CGST_SGST',
+                        // Pre-populated from Munim engine verdict — not all-pending like before
+                        action: inv.ims_action || 'pending',
+                        itcStatus: inv.itc_status || '',
+                        itcReason: inv.itc_reason || '',
                     }));
-
-                    // Initialize GSTR-3B auto-drafted totals from all invoices
-                    let draftIGST = 0;
-                    let draftCGST = 0;
-                    let draftSGST = 0;
-                    inwardSupplies.forEach(inv => {
-                        if (inv.type === 'IGST') {
-                            draftIGST += inv.tax;
-                        } else {
-                            draftCGST += inv.tax / 2;
-                            draftSGST += inv.tax / 2;
-                        }
-                    });
-                    document.getElementById('gstr3b-itc-igst').innerText = `₹${draftIGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
-                    document.getElementById('gstr3b-itc-cgst').innerText = `₹${draftCGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
-                    document.getElementById('gstr3b-itc-sgst').innerText = `₹${draftSGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+                } else {
+                    // IMS returned empty — fall back to dummy data for demo
+                    inwardSupplies = [
+                        { id: '1', gstin: '24AAFCK2304M1ZP', name: 'Balaji Hardware', invNo: 'INV-2024-001', date: '05/04/2026', taxable: 66666.67, tax: 12000.00, type: 'IGST', action: 'accept' },
+                        { id: '2', gstin: '29UATYY9012A1Z8', name: 'Surat Textiles', invNo: 'TX-9988', date: '12/04/2026', taxable: 33333.33, tax: 6000.00, type: 'CGST_SGST', action: 'pending' },
+                        { id: '3', gstin: '29UATYY9012A1Z8', name: 'Surat Textiles', invNo: 'TX-9989', date: '15/04/2026', taxable: 33333.33, tax: 6000.00, type: 'CGST_SGST', action: 'reject' }
+                    ];
                 }
+
+                // Auto-draft GSTR-3B Table 4 from accepted (confirmed) invoices
+                let draftIGST = 0, draftCGST = 0, draftSGST = 0;
+                inwardSupplies.forEach(inv => {
+                    if (inv.action === 'accept') {
+                        if (inv.type === 'IGST') draftIGST += inv.tax;
+                        else { draftCGST += inv.tax / 2; draftSGST += inv.tax / 2; }
+                    }
+                });
+                document.getElementById('gstr3b-itc-igst').innerText = `₹${draftIGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+                document.getElementById('gstr3b-itc-cgst').innerText = `₹${draftCGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+                document.getElementById('gstr3b-itc-sgst').innerText = `₹${draftSGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+
                 renderImsTable();
+
+                // After render, restore action button highlights from engine-pre-set state
+                inwardSupplies.forEach(inv => {
+                    const row = document.getElementById(`ims-row-${inv.id}`);
+                    if (!row) return;
+                    const buttons = row.querySelectorAll('.btn-ims-action');
+                    buttons.forEach(b => {
+                        b.classList.remove('active');
+                        if (b.getAttribute('data-action') === inv.action) b.classList.add('active');
+                    });
+                    const statusEl = document.getElementById(`ims-status-${inv.id}`);
+                    if (statusEl) {
+                        statusEl.className = 'ims-status-text';
+                        if (inv.action === 'accept') { statusEl.innerText = 'Accepted'; statusEl.classList.add('status-accepted'); }
+                        else if (inv.action === 'reject') { statusEl.innerText = 'Rejected'; statusEl.classList.add('status-rejected'); }
+                        else { statusEl.innerText = 'Pending'; statusEl.classList.add('status-pending'); }
+                    }
+                });
+                updateImsCounters();
             })
             .catch(err => {
-                console.error("Failed to load invoices", err);
+                console.error('Failed to load IMS data', err);
                 renderImsTable();
             });
 
-        // Optional: fetch trader info to update the header
-        fetch(`http://localhost:8000/api/v1/dashboard/traders`)
+        // Fetch trader info to personalise the portal header
+        fetch(`${apiBase}/api/v1/dashboard/traders`)
             .then(res => res.json())
             .then(data => {
                 if (data.traders) {
@@ -601,31 +633,27 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                         document.querySelector('.user-info span').innerText = trader.business_name || trader.name || 'User';
                         document.querySelector('.user-info .gstin').innerText = trader.gstin || '-';
-                        
-                        // Also update the signatory dropdown if present
                         const signOption = document.querySelector('#signatory-select option[value="sign"]');
-                        if (signOption) {
-                            signOption.innerText = `${trader.name || trader.business_name} (Authorized Signatory)`;
-                        }
+                        if (signOption) signOption.innerText = `${trader.name || trader.business_name} (Authorized Signatory)`;
                     }
                 }
             })
             .catch(console.error);
 
     } else {
-        // Fallback to static dummy data if opened without URL parameter
+        // No traderId — static dummy data (standalone demo)
         inwardSupplies = [
-            { id: '1', gstin: '24AAFCK2304M1ZP', name: 'Balaji Hardware', invNo: 'INV-2024-001', date: '05/04/2026', taxable: 66666.67, tax: 12000.00, type: 'IGST', action: 'pending' },
+            { id: '1', gstin: '24AAFCK2304M1ZP', name: 'Balaji Hardware', invNo: 'INV-2024-001', date: '05/04/2026', taxable: 66666.67, tax: 12000.00, type: 'IGST', action: 'accept' },
             { id: '2', gstin: '29UATYY9012A1Z8', name: 'Surat Textiles', invNo: 'TX-9988', date: '12/04/2026', taxable: 33333.33, tax: 6000.00, type: 'CGST_SGST', action: 'pending' },
-            { id: '3', gstin: '29UATYY9012A1Z8', name: 'Surat Textiles', invNo: 'TX-9989', date: '15/04/2026', taxable: 33333.33, tax: 6000.00, type: 'CGST_SGST', action: 'pending' }
+            { id: '3', gstin: '29UATYY9012A1Z8', name: 'Surat Textiles', invNo: 'TX-9989', date: '15/04/2026', taxable: 33333.33, tax: 6000.00, type: 'CGST_SGST', action: 'reject' }
         ];
-        
-        let draftIGST = 0;
-        let draftCGST = 0;
-        let draftSGST = 0;
+
+        let draftIGST = 0, draftCGST = 0, draftSGST = 0;
         inwardSupplies.forEach(inv => {
-            if (inv.type === 'IGST') draftIGST += inv.tax;
-            else { draftCGST += inv.tax / 2; draftSGST += inv.tax / 2; }
+            if (inv.action === 'accept') {
+                if (inv.type === 'IGST') draftIGST += inv.tax;
+                else { draftCGST += inv.tax / 2; draftSGST += inv.tax / 2; }
+            }
         });
         document.getElementById('gstr3b-itc-igst').innerText = `₹${draftIGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
         document.getElementById('gstr3b-itc-cgst').innerText = `₹${draftCGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
