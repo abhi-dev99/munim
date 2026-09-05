@@ -271,15 +271,35 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, trade
       {/* Spacer */}
       <div className="flex-1" />
 
-              {/* Take Tour */}
-        <div className="px-4 pb-2 flex-none">
-          <button 
-            onClick={onTourClick} 
-            className="flex items-center justify-center w-full px-3 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-semibold hover:bg-indigo-100 transition-colors shadow-sm"
-          >
-            Take Tour
-          </button>
-        </div>
+      {/* Dev Console & API Docs */}
+      <div className="px-4 pb-2 flex-none space-y-1.5">
+        <button
+          onClick={() => router.push("/dev")}
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-xs font-bold ${pathname === "/dev" ? "bg-emerald-50 text-[#10b981]" : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"}`}
+        >
+          <TrendingUp size={14} className="text-[#10b981]" />
+          <span>System Diagnostics</span>
+        </button>
+        <a
+          href="http://localhost:8000/docs"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-xs font-bold text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+        >
+          <FileText size={14} className="text-blue-500" />
+          <span>API Reference (Swagger)</span>
+        </a>
+      </div>
+
+      {/* Take Tour */}
+      <div className="px-4 pb-2 flex-none">
+        <button 
+          onClick={onTourClick} 
+          className="flex items-center justify-center w-full px-3 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-semibold hover:bg-indigo-100 transition-colors shadow-sm"
+        >
+          Take Tour
+        </button>
+      </div>
 
         {/* My Profile */}
       <div className="px-4 pb-2 flex-none">
