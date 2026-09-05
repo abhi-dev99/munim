@@ -16,14 +16,14 @@ export default function MoneyMeter({ summary, apiBase }) {
 
   useEffect(() => {
     if (!traderId || traderId === "demo") {
-      // Demo fallback data
+      // Return zeroed out timeline for empty/new traders
       setChartData([
-        { name: "Jan", recovered: 12000, blocked: 2000 },
-        { name: "Feb", recovered: 15000, blocked: 3500 },
-        { name: "Mar", recovered: 11000, blocked: 5000 },
-        { name: "Apr", recovered: 28000, blocked: 1200 },
-        { name: "May", recovered: 35000, blocked: 8000 },
-        { name: "Jun", recovered: 41200, blocked: 8600 },
+        { name: "Jan", recovered: 0, blocked: 0 },
+        { name: "Feb", recovered: 0, blocked: 0 },
+        { name: "Mar", recovered: 0, blocked: 0 },
+        { name: "Apr", recovered: 0, blocked: 0 },
+        { name: "May", recovered: 0, blocked: 0 },
+        { name: "Jun", recovered: 0, blocked: 0 },
       ]);
       setChartLoading(false);
       return;

@@ -80,15 +80,16 @@ export default function Home() {
   }
 
   function loadDemoSummary() {
+    // If no trader or backend is empty, return zeroed state, not fake demo data
     setSummary({
-      trader_id: "demo",
+      trader_id: traderId || "demo",
       month: new Date().getMonth() + 1,
       year: new Date().getFullYear(),
-      itc_buckets: { confirmed: 41200, fixable_blocked: 8600, at_risk: 12400, missed: 3200, ineligible: 0 },
-      invoices_processed: 247,
-      suppliers_monitored: 15,
-      issues_open: 8,
-      total_recovery_possible: 24200,
+      itc_buckets: { confirmed: 0, fixable_blocked: 0, at_risk: 0, missed: 0, ineligible: 0 },
+      invoices_processed: 0,
+      suppliers_monitored: 0,
+      issues_open: 0,
+      total_recovery_possible: 0,
     });
   }
 

@@ -1,8 +1,14 @@
-# Munim.ai
-**The AI-Powered GST Compliance & Intelligence Layer for MSMEs**
+# 🏛️ Munim.ai
+
+**The AI-Powered GST Compliance & Intelligence Layer for Indian MSMEs**
+
+![Status](https://img.shields.io/badge/Status-Active-success)
+![Version](https://img.shields.io/badge/Version-1.0.0-blue)
+![License](https://img.shields.io/badge/License-MIT-green)
+![Tech Stack](https://img.shields.io/badge/Stack-FastAPI%20%7C%20Next.js%20%7C%20Supabase%20%7C%20LangGraph-orange)
 
 ![Munim.ai Dashboard](frontend/public/mockup.png) 
-*(Note: Example dashboard showcasing the Uber-inspired Minimalist Light UI)*
+*(Note: Dashboard showcasing the Uber-inspired Minimalist Light UI)*
 
 Munim.ai is not just another CA replacement. It is the intelligence layer between invoice receipt and CA reconciliation. Designed specifically for Indian MSMEs, Munim acts proactively to ensure you never lose Input Tax Credit (ITC) again due to non-compliant suppliers, HSN mismatches, or timing gaps.
 
