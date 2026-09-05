@@ -325,7 +325,10 @@ export default function Home() {
         { popover: { title: 'Welcome to the CA Dashboard', description: 'Let us show you around your new workspace.', side: "bottom", align: 'start' } },
         { element: '#money-meter-top', popover: { title: 'ITC Metrics', description: 'These are your core ITC metrics. You can drag and drop these cards to reorder them based on what you want to see first!', side: "bottom", align: 'start' } },
         { element: '#money-meter-bottom', popover: { title: 'Quick Stats', description: 'Track your processed invoices and open issues. These are also fully drag-and-drop enabled.', side: "bottom", align: 'start' } },
-        { popover: { title: 'Right Rail Widgets', description: 'All the widgets on the right side of your dashboard can also be dragged and dropped into any order you prefer.', side: "left", align: 'start' } }
+        { element: '#right-panel', popover: { title: 'Right Panel Widgets', description: 'All the widgets on the right panel of your dashboard can also be dragged and dropped into any order you prefer.', side: "left", align: 'start' } },
+        { element: '#sidebar-nav-suppliers', popover: { title: 'Supplier Trust', description: 'Navigate here to monitor the risk profiles of all your suppliers and prevent blocked ITC.', side: "right", align: 'start' } },
+        { element: '#sidebar-nav-actions', popover: { title: 'Action Queue', description: 'Any discrepancies or blocked ITC that require your immediate attention will be queued here.', side: "right", align: 'start' } },
+        { element: '#sidebar-my-profile', popover: { title: 'My Profile', description: 'Click here to manage your clients and send WhatsApp reminders for missing GSTINs.', side: "right", align: 'start' } }
       ]
     });
     driverObj.drive();
