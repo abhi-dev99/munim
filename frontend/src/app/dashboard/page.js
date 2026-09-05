@@ -33,6 +33,7 @@ function formatINR(amount) {
 
 // Right-rail: Supplier Risk Summary card
 function SupplierRiskCard({ traderId, onSwitchTab }) {
+  const { t } = useLanguage();
   const [data, setData] = useState(null);
 
   useEffect(() => {
@@ -64,29 +65,29 @@ function SupplierRiskCard({ traderId, onSwitchTab }) {
     <div className="bg-white rounded-xl border border-gray-200 p-4">
       <div className="flex items-center gap-2 mb-3">
         <PieChart size={15} className="text-gray-400" />
-        <h3 className="text-sm font-bold text-gray-900">Supplier Risk</h3>
+        <h3 className="text-sm font-bold text-gray-900">{t("sup_risk_title") || "Supplier Risk"}</h3>
       </div>
 
       {/* Mini stat row */}
       <div className="grid grid-cols-3 gap-2 mb-3">
         <div className="text-center bg-emerald-50 rounded-lg py-2">
           <p className="text-base font-bold text-emerald-700">{good}</p>
-          <p className="text-[10px] text-emerald-600">Good</p>
+          <p className="text-[10px] text-emerald-600">{t("sup_good_short") || "Good"}</p>
         </div>
         <div className="text-center bg-amber-50 rounded-lg py-2">
           <p className="text-base font-bold text-amber-700">{atRisk}</p>
-          <p className="text-[10px] text-amber-600">At Risk</p>
+          <p className="text-[10px] text-amber-600">{t("sup_at_risk_short") || "At Risk"}</p>
         </div>
         <div className="text-center bg-red-50 rounded-lg py-2">
           <p className="text-base font-bold text-red-700">{blocked}</p>
-          <p className="text-[10px] text-red-600">Blocked</p>
+          <p className="text-[10px] text-red-600">{t("sup_blocked_short") || "Blocked"}</p>
         </div>
       </div>
 
       {/* Riskiest suppliers */}
       {riskiest.length > 0 && (
         <div className="space-y-2">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Needs Attention</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{t("sup_needs_attention") || "Needs Attention"}</p>
           {riskiest.map((s, i) => (
             <button
               key={i}
@@ -112,7 +113,7 @@ function SupplierRiskCard({ traderId, onSwitchTab }) {
       )}
 
       {total === 0 && (
-        <p className="text-xs text-gray-400 text-center py-2">No supplier data yet.</p>
+        <p className="text-xs text-gray-400 text-center py-2">{t("sup_no_data_short") || "No supplier data yet."}</p>
       )}
     </div>
   );

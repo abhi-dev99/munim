@@ -52,6 +52,12 @@ const en = {
   inv_no_records: "No records found.",
 
   // Supplier Trust
+  sup_risk_title: "Supplier Risk",
+  sup_good_short: "Good",
+  sup_at_risk_short: "At Risk",
+  sup_blocked_short: "Blocked",
+  sup_needs_attention: "Needs Attention",
+  sup_no_data_short: "No supplier data yet.",
   sup_good_standing: "Good Standing",
   sup_at_risk: "At Risk",
   sup_blocked: "Blocked",
