@@ -416,6 +416,5 @@ export default function DevDashboard() {
           </div>
         </main>
       </div>
-    </div>
-  );
-}
+    );
+  }
