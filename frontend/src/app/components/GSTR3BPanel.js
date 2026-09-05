@@ -94,7 +94,7 @@ export default function GSTR3BPanel({ traderId, apiBase }) {
       ) : (
         <>
           {/* Invoice Summary Strip */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
               { label: "Confirmed ITC", value: inv?.confirmed || 0, color: "emerald", icon: CheckCircle2 },
               { label: "At Risk",       value: inv?.at_risk   || 0, color: "amber",   icon: AlertTriangle },
@@ -186,7 +186,7 @@ export default function GSTR3BPanel({ traderId, apiBase }) {
                 <h3 className="text-sm font-bold text-gray-900">GSTR-2B Auto-Population Summary</h3>
                 <p className="text-[10px] text-gray-400">{g2b.total_records} records from portal</p>
               </div>
-              <div className="grid grid-cols-4 divide-x divide-gray-100">
+              <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-gray-100">
                 {[
                   { label: "IGST in 2B", value: fmt(g2b.total_igst) },
                   { label: "CGST in 2B", value: fmt(g2b.total_cgst) },

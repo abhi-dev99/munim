@@ -157,11 +157,11 @@ export default function ProfilePage() {
           <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">CA Dashboard</span>
         </header>
 
-        <div className="p-8 max-w-4xl mx-auto w-full space-y-8">
+        <div className="p-4 sm:p-8 max-w-4xl mx-auto w-full space-y-8">
           {/* Portfolio Overview */}
           <section>
             <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">{t("pro_portfolio")}</h2>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <StatCard icon={Users}       label={t("pro_total_clients")}     value={totalClients || "—"}        color="gray"  />
               <StatCard icon={AlertTriangle} label={t("pro_clients_with_issues")}     value={withIssues || "0"}          color={withIssues > 0 ? "amber" : "green"} sub={withIssues > 0 ? "Click Action Queue to review" : "All clients are compliant"} />
               <StatCard icon={CheckCircle2}  label="Avg Compliance"  value={avgCompliance ? `${avgCompliance}%` : "—"} color={avgCompliance >= 80 ? "green" : avgCompliance >= 50 ? "amber" : "red"} />

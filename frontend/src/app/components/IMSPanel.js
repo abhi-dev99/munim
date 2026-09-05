@@ -131,7 +131,7 @@ export default function IMSPanel({ traderId, apiBase }) {
       </div>
 
       {/* Summary stat strip */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: "Accepted", value: liveAccept,  color: "emerald", filter: "accept"  },
           { label: "Pending",  value: livePending, color: "amber",   filter: "pending" },
