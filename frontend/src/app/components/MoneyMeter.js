@@ -3,32 +3,6 @@
 import { ArrowUpRight, IndianRupee, ShieldAlert, CheckCircle2, TrendingUp, FileText, Users, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 
-// Mini donut ring — shows confirmed vs at-risk ratio
-function ComplianceRing({ confirmed = 0, total = 1 }) {
-  const pct = total > 0 ? Math.round((confirmed / total) * 100) : 0;
-  const r = 28;
-  const circ = 2 * Math.PI * r;
-  const fill = (pct / 100) * circ;
-  const color = pct >= 80 ? "#10b981" : pct >= 50 ? "#f59e0b" : "#ef4444";
-  return (
-    <div className="relative inline-flex items-center justify-center">
-      <svg width={72} height={72} style={{ transform: "rotate(-90deg)" }}>
-        <circle cx={36} cy={36} r={r} fill="none" stroke="#f3f4f6" strokeWidth={7} />
-        <circle
-          cx={36} cy={36} r={r}
-          fill="none" stroke={color} strokeWidth={7}
-          strokeDasharray={`${fill} ${circ}`}
-          strokeLinecap="round"
-          style={{ transition: "stroke-dasharray 0.8s ease" }}
-        />
-      </svg>
-      <div className="absolute flex flex-col items-center">
-        <span className="text-sm font-black" style={{ color }}>{pct}%</span>
-      </div>
-    </div>
-  );
-}
-
 export default function MoneyMeter({ summary, apiBase, isComposition = false, onSwitchTab }) {
   if (!summary) return null;
 
@@ -123,25 +97,12 @@ export default function MoneyMeter({ summary, apiBase, isComposition = false, on
         )}
       </motion.div>
 
-      {/* ── Stats + compliance gauge row ─────────────────────────────── */}
+      {/* ── Stats ribbon — additive info only ────────────────────────── */}
       <motion.div
         initial="hidden" animate="show"
         variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.07, delayChildren: 0.12 } } }}
         className="bg-white border border-gray-200 rounded-xl flex divide-x divide-gray-100 overflow-hidden"
       >
-        {/* Gauge */}
-        {!isComposition && (
-          <motion.div variants={v} className="flex items-center gap-3 px-5 py-3 min-w-[160px]">
-            <ComplianceRing confirmed={confirmed} total={totalITC} />
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">ITC Health</p>
-              <p className="text-xs text-gray-600 mt-0.5 font-medium">
-                {totalITC > 0 ? `${Math.round((confirmed / totalITC) * 100)}% confirmed` : "No data yet"}
-              </p>
-            </div>
-          </motion.div>
-        )}
-
         {/* Invoices */}
         <motion.div variants={v} className="flex items-center gap-3 px-5 py-3 flex-1">
           <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center flex-none">
@@ -159,7 +120,7 @@ export default function MoneyMeter({ summary, apiBase, isComposition = false, on
             <Users size={14} className="text-gray-500" />
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Suppliers</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Suppliers Tracked</p>
             <p className="text-xl font-black text-gray-900">{summary.suppliers_monitored || 0}</p>
           </div>
         </motion.div>
