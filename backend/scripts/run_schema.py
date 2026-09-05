@@ -3,11 +3,15 @@ Run the Munim.ai schema against Supabase.
 Uses the Supabase Management API to execute raw SQL.
 """
 import httpx
+import os
 import sys
 
-SUPABASE_URL = "https://agxfxqwfnazwrtnfamiz.supabase.co"
-SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFneGZ4cXdmbmF6d3J0bmZhbWl6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTcwMTE2MywiZXhwIjoyMDk3Mjc3MTYzfQ.g0vknyydAa9hmjaO3a5iJvG6iAv_8uU1iJWRBAJv0zk"
-PROJECT_REF = "agxfxqwfnazwrtnfamiz"
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+if not SUPABASE_URL or not SERVICE_ROLE_KEY:
+    print("Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (see backend/.env).")
+    sys.exit(1)
+PROJECT_REF = SUPABASE_URL.split("//")[-1].split(".")[0]
 
 # Read schema
 with open("backend/schema.sql", "r") as f:
