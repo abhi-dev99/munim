@@ -7,6 +7,7 @@ All notable changes to Munim.ai are documented here. Format loosely follows [Kee
 ## 2026-09-03
 
 ### Added
+- On-device voice queries in the trader PWA ("Munim se poochein") — tap the mic, ask about ITC balance/invoice count/supplier status in Hindi or English, get an instant answer from data already loaded on the page (no new network call, no cloud speech round trip on supporting browsers).
 - First real backend test suite: 48 tests across `itc_engine`, `fraud`, `reconciler`, `gstin`, and a new shared error-handling helper — this repo had zero test infrastructure before today.
 - `safe_http_error()` helper (`backend/app/utils/errors.py`) — logs the real exception server-side with a correlation ID, returns a generic client-safe message. Applied across all 27 previously-leaky call sites.
 - GSTIN check-digit validation (`has_valid_checksum()` in `gstin.py`) — previously only format/length was checked, never the actual checksum algorithm.
