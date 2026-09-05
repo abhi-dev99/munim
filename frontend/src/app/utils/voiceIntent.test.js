@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { matchVoiceIntent, VOICE_INTENTS } from "./voiceIntent";
+import { matchVoiceIntent, answerVoiceIntent, VOICE_INTENTS } from "./voiceIntent";
 
 // matchVoiceIntent is pure keyword/regex matching over a plain string — no
 // SpeechRecognition or other browser API involved — so it's fully
@@ -77,5 +77,56 @@ describe("matchVoiceIntent", () => {
     const result = matchVoiceIntent("  kitne invoice hai  ");
     expect(result.transcript).toBe("kitne invoice hai");
     expect(result.intent).toBe(VOICE_INTENTS.INVOICE_COUNT);
+  });
+});
+
+describe("answerVoiceIntent", () => {
+  const summary = {
+    itc_buckets: { confirmed: 99820, at_risk: 15000 },
+    invoices_processed: 583,
+    suppliers_monitored: 26,
+    issues_open: 3,
+  };
+
+  it("answers ITC balance from the already-loaded summary, no new call", () => {
+    const answer = answerVoiceIntent(VOICE_INTENTS.ITC_BALANCE, summary);
+    expect(answer).toContain("₹99,820");
+    expect(answer).toContain("₹15,000");
+  });
+
+  it("omits the at-risk clause when nothing is at risk", () => {
+    const answer = answerVoiceIntent(VOICE_INTENTS.ITC_BALANCE, {
+      itc_buckets: { confirmed: 5000, at_risk: 0 },
+    });
+    expect(answer).toContain("₹5,000");
+    expect(answer).not.toContain("at-risk");
+  });
+
+  it("answers invoice count from the summary", () => {
+    expect(answerVoiceIntent(VOICE_INTENTS.INVOICE_COUNT, summary)).toContain("583");
+  });
+
+  it("answers supplier status, flagging open issues", () => {
+    const answer = answerVoiceIntent(VOICE_INTENTS.SUPPLIER_STATUS, summary);
+    expect(answer).toContain("26");
+    expect(answer).toContain("3");
+  });
+
+  it("reports all-clear when no supplier issues are open", () => {
+    const answer = answerVoiceIntent(VOICE_INTENTS.SUPPLIER_STATUS, {
+      suppliers_monitored: 10,
+      issues_open: 0,
+    });
+    expect(answer.toLowerCase()).toContain("theek");
+  });
+
+  it("gives a helpful fallback for UNKNOWN without throwing", () => {
+    expect(() => answerVoiceIntent(VOICE_INTENTS.UNKNOWN, summary)).not.toThrow();
+    expect(answerVoiceIntent(VOICE_INTENTS.UNKNOWN, summary).length).toBeGreaterThan(0);
+  });
+
+  it("does not throw when summary is missing or incomplete", () => {
+    expect(() => answerVoiceIntent(VOICE_INTENTS.ITC_BALANCE, undefined)).not.toThrow();
+    expect(() => answerVoiceIntent(VOICE_INTENTS.ITC_BALANCE, {})).not.toThrow();
   });
 });

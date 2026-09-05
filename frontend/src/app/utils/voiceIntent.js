@@ -76,3 +76,43 @@ export function matchVoiceIntent(transcript) {
 
   return { intent: VOICE_INTENTS.UNKNOWN, transcript: text };
 }
+
+function formatINR(n) {
+  const value = Number(n) || 0;
+  return `₹${Math.round(value).toLocaleString("en-IN")}`;
+}
+
+/**
+ * Turn a matched intent into a spoken/displayed Hindi answer, using data
+ * the trader page has already fetched (dashboard summary) — deliberately
+ * no new network call, since the whole point of on-device voice input is
+ * a fast, local round trip, not one more request layered on top of it.
+ *
+ * @param {string} intent one of VOICE_INTENTS.
+ * @param {object} summary the DashboardSummary object trader/page.js
+ *   already holds in state (itc_buckets, invoices_processed,
+ *   suppliers_monitored, issues_open).
+ * @returns {string} a short Hindi sentence to display and speak back.
+ */
+export function answerVoiceIntent(intent, summary) {
+  const s = summary || {};
+  const itc = s.itc_buckets || {};
+
+  switch (intent) {
+    case VOICE_INTENTS.ITC_BALANCE:
+      return `Aapka confirmed ITC ${formatINR(itc.confirmed)} hai. ${
+        itc.at_risk > 0 ? `${formatINR(itc.at_risk)} at-risk hai.` : ""
+      }`.trim();
+
+    case VOICE_INTENTS.INVOICE_COUNT:
+      return `Aapke ${s.invoices_processed ?? 0} invoices is mahine process ho chuke hain.`;
+
+    case VOICE_INTENTS.SUPPLIER_STATUS:
+      return s.issues_open > 0
+        ? `Aap ${s.suppliers_monitored ?? 0} suppliers monitor kar rahe hain, ${s.issues_open} mein issue hai.`
+        : `Aap ${s.suppliers_monitored ?? 0} suppliers monitor kar rahe hain, sab theek hain.`;
+
+    default:
+      return "Samajh nahi aaya. ITC balance ya invoice count ke baare mein poochiye.";
+  }
+}
