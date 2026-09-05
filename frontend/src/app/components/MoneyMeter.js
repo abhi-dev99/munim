@@ -1,18 +1,30 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { ArrowUpRight, ArrowDownRight, IndianRupee, ShieldAlert, CheckCircle2, TrendingUp } from "lucide-react";
 
-const chartData = [
-  { name: "Jan", recovered: 12000, blocked: 2000 },
-  { name: "Feb", recovered: 15000, blocked: 3500 },
-  { name: "Mar", recovered: 11000, blocked: 5000 },
-  { name: "Apr", recovered: 28000, blocked: 1200 },
-  { name: "May", recovered: 35000, blocked: 8000 },
-  { name: "Jun", recovered: 41200, blocked: 8600 },
-];
+export default function MoneyMeter({ summary, apiBase }) {
+  const [chartData, setChartData] = useState([]);
 
-export default function MoneyMeter({ summary }) {
+  useEffect(() => {
+    if (summary?.trader_id) {
+      fetch(`${apiBase}/api/v1/dashboard/itc-timeline/${summary.trader_id}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.timeline) {
+            const formatted = data.timeline.map(item => ({
+              name: item.label.split(' ')[0], // Jan, Feb
+              recovered: item.itc_claimed,
+              blocked: item.gap,
+            }));
+            setChartData(formatted);
+          }
+        })
+        .catch(err => console.error("Failed to fetch timeline:", err));
+    }
+  }, [summary?.trader_id, apiBase]);
+
   if (!summary) return null;
 
   const { itc_buckets, total_recovery_possible } = summary;
