@@ -251,7 +251,9 @@ BEGIN
         h.gst_rate,
         1 - (h.embedding <=> query_embedding) AS similarity
     FROM hsn_codes h
-    WHERE h.embedding IS NOT NULL
+    WHERE
+        h.embedding IS NOT NULL
+        AND 1 - (h.embedding <=> query_embedding) > match_threshold
     ORDER BY h.embedding <=> query_embedding
     LIMIT match_count;
 END;
