@@ -76,30 +76,25 @@ They log into a clean dashboard showing all their clients' invoice data, already
 
 The prototype is fully functional end-to-end. All flows described below are live and testable.
 
-### Flow A: Trader Invoice Submission (WhatsApp)
-1. Trader sends a bill photo to the Munim WhatsApp number
-2. Bot detects language, acknowledges in same language (Hindi/English/Marathi/Gujarati)
-3. Gemini Vision extracts invoice data
-4. ITC engine classifies it; fraud scorer runs
-5. Bot responds with result: "Your bill from [Supplier] for ₹X has been recorded. ITC of ₹Y is eligible."
-6. If blocked: bot explains why in plain language. If fraud flagged: CA is notified.
+### 1. WhatsApp Ingestion & Onboarding
+- **2-Minute Setup:** Conversational onboarding for traders via WhatsApp.
+- **Multimodal Input:** Accepts bill photos, PDFs, or forwarded vendor emails.
+- **Vernacular Support:** Auto-responds in Hindi, English, Marathi, or Gujarati.
 
-### Flow B: Trader Onboarding (WhatsApp)
-Guided conversational onboarding that collects business name, GSTIN (validated live), and language preference. Takes under 2 minutes. At completion, trader receives their dedicated Munim email address for vendor invoice forwarding.
+### 2. AI Intelligence Engine
+- **Vision OCR:** Gemini 2.5 extracts structured data from blurry or handwritten bills.
+- **ITC Rules:** Deterministic engine classifies eligibility based on GST §16/§17(5).
+- **Fraud Scoring:** 6-signal statistical engine flags high-risk anomalies instantly.
 
-### Flow C: Email Invoice Ingestion
-Vendors can email invoices directly to the trader's dedicated Cloudmailin address. PDFs are automatically parsed through the same Gemini pipeline and added to records without any manual action.
+### 3. GSTR-2B Reconciliation
+- **Fuzzy Matching:** 3-pass algorithm (Levenshtein + 2% amount tolerance).
+- **Portal Sync:** Compares uploaded invoices against GST portal JSON.
+- **Leakage Prevention:** Instantly flags missing vendor filings.
 
-### Flow D: CA Dashboard
-- **Action Queue**: Prioritized issues across all clients — fraud flags, ITC-at-risk items, fixable blocks. Each item shows the affected amount and recommended action.
-- **Supplier Health**: Visual scoring of each vendor's compliance track record.
-- **Invoice Records**: Searchable, filterable log of all processed invoices with status indicators.
-- **GSTR-2B Upload**: Drag-and-drop JSON upload that triggers the reconciliation engine.
-- **Reports**: One-click PDF compliance report generation.
-- **Compliance Timeline**: Visual deadline tracker with upcoming GSTR-1, GSTR-2B, GSTR-3B dates.
-
-### Flow E: GST Portal Simulation
-An interactive simulation of the GST portal's IMS (Invoice Management System) populated with the actual trader's real invoice data. Demonstrates how Munim's output maps directly to the government filing interface, and how GSTR-3B values are auto-calculated from accepted/rejected credits.
+### 4. CA Action Dashboard
+- **Prioritized Queue:** Centralizes fraud flags, blocked ITC, and unmatched invoices.
+- **1-Click Actions:** Send vendor warnings directly via WhatsApp or Email.
+- **Automated Reporting:** Generates supplier health scores and PDF compliance reports.
 
 ### Live Demo
 - CA Dashboard: *(deployment in progress)*
