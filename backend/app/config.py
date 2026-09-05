@@ -3,6 +3,14 @@ Munim.ai — Application Configuration
 All settings loaded from environment variables with sensible defaults.
 """
 
+import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
+
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 
