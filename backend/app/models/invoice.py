@@ -57,6 +57,8 @@ class InvoiceJSON(BaseModel):
     gstin_supplier: Optional[str] = None
     gstin_buyer: Optional[str] = None
     supplier_name: Optional[str] = None
+    supplier_email: Optional[str] = None
+    supplier_phone: Optional[str] = None
     line_items: list[LineItem] = Field(default_factory=list)
     total_taxable_amount: Optional[float] = None
     total_tax_amount: Optional[float] = None

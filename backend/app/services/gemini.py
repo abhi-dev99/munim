@@ -96,6 +96,8 @@ Schema:
   "gstin_supplier": "15-char GSTIN or null",
   "gstin_buyer": "15-char GSTIN or null",
   "supplier_name": "string",
+  "supplier_email": "string or null",
+  "supplier_phone": "string or null",
   "line_items": [
     {
       "description": "string",
@@ -123,6 +125,7 @@ Rules:
 - If a field is not visible or unreadable, set it to null.
 - For amounts, use numbers without currency symbols.
 - Parse dates into YYYY-MM-DD format.
+- supplier_phone should contain only digits (strip spaces and +91 if present).
 - confidence should be 0.0 to 1.0 reflecting extraction quality.
 """
 

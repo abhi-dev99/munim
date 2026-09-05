@@ -88,6 +88,8 @@ async def upload_invoice_direct(
             invoice_data["invoice_number"] = inv_json.invoice_number
             invoice_data["invoice_date"] = inv_json.invoice_date
             invoice_data["supplier_name"] = inv_json.supplier_name
+            invoice_data["supplier_email"] = inv_json.supplier_email
+            invoice_data["supplier_phone"] = inv_json.supplier_phone
             invoice_data["taxable_amount"] = inv_json.total_taxable_amount
             invoice_data["total_amount"] = inv_json.total_amount
             invoice_data["cgst_amount"] = sum((li.cgst_amount or 0) for li in inv_json.line_items)
@@ -338,6 +340,8 @@ async def handle_invoice_message(phone: str, msg: dict):
             invoice_data["invoice_number"] = inv_json.invoice_number
             invoice_data["invoice_date"] = inv_json.invoice_date
             invoice_data["supplier_name"] = inv_json.supplier_name
+            invoice_data["supplier_email"] = inv_json.supplier_email
+            invoice_data["supplier_phone"] = inv_json.supplier_phone
             invoice_data["taxable_amount"] = inv_json.total_taxable_amount
             invoice_data["total_amount"] = inv_json.total_amount
             invoice_data["cgst_amount"] = sum(

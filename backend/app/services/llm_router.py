@@ -104,6 +104,8 @@ Return a JSON object with EXACTLY these fields (use null for missing values):
   "invoice_number": "string or null",
   "invoice_date": "YYYY-MM-DD format or null",
   "supplier_name": "business/company name of the seller",
+  "supplier_email": "email address of the seller or null",
+  "supplier_phone": "phone number of the seller or null",
   "gstin_supplier": "15-char GST number of seller or null",
   "gstin_buyer": "15-char GST number of buyer or null",
   "total_taxable_amount": number or null,

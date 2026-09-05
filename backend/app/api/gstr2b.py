@@ -360,6 +360,15 @@ async def trigger_reconciliation(trader_id: str, month: int = None, year: int = 
         db = get_supabase()
         reconciler = GSTR2BReconciler()
 
+        # Get trader preferences gracefully (in case migration not run yet)
+        auto_warn_vendors = False
+        try:
+            trader_resp = db.table("traders").select("auto_warn_vendors").eq("id", trader_id).execute()
+            if trader_resp.data:
+                auto_warn_vendors = trader_resp.data[0].get("auto_warn_vendors", False)
+        except Exception as e:
+            logger.warning(f"Could not fetch auto_warn_vendors (migration missing?): {e}")
+
         # Get all GSTR-2B records for this period
         gstr2b_records = await get_gstr2b_records(trader_id, month, year)
         if not gstr2b_records:
@@ -395,6 +404,8 @@ async def trigger_reconciliation(trader_id: str, month: int = None, year: int = 
             )
 
         matched_count = 0
+        from app.api.communications import email_vendor_warning, whatsapp_vendor_warning
+
         for inv in unmatched:
             match_result = reconciler.match_invoice(
                 supplier_gstin=inv.get("gstin_supplier", ""),
@@ -413,6 +424,17 @@ async def trigger_reconciliation(trader_id: str, month: int = None, year: int = 
 
             if is_matched:
                 matched_count += 1
+            else:
+                # If still unmatched and auto-warning is enabled, send warnings
+                if auto_warn_vendors:
+                    inv_id = inv["id"]
+                    try:
+                        if inv.get("supplier_email"):
+                            await email_vendor_warning(inv_id)
+                        elif inv.get("supplier_phone"):
+                            await whatsapp_vendor_warning(inv_id)
+                    except Exception as warn_err:
+                        logger.error(f"Auto-warning failed for {inv_id}: {warn_err}")
 
         return {
             "status": "complete",
