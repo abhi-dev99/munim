@@ -58,6 +58,27 @@ Each entry: **ID · name** — mechanism → why → effort (S/M/L) → tags →
 
 **VOI-3 · Voice-note context capture** — trader adds a short voice memo alongside a photo ("cash payment, Ramesh Traders") transcribed on-device to enrich extraction context (e.g. payment method for the 180-day reversal rule). → Nice-to-have, addresses a real gap (payment status is currently manual), but adds a new data-capture UX mid-hackathon with no existing hook to hang it on. → **M–L** → `PRODUCT` → **catalog.**
 
+### ONB — QR-code onboarding (camera, on-device QR decode)
+
+**ONB-1 · WhatsApp QR onboarding** — CA's dashboard renders a QR code encoding a `wa.me` deep link with a prefilled `JOIN-<short_code>` message; trader scans it with the stock camera app (native OS QR decode, zero app code, zero network call to scan), WhatsApp opens with the message ready, they hit send — that becomes their first message to the bot, which the webhook recognizes and uses to auto-link the CA, skipping the manual CA-number-entry step. → Replaces "type your CA's phone number correctly on a phone keypad" with "point camera, tap send" — a real onboarding-friction fix for a barely-literate-with-forms MSME persona, not a novelty. → **S–M** → `PRODUCT` + `SCORE` (camera; on-device QR decode is a genuine on-device-AI surface even though it happens entirely in the OS camera app, not in Munim's code) → **BUILD.**
+
+  **Status: BUILT** (branch `iqoo/qr-onboarding`). Backend: `short_code`
+  column added to `traders` via `backend/migrations/add_trader_short_code.sql`
+  (not yet applied to the live DB — hand-applied like every other migration
+  here, see § Landmines in `CLAUDE.md`); `GET /api/v1/dashboard/onboard-link`
+  in `backend/app/api/dashboard.py` generates/persists it lazily and returns
+  the wa.me deep link. Webhook: `JOIN_CODE_REGEX` in
+  `backend/app/api/webhook.py` detects `JOIN-<code>` as the very first
+  message in `_handle_registration`, looks the CA up via
+  `get_trader_by_short_code`, and pre-fills `ca_whatsapp_number` before the
+  language step — `_process_registration_step`'s `awaiting_name` branch then
+  skips straight to `awaiting_gstin` instead of asking for the CA's number.
+  Any non-matching or malformed first message falls through to the existing
+  manual flow untouched. Frontend: `OnboardTraderModal.js` renders the QR via
+  the `qrcode` package's canvas API, wired to a new "Onboard Trader" header
+  button on `frontend/src/app/dashboard/page.js`. QR decode itself is 100%
+  on-device camera-app behavior — no code here does any scanning.
+
 ### OFK — Office Kit (build-time usage, not a product dependency)
 
 Be explicit about this distinction in the pitch: **Office Kit is a hackathon build tool provided by iQOO, not something a real trader's CA has installed.** Do not present any of these as end-user product features — that's a fabricated claim a technical judge will catch instantly. All OFK items are pure `SCORE`.

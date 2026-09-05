@@ -4,6 +4,12 @@ All notable changes to Munim.ai are documented here. Format loosely follows [Kee
 
 ---
 
+## 2026-09-04
+
+### Added
+- **On feature branch, not yet merged to `main`:**
+  - `iqoo/qr-onboarding` — QR-code-based trader onboarding: the CA's dashboard renders a `wa.me` deep link (`JOIN-<short_code>`) as a scannable QR code (native OS camera QR decode, zero app code, zero network call to scan); a trader's first WhatsApp message matching `JOIN-<code>` auto-links the CA and skips the manual CA-phone-number step in the registration flow. New `short_code` column on `traders` (migration not yet applied to the live DB) and `GET /api/v1/dashboard/onboard-link`.
+
 ## 2026-09-03
 
 ### Added
