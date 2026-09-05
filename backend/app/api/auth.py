@@ -1,13 +1,23 @@
 import logging
 import random
+import time
+import uuid
 from typing import Dict, Optional
 from datetime import datetime, timedelta
 from pydantic import BaseModel
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from app.services.supabase_client import get_supabase
 from app.services import whatsapp
 
-from app.services.redis_cache import get_redis, _mem_set, _mem_get, _mem_delete, check_rate_limit
+from app.services.redis_cache import (
+    get_redis,
+    _mem_set,
+    _mem_get,
+    _mem_delete,
+    check_rate_limit,
+    revoke_token,
+)
+from app.api.deps import get_current_token_payload
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
 logger = logging.getLogger(__name__)
@@ -148,13 +158,30 @@ async def verify_otp(data: OTPVerify):
     if trader:
         payload = {
             "sub": trader["id"],
+            "jti": str(uuid.uuid4()),
             "exp": datetime.utcnow() + timedelta(days=365),
             "iat": datetime.utcnow(),
         }
         token = jwt.encode(payload, settings.jwt_secret, algorithm="HS256")
-    
+
     return {
         "message": "Login successful.",
         "trader": trader,
         "token": token
     }
+
+
+@router.post("/logout")
+async def logout(payload: dict = Depends(get_current_token_payload)):
+    """
+    Revoke the caller's current token. Tokens issued before jti support was
+    added have no jti to revoke — logging out with one of those is a no-op
+    on the server side (the client should still discard it locally).
+    """
+    jti = payload.get("jti")
+    if jti:
+        exp = payload.get("exp")
+        ttl = max(int(exp - time.time()), 1) if exp else 3600
+        revoke_token(jti, ttl)
+
+    return {"message": "Logged out successfully."}
