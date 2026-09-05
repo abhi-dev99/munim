@@ -354,8 +354,7 @@ export default function Home() {
         },
         { 
           element: '#sidebar-my-profile', 
-          popover: { title: 'My Profile', description: 'Manage your personal CA details and configure automated WhatsApp reminders for missing GSTINs right from this panel.', side: "right", align: 'start' },
-          onHighlightStarted: () => { router.push('/dashboard/profile'); }
+          popover: { title: 'My Profile', description: 'Manage your personal CA details and configure automated WhatsApp reminders for missing GSTINs right from this panel.', side: "right", align: 'start' }
         }
       ]
     });
