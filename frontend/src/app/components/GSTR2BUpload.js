@@ -127,17 +127,37 @@ export default function GSTR2BUpload({ traderId, apiBase, onUploadComplete }) {
 
       {/* Success result */}
       {result && (
-        <div className="mt-4 p-3 bg-white border border-[var(--border-subtle)] rounded-lg flex items-start gap-3">
-          <CheckCircle2 size={16} className="text-black mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="text-sm font-bold text-black">Upload Complete</p>
-            <p className="text-xs text-[var(--text-secondary)]">
-              {result.inserted} records imported, {result.skipped} skipped · {months.find(m => m.v === result.month)?.l} {result.year}
-            </p>
+        <div className="mt-4 p-3 bg-white border border-[var(--border-subtle)] rounded-lg space-y-3">
+          <div className="flex items-start gap-3">
+            <CheckCircle2 size={16} className="text-black mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-bold text-black">Upload Complete</p>
+              <p className="text-xs text-[var(--text-secondary)]">
+                {result.inserted} records imported, {result.skipped} skipped · {months.find(m => m.v === result.month)?.l} {result.year}
+              </p>
+            </div>
+            <button onClick={() => setResult(null)} className="text-[var(--text-muted)] hover:text-black">
+              <X size={14} />
+            </button>
           </div>
-          <button onClick={() => setResult(null)} className="ml-auto text-[var(--text-muted)] hover:text-black">
-            <X size={14} />
+          {/* Re-run reconciliation button */}
+          <button
+            onClick={async () => {
+              try {
+                const res = await fetch(`${apiBase}/api/v1/gstr2b/reconcile/${traderId}?month=${month}&year=${year}`, { method: "POST" });
+                const data = await res.json();
+                setResult(prev => ({ ...prev, reconciliation: data }));
+              } catch (e) { /* ignore */ }
+            }}
+            className="w-full text-xs font-bold py-2 px-3 bg-black text-white rounded hover:bg-black/80 transition-colors"
+          >
+            Re-run Reconciliation
           </button>
+          {result.reconciliation && (
+            <p className="text-xs text-[var(--text-secondary)]">
+              ✅ {result.reconciliation.newly_matched} invoices matched of {result.reconciliation.invoices_checked} checked
+            </p>
+          )}
         </div>
       )}
 
