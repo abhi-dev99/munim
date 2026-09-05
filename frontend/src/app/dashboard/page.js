@@ -2,7 +2,7 @@
 import { authFetch } from "@/src/app/utils/api";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import MoneyMeter from "../components/MoneyMeter";
 import SupplierHealth from "../components/SupplierHealth";
 import ActionQueue from "../components/ActionQueue";
@@ -283,28 +283,72 @@ export default function Home() {
   const [activeBusinessName, setActiveBusinessName] = useState("");
   const [actionCount, setActionCount] = useState(0);
 
-  const [layoutPrefs, setLayoutPrefs] = useState(null);
+  const [fullPrefs, setFullPrefs] = useState(null);
+  const dragItem = useRef(null);
+  const dragOverItem = useRef(null);
 
   useEffect(() => {
     if (!traderId) return;
     authFetch(`${API_BASE}/api/v1/dashboard/preferences/${traderId}`)
       .then(r => r.json())
       .then(d => {
-        if (d.dashboard) setLayoutPrefs(d.dashboard);
+        if (d.dashboard) setFullPrefs(d);
       }).catch(console.error);
   }, [traderId]);
 
   const defaultRightRail = ["supplier_risk", "filing_readiness", "eway_bills", "quick_links"];
-  const rightRailOrder = layoutPrefs || defaultRightRail;
+  const rightRailOrder = fullPrefs?.dashboard || defaultRightRail;
 
-  const renderRightRailWidget = (id) => {
+  const handleSort = async () => {
+    let _rightRailOrder = [...rightRailOrder];
+    const draggedItemContent = _rightRailOrder.splice(dragItem.current, 1)[0];
+    _rightRailOrder.splice(dragOverItem.current, 0, draggedItemContent);
+    dragItem.current = null;
+    dragOverItem.current = null;
+    
+    const newPrefs = { ...fullPrefs, dashboard: _rightRailOrder };
+    if (!newPrefs.sidebar) newPrefs.sidebar = ["money-meter", "suppliers", "actions", "reports"]; // fallback
+    
+    setFullPrefs(newPrefs);
+    
+    // Save to backend
+    try {
+      await authFetch(`${API_BASE}/api/v1/dashboard/preferences/${traderId}`, {
+        method: "POST",
+        body: JSON.stringify(newPrefs)
+      });
+    } catch(e) {
+      console.error("Failed to save new layout order:", e);
+    }
+  };
+
+  const renderRightRailWidget = (id, index) => {
+    let widget = null;
     switch (id) {
-      case "supplier_risk": return <SupplierRiskCard key="supplier_risk" traderId={traderId} onSwitchTab={setActiveTab} />;
-      case "filing_readiness": return <FilingReadinessCard key="filing_readiness" traderId={traderId} summary={summary} onSwitchTab={setActiveTab} />;
-      case "eway_bills": return <EWayBillCard key="eway_bills" />;
-      case "quick_links": return <QuickLinksCard key="quick_links" traderId={traderId} />;
+      case "supplier_risk": widget = <SupplierRiskCard traderId={traderId} onSwitchTab={setActiveTab} />; break;
+      case "filing_readiness": widget = <FilingReadinessCard traderId={traderId} summary={summary} onSwitchTab={setActiveTab} />; break;
+      case "eway_bills": widget = <EWayBillCard />; break;
+      case "quick_links": widget = <QuickLinksCard traderId={traderId} />; break;
       default: return null;
     }
+    
+    return (
+      <div 
+        key={id}
+        draggable
+        onDragStart={(e) => { dragItem.current = index; }}
+        onDragEnter={(e) => { dragOverItem.current = index; e.preventDefault(); }}
+        onDragOver={(e) => e.preventDefault()}
+        onDragEnd={handleSort}
+        className="cursor-grab active:cursor-grabbing hover:ring-2 hover:ring-gray-200 transition-all rounded-xl relative"
+        title="Drag to reorder"
+      >
+        <div className="absolute top-2 right-2 opacity-0 hover:opacity-100 z-10 p-1 bg-white/80 rounded backdrop-blur-sm pointer-events-none transition-opacity">
+           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>
+        </div>
+        {widget}
+      </div>
+    );
   };
 
   const [isComposition, setIsComposition] = useState(false);
@@ -594,7 +638,7 @@ export default function Home() {
               transition={{ delay: 0.12, duration: 0.3 }}
               className="flex flex-col gap-3 min-h-0 overflow-y-auto pr-1"
             >
-              {rightRailOrder.map(renderRightRailWidget)}
+              {rightRailOrder.map((id, idx) => renderRightRailWidget(id, idx))}
             </motion.div>
           </motion.div>
         )}

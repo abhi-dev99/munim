@@ -3,7 +3,7 @@ import { authFetch } from "@/src/app/utils/api";
 
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
@@ -38,6 +38,7 @@ function MiniSparkline({ data = [] }) {
 
 export default function Sidebar({ activeTab, onTabChange, actionCount = 0, traderId, apiBase }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { t } = useLanguage();
   const [isWhatsappEnabled, setIsWhatsappEnabled] = useState(false);
   const [testAlertSent, setTestAlertSent] = useState(false);
@@ -259,7 +260,7 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, trade
       <div className="px-4 pb-2 flex-none">
         <button
           onClick={() => router.push("/dashboard/profile")}
-          className="flex items-center gap-3 px-3 py-2.5 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors w-full text-sm font-semibold"
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-sm font-semibold ${pathname === "/dashboard/profile" ? "bg-emerald-50 text-emerald-600 font-bold" : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"}`}
         >
           <div className="w-7 h-7 rounded-full bg-[#10b981] text-white flex items-center justify-center font-bold text-[11px]">
             {authName}

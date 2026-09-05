@@ -21,6 +21,7 @@ import {
   Eye,
   EyeOff,
   AlertTriangle,
+  MessageCircle,
 } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
 
@@ -176,12 +177,12 @@ function ConfigDashboard({ traderId }) {
       <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
         <div className="grid grid-cols-2 gap-8">
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Dashboard Right Rail</h3>
-            {renderList("dashboard", allDashboardWidgets)}
-          </div>
-          <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Left Sidebar</h3>
             {renderList("sidebar", allSidebarWidgets)}
+          </div>
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Dashboard Right Rail</h3>
+            {renderList("dashboard", allDashboardWidgets)}
           </div>
         </div>
         <div className="mt-6 flex justify-end pt-4 border-t border-gray-100">
@@ -200,6 +201,17 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [traders, setTraders] = useState([]);
+
+  const handleSendReminder = async (traderId) => {
+    try {
+      const res = await authFetch(`${API_BASE}/api/v1/communications/remind-gstin/${traderId}`, { method: "POST" });
+      if (res.ok) alert("WhatsApp reminder sent to client!");
+      else alert("Failed to send reminder. Check client's phone number.");
+    } catch (e) {
+      alert("Failed to send reminder.");
+    }
+  };
+
   const [profile, setProfile] = useState({
     name: "",
     email: "",
@@ -304,7 +316,16 @@ export default function ProfilePage() {
                     {traders.map(t => (
                       <tr key={t.id} className="hover:bg-gray-50/60 transition-colors">
                         <td className="px-4 py-3 font-semibold text-gray-900">{t.name || t.business_name || "—"}</td>
-                        <td className="px-4 py-3 font-mono text-xs text-gray-500 bg-gray-50">{t.gstin || "Not set"}</td>
+                        <td className="px-4 py-3 font-mono text-xs text-gray-500 bg-gray-50">
+                          <div className="flex items-center justify-between">
+                            <span>{t.gstin || "Not set"}</span>
+                            {!t.gstin && (
+                              <button onClick={() => handleSendReminder(t.id)} className="ml-2 p-1 text-green-600 hover:bg-green-100 rounded" title="Send WhatsApp Reminder">
+                                <MessageCircle size={14} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-4 py-3 text-gray-600">{t.whatsapp_number || "—"}</td>
                         <td className="px-4 py-3 text-right">
                           {(t.open_issues || 0) > 0 ? (
