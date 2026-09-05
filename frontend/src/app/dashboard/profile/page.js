@@ -12,10 +12,10 @@ import {
   CreditCard,
   Save,
   Users,
-  AlertTriangle,
   CheckCircle2,
   Edit3,
 } from "lucide-react";
+import { useLanguage } from "../../context/LanguageContext";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -60,6 +60,7 @@ function InputField({ label, value, onChange, type = "text", disabled = false, i
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [traders, setTraders] = useState([]);
@@ -134,17 +135,17 @@ export default function ProfilePage() {
         {/* Header */}
         <header className="flex-none h-[65px] px-8 border-b border-gray-200 bg-white flex items-center gap-3 sticky top-0 z-10">
           <User size={18} className="text-[#10b981]" />
-          <h1 className="text-base font-bold text-gray-900">My Profile</h1>
+          <h1 className="text-base font-bold text-gray-900">{t("pro_my_profile")}</h1>
           <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">CA Dashboard</span>
         </header>
 
         <div className="p-8 max-w-4xl mx-auto w-full space-y-8">
           {/* Portfolio Overview */}
           <section>
-            <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Portfolio Overview</h2>
+            <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">{t("pro_portfolio")}</h2>
             <div className="grid grid-cols-3 gap-4">
-              <StatCard icon={Users}       label="Total Clients"     value={totalClients || "—"}        color="gray"  />
-              <StatCard icon={AlertTriangle} label="With Issues"     value={withIssues || "0"}          color={withIssues > 0 ? "amber" : "green"} sub={withIssues > 0 ? "Click Action Queue to review" : "All clients are compliant"} />
+              <StatCard icon={Users}       label={t("pro_total_clients")}     value={totalClients || "—"}        color="gray"  />
+              <StatCard icon={AlertTriangle} label={t("pro_clients_with_issues")}     value={withIssues || "0"}          color={withIssues > 0 ? "amber" : "green"} sub={withIssues > 0 ? "Click Action Queue to review" : "All clients are compliant"} />
               <StatCard icon={CheckCircle2}  label="Avg Compliance"  value={avgCompliance ? `${avgCompliance}%` : "—"} color={avgCompliance >= 80 ? "green" : avgCompliance >= 50 ? "amber" : "red"} />
             </div>
           </section>
@@ -232,7 +233,7 @@ export default function ProfilePage() {
                   ) : (
                     <Save size={14} />
                   )}
-                  {saving ? "Saving…" : "Save Changes"}
+                  {saving ? t("loading") : t("pro_save")}
                 </button>
               </div>
             </div>
