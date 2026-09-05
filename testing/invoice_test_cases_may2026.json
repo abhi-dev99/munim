@@ -1,0 +1,352 @@
+{
+  "_meta": {
+    "business": "Suryakant Optics, Nashik, Maharashtra",
+    "trader_gstin": "27ACCPS7562H1Z8",
+    "period": "May 2026",
+    "purpose": "Demo test cases covering all 7 ITC/reconciliation paths",
+    "note": "val in gstr2b_may2026.json = taxable amount (pre-tax), so record.total = taxable+igst+cgst+sgst = invoice total_amount. This makes reconciler matching work correctly."
+  },
+  "scenarios": [
+    {
+      "id": 1,
+      "scenario": "PERFECT_MATCH",
+      "expected_itc_status": "CONFIRMED",
+      "expected_gstr2b_match": "MATCHED",
+      "demo_narrative": "Invoice exactly matches GSTR-2B. GSTIN valid, HSN correct at 12%, ITC of Rs.2700 confirmed. This is the happy path - what most invoices should look like.",
+      "invoice_json": {
+        "invoice_number": "NOL/2025-26/1847",
+        "invoice_date": "2026-05-08",
+        "gstin_supplier": "27AABCN5432P1Z3",
+        "gstin_buyer": "27ACCPS7562H1Z8",
+        "supplier_name": "NASHIK OPTICAL WHOLESALERS PVT LTD",
+        "line_items": [
+          {
+            "description": "Acetate Full-Rim Spectacle Frames (Mixed assortment - round, rectangular)",
+            "hsn_code": "9004",
+            "quantity": 50,
+            "unit": "PCS",
+            "unit_price": 450.00,
+            "taxable_value": 22500.00,
+            "cgst_rate": 6.0,
+            "sgst_rate": 6.0,
+            "igst_rate": 0.0,
+            "cgst_amount": 1350.00,
+            "sgst_amount": 1350.00,
+            "igst_amount": 0.00
+          }
+        ],
+        "total_taxable_amount": 22500.00,
+        "total_tax_amount": 2700.00,
+        "total_amount": 25200.00,
+        "confidence": 0.97
+      },
+      "expected_output": {
+        "itc_amount_eligible": 2700.00,
+        "itc_amount_blocked": 0.00,
+        "gstr2b_match_status": "MATCHED",
+        "gstr2b_match_confidence": 1.0,
+        "fraud_score_max": 15
+      }
+    },
+    {
+      "id": 2,
+      "scenario": "FUZZY_MATCH_TYPO",
+      "expected_itc_status": "CONFIRMED",
+      "expected_gstr2b_match": "PROBABLE_MATCH",
+      "demo_narrative": "Supplier printed SVLC/MAY/2026/00892 on the paper invoice but filed SVLC/MAY/2026/892 in their GSTR-1 (dropped the leading zeros). Levenshtein distance = 2. Munim catches this instead of flagging it as unmatched ITC.",
+      "invoice_json": {
+        "invoice_number": "SVLC/MAY/2026/00892",
+        "invoice_date": "2026-05-14",
+        "gstin_supplier": "33AADCS7891K1Z2",
+        "gstin_buyer": "27ACCPS7562H1Z8",
+        "supplier_name": "SAFEVISION LENS MANUFACTURING CO",
+        "line_items": [
+          {
+            "description": "Daily Disposable Contact Lenses - 30 lens pack (power: -1.00 to -4.00)",
+            "hsn_code": "9001",
+            "quantity": 200,
+            "unit": "PCS",
+            "unit_price": 95.00,
+            "taxable_value": 19000.00,
+            "cgst_rate": 0.0,
+            "sgst_rate": 0.0,
+            "igst_rate": 12.0,
+            "cgst_amount": 0.00,
+            "sgst_amount": 0.00,
+            "igst_amount": 2280.00
+          }
+        ],
+        "total_taxable_amount": 19000.00,
+        "total_tax_amount": 2280.00,
+        "total_amount": 21280.00,
+        "confidence": 0.95
+      },
+      "expected_output": {
+        "itc_amount_eligible": 2280.00,
+        "itc_amount_blocked": 0.00,
+        "gstr2b_match_status": "PROBABLE_MATCH",
+        "gstr2b_match_confidence": 0.7,
+        "fraud_score_max": 15,
+        "reconciler_logic": "Pass 2 fires: normalized 'svlcmay202600892' vs 'svlcmay2026892' = lev_dist 2, amount within 2%, date within 30 days"
+      }
+    },
+    {
+      "id": 3,
+      "scenario": "SUPPLIER_NOT_FILED",
+      "expected_itc_status": "AT_RISK",
+      "expected_gstr2b_match": "ITC_AT_RISK",
+      "demo_narrative": "Royal Optica Frames (Gujarat supplier) has NOT filed their GSTR-1 for May 2026. Rs.3840 ITC is at serious risk. Munim sends proactive alert. Section 16(2)(c): ITC only available if supplier files.",
+      "invoice_json": {
+        "invoice_number": "ROF/2526/MAY/0156",
+        "invoice_date": "2026-05-19",
+        "gstin_supplier": "24AABCR8765H1Z4",
+        "gstin_buyer": "27ACCPS7562H1Z8",
+        "supplier_name": "ROYAL OPTICA FRAMES",
+        "line_items": [
+          {
+            "description": "Titanium Rimless Spectacle Frames - TR90 Flexible (Premium range)",
+            "hsn_code": "9004",
+            "quantity": 25,
+            "unit": "PCS",
+            "unit_price": 1280.00,
+            "taxable_value": 32000.00,
+            "cgst_rate": 0.0,
+            "sgst_rate": 0.0,
+            "igst_rate": 12.0,
+            "cgst_amount": 0.00,
+            "sgst_amount": 0.00,
+            "igst_amount": 3840.00
+          }
+        ],
+        "total_taxable_amount": 32000.00,
+        "total_tax_amount": 3840.00,
+        "total_amount": 35840.00,
+        "confidence": 0.94
+      },
+      "expected_output": {
+        "itc_amount_eligible": 3840.00,
+        "itc_amount_blocked": 0.00,
+        "itc_status": "AT_RISK",
+        "gstr2b_match_status": "ITC_AT_RISK",
+        "gstr2b_match_confidence": 0.0,
+        "action": "Contact Royal Optica Frames to file their GSTR-1 for May 2026",
+        "legal_section": "16(2)(c)"
+      }
+    },
+    {
+      "id": 4,
+      "scenario": "SECTION_17_5_BLOCKED",
+      "expected_itc_status": "INELIGIBLE",
+      "expected_gstr2b_match": "MATCHED",
+      "demo_narrative": "Business dinner at Woodland Residency hotel. GSTR-2B match is perfect - supplier filed. But ITC is ZERO by law. Section 17(5)(b): food & beverages are a hard block. No workaround exists. Rs.630 tax is a sunk cost.",
+      "invoice_json": {
+        "invoice_number": "WR/MAY/2026/4521",
+        "invoice_date": "2026-05-22",
+        "gstin_supplier": "27AADCW3456P1Z8",
+        "gstin_buyer": "27ACCPS7562H1Z8",
+        "supplier_name": "WOODLAND RESIDENCY",
+        "line_items": [
+          {
+            "description": "Restaurant services - Business dinner for 4 persons (AC restaurant with bar)",
+            "hsn_code": "9963",
+            "quantity": 1,
+            "unit": "LOT",
+            "unit_price": 3500.00,
+            "taxable_value": 3500.00,
+            "cgst_rate": 9.0,
+            "sgst_rate": 9.0,
+            "igst_rate": 0.0,
+            "cgst_amount": 315.00,
+            "sgst_amount": 315.00,
+            "igst_amount": 0.00
+          }
+        ],
+        "total_taxable_amount": 3500.00,
+        "total_tax_amount": 630.00,
+        "total_amount": 4130.00,
+        "confidence": 0.96
+      },
+      "expected_output": {
+        "itc_amount_eligible": 0.00,
+        "itc_amount_blocked": 630.00,
+        "itc_status": "INELIGIBLE",
+        "block_reason": "Section 17(5)(b) - Restaurant/food & beverage services, ITC not available",
+        "legal_section": "17(5)",
+        "gstr2b_match_status": "MATCHED",
+        "reconciler_logic": "HSN 9963 prefix matches BLOCKED_HSN_PREFIXES['9963']"
+      }
+    },
+    {
+      "id": 5,
+      "scenario": "HSN_RATE_MISMATCH",
+      "expected_itc_status": "FIXABLE_BLOCKED",
+      "expected_gstr2b_match": "MATCHED",
+      "demo_narrative": "Shree Vinayak charged 18% GST (HSN 9004) instead of correct 12%. Rs.1440 is over-charged tax - ITC on the excess is blocked because the invoice is technically wrong. Munim flags this and tells owner to ask supplier for a credit note.",
+      "invoice_json": {
+        "invoice_number": "SVSW/2526/344",
+        "invoice_date": "2026-05-05",
+        "gstin_supplier": "27ABCPV6789H1Z1",
+        "gstin_buyer": "27ACCPS7562H1Z8",
+        "supplier_name": "SHREE VINAYAK SPECTACLE WORKS",
+        "line_items": [
+          {
+            "description": "Bifocal glass reading lenses - CR-39 optical grade (assorted powers)",
+            "hsn_code": "9004",
+            "quantity": 300,
+            "unit": "PCS",
+            "unit_price": 80.00,
+            "taxable_value": 24000.00,
+            "cgst_rate": 9.0,
+            "sgst_rate": 9.0,
+            "igst_rate": 0.0,
+            "cgst_amount": 2160.00,
+            "sgst_amount": 2160.00,
+            "igst_amount": 0.00
+          }
+        ],
+        "total_taxable_amount": 24000.00,
+        "total_tax_amount": 4320.00,
+        "total_amount": 28320.00,
+        "confidence": 0.93
+      },
+      "expected_output": {
+        "itc_amount_eligible": 2880.00,
+        "itc_amount_blocked": 1440.00,
+        "itc_status": "FIXABLE_BLOCKED",
+        "block_reason": "HSN 9004 rate mismatch: 18% charged, correct rate is 12%. Excess CGST/SGST of Rs.1440 blocked.",
+        "fix_action": "Ask Shree Vinayak Spectacle Works to issue a credit note for excess tax charged",
+        "legal_section": "16(2)",
+        "gstr2b_match_status": "MATCHED",
+        "itc_delta": 1440.00
+      }
+    },
+    {
+      "id": 6,
+      "scenario": "FRAUD_RISK_NEW_GSTIN",
+      "expected_itc_status": "FRAUD_FLAGGED",
+      "expected_gstr2b_match": "MATCHED",
+      "demo_narrative": "VisionTech Optical filed in GSTR-2B (looks legit) BUT: GSTIN registered only 126 days ago, this is invoice #001 (first ever), and value is Rs.4.76 lakhs. Classic ITC fraud pattern. Munim fraud score fires. Flag for CA review before claiming.",
+      "invoice_json": {
+        "invoice_number": "VTOS/2026/001",
+        "invoice_date": "2026-05-25",
+        "gstin_supplier": "27AADCV3421P1ZN",
+        "gstin_buyer": "27ACCPS7562H1Z8",
+        "supplier_name": "VISIONTECH OPTICAL SOLUTIONS",
+        "line_items": [
+          {
+            "description": "Premium Titanium-Acetate Eyewear Frames - Designer collection (bulk)",
+            "hsn_code": "9004",
+            "quantity": 200,
+            "unit": "PCS",
+            "unit_price": 2125.00,
+            "taxable_value": 425000.00,
+            "cgst_rate": 6.0,
+            "sgst_rate": 6.0,
+            "igst_rate": 0.0,
+            "cgst_amount": 25500.00,
+            "sgst_amount": 25500.00,
+            "igst_amount": 0.00
+          }
+        ],
+        "total_taxable_amount": 425000.00,
+        "total_tax_amount": 51000.00,
+        "total_amount": 476000.00,
+        "confidence": 0.91
+      },
+      "fraud_context": {
+        "gstin_registration_date": "2026-02-14",
+        "gstin_age_days": 100,
+        "note": "Inject this registration_date into GSTIN validation mock/API response for fraud signal to trigger. Signal 1 (gstin_age) fires: age < 180 days AND invoice > Rs.50,000."
+      },
+      "expected_output": {
+        "itc_amount_eligible": 0.00,
+        "itc_amount_blocked": 51000.00,
+        "itc_status": "FRAUD_FLAGGED",
+        "fraud_score_min": 35,
+        "fraud_signals_triggered": ["gstin_age", "sequential_invoices"],
+        "gstr2b_match_status": "MATCHED",
+        "action": "Do NOT claim ITC until CA verifies this supplier is genuine"
+      }
+    },
+    {
+      "id": 7,
+      "scenario": "AMOUNT_DATE_MATCH_DIFFERENT_FORMAT",
+      "expected_itc_status": "CONFIRMED",
+      "expected_gstr2b_match": "POSSIBLE_MATCH",
+      "demo_narrative": "Titan's ERP system generates internal reference codes (TITANB00040320). The paper invoice shows TET/NAS/0512/2026. Numbers are completely different - pass 1 and 2 both fail. But amount Rs.40320 matches within 1% AND date matches within 15 days - pass 3 fires: POSSIBLE_MATCH. CA should verify once.",
+      "invoice_json": {
+        "invoice_number": "TET/NAS/0512/2026",
+        "invoice_date": "2026-05-12",
+        "gstin_supplier": "29AABCT8765P1Z4",
+        "gstin_buyer": "27ACCPS7562H1Z8",
+        "supplier_name": "TITAN EYEPLUS DISTRIBUTION NETWORK",
+        "line_items": [
+          {
+            "description": "Titan Fastrack Eyewear Collection - Assorted metal/plastic frames (bulk dealer pack)",
+            "hsn_code": "9004",
+            "quantity": 15,
+            "unit": "PCS",
+            "unit_price": 2400.00,
+            "taxable_value": 36000.00,
+            "cgst_rate": 0.0,
+            "sgst_rate": 0.0,
+            "igst_rate": 12.0,
+            "cgst_amount": 0.00,
+            "sgst_amount": 0.00,
+            "igst_amount": 4320.00
+          }
+        ],
+        "total_taxable_amount": 36000.00,
+        "total_tax_amount": 4320.00,
+        "total_amount": 40320.00,
+        "confidence": 0.96
+      },
+      "expected_output": {
+        "itc_amount_eligible": 4320.00,
+        "itc_amount_blocked": 0.00,
+        "itc_status": "CONFIRMED",
+        "gstr2b_match_status": "POSSIBLE_MATCH",
+        "gstr2b_match_confidence": 0.6,
+        "reconciler_logic": "Pass 1 FAIL (tetnaso51220 26 vs titanb00040320, lev >> 2). Pass 2 FAIL (same). Pass 3 FIRES: amount 40320 vs 40320 within 1%, date 12-05-2026 vs 12-05-2026 within 15 days."
+      }
+    },
+    {
+      "id": 8,
+      "scenario": "MISSED_ITC_IN_GSTR2B",
+      "expected_itc_status": "MISSED",
+      "expected_gstr2b_match": "N/A - no invoice scanned",
+      "demo_narrative": "Arihant Optics filed their GSTR-1 for May 2026. Rs.4560 of ITC is SITTING IN GSTR-2B ready to claim. But Suryakant Optics never scanned this invoice (physically lost or forgot). Munim detects this MISSED ITC from GSTR-2B and alerts the trader. This is money left on the table.",
+      "invoice_json": null,
+      "gstr2b_record": {
+        "supplier_gstin": "27AABCA9876H1Z7",
+        "supplier_name": "ARIHANT OPTICS LTD",
+        "invoice_number": "AOL/2526/0847",
+        "invoice_date": "2026-05-02",
+        "taxable_amount": 38000.00,
+        "cgst": 2280.00,
+        "sgst": 2280.00,
+        "igst": 0.00,
+        "total_amount": 42560.00,
+        "itc_available": 4560.00
+      },
+      "expected_output": {
+        "itc_missed": 4560.00,
+        "detection_method": "find_missed_itc() in GSTR2BReconciler: record in gstr2b_records but not in processed invoice hashes",
+        "action": "Locate the physical invoice from Arihant Optics dated 02-May-2026, scan and upload to claim Rs.4560 ITC"
+      }
+    }
+  ],
+  "summary": {
+    "total_scenarios": 8,
+    "total_invoices_to_scan": 7,
+    "total_purchase_value": 631090.00,
+    "itc_confirmed": 9300.00,
+    "itc_at_risk": 3840.00,
+    "itc_blocked_fixable": 1440.00,
+    "itc_ineligible": 630.00,
+    "itc_fraud_flagged": 51000.00,
+    "itc_missed_in_gstr2b": 4560.00,
+    "total_recovery_possible": 5280.00,
+    "demo_talking_point": "Of Rs.70,230 in total GST paid this month, Munim identified Rs.5,280 immediately recoverable, Rs.3,840 at risk (supplier not filed), and Rs.51,000 fraud-flagged. Without Munim, a small shop owner would have NO visibility into any of this."
+  }
+}

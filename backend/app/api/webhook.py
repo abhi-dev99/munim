@@ -390,12 +390,12 @@ async def handle_invoice_message(phone: str, msg: dict):
     except Exception as e:
         err_str = str(e)
         logger.error(f"Invoice processing failed for {phone}: {e}", exc_info=True)
-        if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower() or "API_QUOTA_EXCEEDED" in err_str:
+        if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower() or "API_QUOTA_EXCEEDED" in err_str or "all API keys rate-limited" in err_str:
             await whatsapp.send_text_message(
                 phone,
-                "⚠️ Munim AI abhi busy hai — aaj ka API limit khatam ho gaya.\n"
-                "Kal subah try karein. Koi invoice miss nahi hogi!\n\n"
-                "(Daily API limit reached — resets at midnight IST)"
+                "⚠️ Munim abhi thodi der ke liye available nahi hai.\n"
+                "Kripya 2-3 minute baad dobara try karein. 🙏\n"
+                "Aapki invoice safe hai — koi data miss nahi hogi!"
             )
         else:
             await whatsapp.send_text_message(
@@ -430,9 +430,9 @@ async def handle_voice_message(phone: str, msg: dict):
     if transcript == QUOTA_EXCEEDED:
         await whatsapp.send_text_message(
             phone,
-            "⚠️ Munim AI abhi available nahi hai — aaj ka API limit khatam ho gaya.\n"
-            "Kal subah try karein ya text mein likhein.\n\n"
-            "(Service will resume tomorrow)"
+            "⚠️ Munim abhi thodi der ke liye available nahi hai.\n"
+            "Kripya 2-3 minute baad dobara try karein. 🙏\n"
+            "Ya apna message text mein likh ke bhej sakte hain."
         )
         return
 

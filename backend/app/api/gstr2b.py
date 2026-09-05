@@ -258,7 +258,7 @@ async def trigger_reconciliation(trader_id: str, month: int = None, year: int = 
     Useful after uploading new GSTR-2B data.
     """
     try:
-        from app.domain.reconciler import GSTR2BReconciler
+        from app.domain.reconciler import GSTR2BReconciler, GSTR2BRecord
         from app.services.supabase_client import get_gstr2b_records, get_invoices_for_trader
 
         now = date.today()
@@ -273,29 +273,53 @@ async def trigger_reconciliation(trader_id: str, month: int = None, year: int = 
         if not gstr2b_records:
             return {"status": "no_2b_data", "message": "No GSTR-2B records found for this period. Please upload first.", "matched": 0}
 
-        # Get unmatched invoices for this month
+        # Get all invoices for this month — re-run reconciles everything
         invoices = await get_invoices_for_trader(trader_id, month, year)
-        unmatched = [inv for inv in invoices if inv.get("gstr2b_match_status") in (None, "UNRECONCILED", "ITC_AT_RISK")]
+        unmatched = invoices  # re-run checks all invoices regardless of prior status
+
+        from datetime import datetime
+        
+        # Convert dicts to GSTR2BRecord objects
+        records_obj = []
+        for r in gstr2b_records:
+            date_obj = None
+            if r.get("invoice_date"):
+                try:
+                    date_obj = datetime.strptime(r["invoice_date"], "%Y-%m-%d").date()
+                except ValueError:
+                    pass
+            
+            records_obj.append(
+                GSTR2BRecord(
+                    record_id=str(r.get("id")),
+                    supplier_gstin=r.get("supplier_gstin", ""),
+                    invoice_number=r.get("invoice_number", ""),
+                    invoice_date=date_obj,
+                    taxable_value=float(r.get("taxable_value") or 0),
+                    igst=float(r.get("igst") or 0),
+                    cgst=float(r.get("cgst") or 0),
+                    sgst=float(r.get("sgst") or 0),
+                )
+            )
 
         matched_count = 0
         for inv in unmatched:
-            match_result = reconciler.reconcile(
-                invoice_number=inv.get("invoice_number", ""),
+            match_result = reconciler.match_invoice(
                 supplier_gstin=inv.get("gstin_supplier", ""),
-                invoice_amount=inv.get("total_amount", 0),
-                invoice_date=inv.get("invoice_date", ""),
-                gstr2b_records=gstr2b_records,
+                invoice_number=inv.get("invoice_number", ""),
+                invoice_date_str=inv.get("invoice_date", ""),
+                total_amount=inv.get("total_amount", 0),
+                gstr2b_records=records_obj,
             )
 
             # Update the invoice with match result
-            new_status = "MATCHED" if match_result.is_matched else "UNRECONCILED"
+            is_matched = match_result.status in ("MATCHED", "PROBABLE_MATCH", "POSSIBLE_MATCH")
             db.table("invoices").update({
-                "gstr2b_match_status": new_status,
-                "gstr2b_match_type": match_result.match_type if match_result.is_matched else None,
-                "gstr2b_match_score": match_result.score,
+                "gstr2b_match_status": match_result.status,
+                "gstr2b_match_confidence": match_result.confidence,
             }).eq("id", inv["id"]).execute()
 
-            if match_result.is_matched:
+            if is_matched:
                 matched_count += 1
 
         return {

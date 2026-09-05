@@ -3,7 +3,6 @@
 import { CheckCircle2, Clock, CalendarDays } from "lucide-react";
 
 export default function GSTTimeline({ isComposition }) {
-  // Current date mock or actual
   const today = new Date().getDate();
 
   const regularSteps = [
@@ -14,50 +13,35 @@ export default function GSTTimeline({ isComposition }) {
 
   const compositionSteps = [
     { day: 18, label: "CMP-08 Due", desc: "Quarterly self-assessed tax", completed: today > 18 },
-    { day: 30, label: "GSTR-4 Due", desc: "Annual return (April 30th)", completed: false }, // Simplification
+    { day: 30, label: "GSTR-4 Due", desc: "Annual return (April 30th)", completed: false },
   ];
 
   const steps = isComposition ? compositionSteps : regularSteps;
 
   return (
-    <div className="bg-white border border-[var(--border-subtle)] overflow-hidden flex flex-col h-full max-h-[600px]">
-      <div className="p-4 border-b border-[var(--border-subtle)] bg-white space-y-1">
-        <h3 className="font-bold text-sm uppercase tracking-wider text-black flex items-center gap-2">
-          <CalendarDays size={16} className="text-[var(--text-muted)]" />
-          Compliance Timeline
-        </h3>
-        <p className="text-[10px] text-[var(--text-secondary)] uppercase tracking-widest">
-          {isComposition ? "Quarterly Cycle" : "Monthly Cycle"}
-        </p>
+    <div className="flex-none bg-white border border-[var(--border-subtle)]">
+      <div className="px-4 py-2.5 border-b border-[var(--border-subtle)] flex items-center gap-2">
+        <CalendarDays size={14} className="text-[var(--text-muted)]" />
+        <span className="font-bold text-xs uppercase tracking-wider text-black">Compliance Timeline</span>
+        <span className="text-[10px] text-[var(--text-muted)] ml-auto uppercase tracking-widest">
+          {isComposition ? "Quarterly" : "Monthly Cycle"}
+        </span>
       </div>
-
-      <div className="p-6 flex-1 flex flex-col justify-center">
-        <div className="relative border-l border-[var(--border-subtle)] ml-3 space-y-8">
-          {steps.map((step, idx) => (
-            <div key={idx} className="relative pl-6">
-              {/* Dot */}
-              <div className={`absolute -left-2 top-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center bg-white ${step.completed ? 'border-[var(--green-primary)]' : 'border-[var(--border-subtle)]'}`}>
-                {step.completed ? (
-                  <CheckCircle2 size={10} className="text-[var(--green-primary)]" />
-                ) : (
-                  <Clock size={10} className="text-[var(--text-muted)]" />
-                )}
-              </div>
-              
-              <div className="flex flex-col">
-                <span className={`text-[10px] font-bold uppercase tracking-widest ${step.completed ? 'text-[var(--green-primary)]' : 'text-[var(--text-secondary)]'}`}>
-                  {isComposition ? 'Date: ' : 'Month-End + '}{step.day}{!isComposition ? 'th' : 'th'}
-                </span>
-                <span className={`text-sm font-bold mt-1 ${step.completed ? 'text-black' : 'text-[var(--text-secondary)]'}`}>
-                  {step.label}
-                </span>
-                <span className="text-xs text-[var(--text-muted)] mt-0.5">
-                  {step.desc}
-                </span>
-              </div>
+      <div className="flex divide-x divide-[var(--border-subtle)]">
+        {steps.map((step, idx) => (
+          <div key={idx} className="flex-1 px-3 py-3">
+            <div className={`flex items-center gap-1.5 mb-0.5 ${step.completed ? "text-[var(--green-primary)]" : "text-[var(--text-secondary)]"}`}>
+              {step.completed ? <CheckCircle2 size={11} /> : <Clock size={11} />}
+              <span className="text-[10px] font-bold uppercase tracking-widest">
+                {isComposition ? step.day + "th" : "+" + step.day + "th"}
+              </span>
             </div>
-          ))}
-        </div>
+            <div className={`text-xs font-bold leading-tight ${step.completed ? "text-black" : "text-[var(--text-secondary)]"}`}>
+              {step.label}
+            </div>
+            <div className="text-[10px] text-[var(--text-muted)] mt-0.5">{step.desc}</div>
+          </div>
+        ))}
       </div>
     </div>
   );

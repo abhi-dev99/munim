@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Upload, FileText, CheckCircle2, AlertCircle, X } from "lucide-react";
+import { Upload, FileText, CheckCircle2, AlertCircle, X, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function GSTR2BUpload({ traderId, apiBase, onUploadComplete }) {
@@ -11,6 +11,7 @@ export default function GSTR2BUpload({ traderId, apiBase, onUploadComplete }) {
   const [error, setError] = useState(null);
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
+  const [expanded, setExpanded] = useState(false);
 
   const months = [
     { v: 1, l: "January" }, { v: 2, l: "February" }, { v: 3, l: "March" },
@@ -89,15 +90,18 @@ export default function GSTR2BUpload({ traderId, apiBase, onUploadComplete }) {
   }
 
   return (
-    <div className="glass-card p-6">
-      <div className="flex items-center gap-3 mb-6">
-        <FileText size={20} className="text-black" />
-        <div>
-          <h3 className="font-bold text-black text-sm uppercase tracking-wider">Upload GSTR-2B</h3>
-          <p className="text-xs text-[var(--text-secondary)]">JSON export from GST Portal</p>
-        </div>
-      </div>
-
+    <div className="flex-none bg-white border border-[var(--border-subtle)]">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--bg-secondary)] transition-colors"
+      >
+        <FileText size={14} className="text-black flex-none" />
+        <span className="font-bold text-xs uppercase tracking-wider text-black flex-1 text-left">Upload GSTR-2B</span>
+        <span className="text-[10px] text-[var(--text-muted)]">JSON from GST Portal</span>
+        <ChevronDown size={14} className={`text-[var(--text-muted)] transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
+      </button>
+      {expanded && (
+        <div className="border-t border-[var(--border-subtle)] p-4">
       {/* Drop zone */}
       <div
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -190,9 +194,21 @@ export default function GSTR2BUpload({ traderId, apiBase, onUploadComplete }) {
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="text-xs text-[var(--text-secondary)] font-medium p-3 bg-white/50 rounded-lg border border-white/50"
+                className={`text-xs font-medium p-3 rounded-lg border ${
+                  result.reconciliation.detail 
+                    ? 'bg-red-50 border-red-200 text-red-600'
+                    : result.reconciliation.newly_matched > 0
+                      ? 'bg-white/50 border-white/50 text-[var(--text-secondary)]'
+                      : 'bg-orange-50 border-orange-200 text-orange-700'
+                }`}
               >
-                ✅ <strong className="text-black">{result.reconciliation.newly_matched}</strong> invoices matched out of {result.reconciliation.invoices_checked} checked
+                {result.reconciliation.detail ? (
+                  <>❌ Error: Reconciliation failed (backend error).</>
+                ) : (
+                  <>
+                    {result.reconciliation.newly_matched > 0 ? '✅' : '⚠️'} <strong className="text-black">{result.reconciliation.newly_matched}</strong> invoices matched out of {result.reconciliation.invoices_checked} checked
+                  </>
+                )}
               </motion.div>
             )}
           </motion.div>
@@ -219,6 +235,8 @@ export default function GSTR2BUpload({ traderId, apiBase, onUploadComplete }) {
           </motion.div>
         )}
       </AnimatePresence>
+        </div>
+      )}
     </div>
   );
 }

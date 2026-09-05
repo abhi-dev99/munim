@@ -18,7 +18,71 @@ logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
-client = genai.Client(api_key=settings.gemini_api_key)
+
+class _ModelsProxy:
+    """Proxies client.models.* calls through the key pool with automatic rotation."""
+    def __init__(self, pool: "GeminiKeyPool"):
+        self._pool = pool
+
+    def generate_content(self, model, contents, config=None):
+        return self._pool._call(lambda c: c.models.generate_content(
+            model=model, contents=contents, config=config
+        ))
+
+    def embed_content(self, model, contents, config=None):
+        return self._pool._call(lambda c: c.models.embed_content(
+            model=model, contents=contents, config=config
+        ))
+
+
+class GeminiKeyPool:
+    """
+    Transparent drop-in for genai.Client that cycles through up to 7 API keys
+    when a 429 / RESOURCE_EXHAUSTED error is encountered.
+    All existing call sites (client.models.generate_content / embed_content) work unchanged.
+    """
+    def __init__(self, keys: list[str]):
+        active = [k.strip() for k in keys if k and k.strip()]
+        if not active:
+            raise ValueError("GeminiKeyPool: no API keys configured")
+        self._clients = [genai.Client(api_key=k) for k in active]
+        self._idx = 0
+        self.models = _ModelsProxy(self)
+        logger.info(f"GeminiKeyPool: {len(self._clients)} key(s) loaded")
+
+    def _is_rate_limit(self, exc: Exception) -> bool:
+        s = str(exc)
+        return "429" in s or "RESOURCE_EXHAUSTED" in s or "quota" in s.lower()
+
+    def _call(self, fn):
+        start = self._idx
+        for attempt in range(len(self._clients)):
+            idx = (start + attempt) % len(self._clients)
+            try:
+                result = fn(self._clients[idx])
+                self._idx = idx  # stick with the working key
+                return result
+            except Exception as exc:
+                if self._is_rate_limit(exc):
+                    logger.warning(
+                        f"GeminiKeyPool: key[{idx}] rate-limited, "
+                        f"rotating to key[{(idx + 1) % len(self._clients)}]"
+                    )
+                    continue
+                raise
+        # All keys exhausted
+        raise RuntimeError("GeminiKeyPool: all API keys rate-limited")
+
+
+client = GeminiKeyPool(keys=[
+    settings.gemini_api_key,
+    settings.gemini_api_key_2,
+    settings.gemini_api_key_3,
+    settings.gemini_api_key_4,
+    settings.gemini_api_key_5,
+    settings.gemini_api_key_6,
+    settings.gemini_api_key_7,
+])
 
 # --- Prompts ---
 
@@ -196,8 +260,8 @@ async def transcribe_voice_note(audio_bytes: bytes, mime_type: str = "audio/ogg"
         return transcript
     except Exception as e:
         err_str = str(e)
-        if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
-            logger.error("Gemini API daily quota exceeded — voice transcription unavailable")
+        if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower() or "all API keys rate-limited" in err_str:
+            logger.error("All Gemini keys rate-limited — voice transcription unavailable")
             return QUOTA_EXCEEDED
         logger.error(f"Voice transcription failed: {e}")
         return ""
