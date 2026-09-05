@@ -271,7 +271,17 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, trade
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* My Profile */}
+              {/* Take Tour */}
+        <div className="px-4 pb-2 flex-none">
+          <button 
+            onClick={onTourClick} 
+            className="flex items-center justify-center w-full px-3 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-semibold hover:bg-indigo-100 transition-colors shadow-sm"
+          >
+            Take Tour
+          </button>
+        </div>
+
+        {/* My Profile */}
       <div className="px-4 pb-2 flex-none">
         <button
           id="sidebar-my-profile"
