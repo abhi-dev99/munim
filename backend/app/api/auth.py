@@ -58,8 +58,8 @@ async def request_otp(data: OTPRequest):
     db = get_supabase()
     
     # Check if number belongs to a trader OR is listed as a CA for a trader
-    res_trader = db.table("traders").select("id").eq("whatsapp_number", phone).execute()
-    res_ca = db.table("traders").select("id").eq("ca_whatsapp_number", phone).execute()
+    res_trader = db.table("traders").select("id, language_pref").eq("whatsapp_number", phone).execute()
+    res_ca = db.table("traders").select("id, language_pref").eq("ca_whatsapp_number", phone).execute()
     
     if not res_trader.data and not res_ca.data:
         raise HTTPException(status_code=404, detail="Mobile number not registered.")
@@ -77,8 +77,23 @@ async def request_otp(data: OTPRequest):
     # Store OTP with 5 min expiry via Redis/Memory
     set_otp(phone, otp)
     
+    # Fetch user language preference
+    lang = "en"
+    if res_trader.data:
+        lang = res_trader.data[0].get("language_pref") or "en"
+    elif res_ca.data:
+        lang = res_ca.data[0].get("language_pref") or "en"
+        
+    if lang == "hi":
+        msg = f"Aapka Munim.ai verification code hai: *{otp}*. Ise kisi ke saath share na karein."
+    elif lang == "mr":
+        msg = f"Tumcha Munim.ai verification code aahe: *{otp}*. Ha code konashihi share karu naka."
+    elif lang == "gu":
+        msg = f"Tamaro Munim.ai verification code chhe: *{otp}*. Aa code koi pan sathe share na karo."
+    else:
+        msg = f"Your Munim.ai verification code is: *{otp}*. Do not share this with anyone."
+
     # Send via WhatsApp
-    msg = f"Your Munim.ai verification code is: *{otp}*. Do not share this with anyone."
     await whatsapp.send_text_message(phone, msg)
     
     return {"message": "OTP sent successfully via WhatsApp."}

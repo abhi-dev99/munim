@@ -330,7 +330,7 @@ async def get_itc_summary(trader_id: str) -> dict:
 
             if status == "CONFIRMED":
                 buckets["confirmed"] += eligible
-            elif status == "FIXABLE_BLOCKED":
+            elif status in ["FIXABLE_BLOCKED", "FRAUD_FLAGGED", "DUPLICATE"]:
                 buckets["fixable_blocked"] += blocked
             elif status == "AT_RISK":
                 buckets["at_risk"] += eligible
