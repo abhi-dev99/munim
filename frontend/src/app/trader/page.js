@@ -1,10 +1,11 @@
 "use client";
 import { authFetch } from "@/src/app/utils/api";
 import { assessPhotoQuality } from "@/src/app/utils/imageQuality";
+import { queueUpload, getQueuedUploads, removeQueuedUpload } from "@/src/app/utils/offlineQueue";
 
 
 import { useState, useEffect, useRef } from "react";
-import { Menu, Camera, FileText, CheckCircle2, ShieldAlert, X, Loader2, Home, BarChart2, ChevronRight, Upload } from "lucide-react";
+import { Menu, Camera, FileText, CheckCircle2, ShieldAlert, CloudOff, X, Loader2, Home, BarChart2, ChevronRight, Upload } from "lucide-react";
 import MoneyMeter from "../components/MoneyMeter";
 import ActionQueue from "../components/ActionQueue";
 import InvoiceDetailModal from "../components/InvoiceDetailModal";
@@ -20,6 +21,14 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 // is downscaled, the original full-resolution file is still what gets
 // uploaded when the photo passes (or the user overrides a warning).
 const QUALITY_ANALYSIS_MAX_DIMENSION = 800;
+
+// Backstop for a connection that *reports* itself online (navigator.onLine
+// is true) but is actually dead — a dropped Wi-Fi/mobile-data session that
+// hasn't been detected by the OS yet, common on the patchy connections this
+// product targets. Long enough not to abort a real, slow-but-working Gemini
+// OCR round trip; short enough that a truly stuck request still falls back
+// to the offline queue instead of leaving the trader staring at a spinner.
+const UPLOAD_TIMEOUT_MS = 30000;
 
 /**
  * On-device blur/glare check: draws the captured file to an off-screen
@@ -82,7 +91,9 @@ export default function TraderApp() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [checkingPhoto, setCheckingPhoto] = useState(false);
   const [retakePrompt, setRetakePrompt] = useState(null); // { file, verdict } | null
+  const [queuedCount, setQueuedCount] = useState(0);
   const fileInputRef = useRef(null);
+  const draining = useRef(false);
 
   useEffect(() => {
     async function fetchDashboardData() {
@@ -100,11 +111,7 @@ export default function TraderApp() {
           const data = await res.json();
           setSummary(data);
           setTraderId(data.trader_id);
-          const invRes = await authFetch(`${API_BASE}/api/v1/dashboard/invoices/${data.trader_id}`);
-          if (invRes.ok) {
-            const invData = await invRes.json();
-            setInvoiceHistory((invData.invoices || []).slice(0, 20));
-          }
+          await refreshInvoiceHistory(data.trader_id);
         }
       } catch (err) {
         console.warn("Using demo data (backend unavailable)", err);
@@ -122,6 +129,98 @@ export default function TraderApp() {
     fetchDashboardData();
   }, []);
 
+  // Offline queue: drain whatever's pending as soon as the browser reports
+  // a connection, plus once on mount in case items were queued in an
+  // earlier session that's only now being reopened online. `online` is the
+  // universal baseline here (works in every browser, no feature detection
+  // needed) — Background Sync would let the service worker drain the queue
+  // even while the PWA tab itself is closed, but that's meaningfully more
+  // moving parts for a benefit that doesn't matter for a live demo, where
+  // the tab is open. Not worth it under "simplest thing that works".
+  useEffect(() => {
+    refreshQueuedCount();
+    if (navigator.onLine) drainQueuedUploads();
+
+    function handleOnline() {
+      drainQueuedUploads();
+    }
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
+  }, []);
+
+  async function refreshInvoiceHistory(id) {
+    const invRes = await authFetch(`${API_BASE}/api/v1/dashboard/invoices/${id}`);
+    if (invRes.ok) {
+      const invData = await invRes.json();
+      setInvoiceHistory((invData.invoices || []).slice(0, 20));
+    }
+  }
+
+  async function refreshQueuedCount() {
+    const queued = await getQueuedUploads();
+    setQueuedCount(queued.length);
+  }
+
+  // The actual network call, shared by a live upload and a drained queue
+  // item so both go through identical request-building and response
+  // handling — no second copy of this logic to drift out of sync.
+  async function uploadInvoiceFile(file, fileName, forTraderId) {
+    const formData = new FormData();
+    formData.append("file", file, fileName);
+    formData.append("trader_id", forTraderId);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
+    try {
+      const res = await authFetch(`${API_BASE}/api/v1/webhook/upload-invoice`, {
+        method: "POST",
+        body: formData,
+        signal: controller.signal,
+      });
+      const data = await res.json();
+      return { ok: res.ok, data };
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  // Success path shared by a live upload and a drained queue item — same
+  // toast, same TTS hook via ListenButton, same invoice-history refresh,
+  // regardless of which one produced the result. Takes the trader id
+  // explicitly rather than reading the `traderId` state closure: the
+  // `online`-listener effect below registers its handler once on mount, so
+  // a closure over `traderId` captured there would stay frozen at its
+  // mount-time value (null) for the lifetime of the listener.
+  function applyUploadSuccess(data, forTraderId) {
+    setScanState("success");
+    setScanResult({
+      status: data.itc_verdict?.status || "PROCESSING",
+      itc_amount: data.itc_verdict?.itc_amount || 0,
+      message: data.diagnosis_hi || data.diagnosis_en || "Invoice processed!",
+      // Hint the TTS voice picker toward Hindi only when we actually got
+      // Hindi text back — otherwise fall back to English.
+      lang: data.diagnosis_hi ? "hi-IN" : "en-IN",
+    });
+    setTimeout(() => {
+      setScanState("idle");
+      setScanResult(null);
+    }, 8000);
+    if (forTraderId) refreshInvoiceHistory(forTraderId);
+  }
+
+  async function queueForLater(file, forTraderId) {
+    await queueUpload(file, { trader_id: forTraderId });
+    await refreshQueuedCount();
+    setScanState("queued");
+    setScanResult({
+      message: "No connection — invoice queued. It'll upload automatically once you're back online.",
+    });
+    setTimeout(() => {
+      setScanState("idle");
+      setScanResult(null);
+    }, 8000);
+  }
+
   async function handleInvoiceUpload(file) {
     if (!file || !traderId || traderId === "demo") {
       setScanState("error");
@@ -129,49 +228,59 @@ export default function TraderApp() {
       return;
     }
 
+    if (!navigator.onLine) {
+      await queueForLater(file, traderId);
+      return;
+    }
+
     setScanState("uploading");
     setScanResult(null);
 
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("trader_id", traderId);
-
     try {
-      const res = await authFetch(`${API_BASE}/api/v1/webhook/upload-invoice`, {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        setScanState("success");
-        setScanResult({
-          status: data.itc_verdict?.status || "PROCESSING",
-          itc_amount: data.itc_verdict?.itc_amount || 0,
-          message: data.diagnosis_hi || data.diagnosis_en || "Invoice processed!",
-          // Hint the TTS voice picker toward Hindi only when we actually got
-          // Hindi text back — otherwise fall back to English.
-          lang: data.diagnosis_hi ? "hi-IN" : "en-IN",
-        });
-        setTimeout(() => {
-          setScanState("idle");
-          setScanResult(null);
-        }, 8000);
-        
-        // Refresh invoice history after successful upload
-        const invRes = await authFetch(`${API_BASE}/api/v1/dashboard/invoices/${traderId}`);
-        if (invRes.ok) {
-          const invData = await invRes.json();
-          setInvoiceHistory((invData.invoices || []).slice(0, 20));
-        }
+      const { ok, data } = await uploadInvoiceFile(file, file.name, traderId);
+      if (ok) {
+        applyUploadSuccess(data, traderId);
       } else {
         setScanState("error");
         setScanResult({ message: data.detail || "Processing failed. Try again." });
       }
     } catch (err) {
-      setScanState("error");
-      setScanResult({ message: "Network error — check your connection." });
+      // Network error or the UPLOAD_TIMEOUT_MS abort firing — either way the
+      // photo isn't lost, it goes in the same offline queue a detected
+      // navigator.onLine===false would have used.
+      await queueForLater(file, traderId);
+    }
+  }
+
+  // Retries every queued upload in order, oldest first, stopping the moment
+  // one fails (still offline, or a flaky connection dropped again) rather
+  // than burning through retries on every item — the next `online` event
+  // picks up where this left off. Guarded by `draining` so an `online`
+  // event firing mid-drain (or overlapping the mount-time attempt) can't
+  // run two drains concurrently and upload the same file twice.
+  async function drainQueuedUploads() {
+    if (draining.current) return;
+    draining.current = true;
+    try {
+      const queued = await getQueuedUploads();
+      for (const item of queued) {
+        if (!navigator.onLine) break;
+        try {
+          const { ok, data } = await uploadInvoiceFile(item.file, item.fileName, item.metadata.trader_id);
+          await removeQueuedUpload(item.id);
+          if (ok) {
+            applyUploadSuccess(data, item.metadata.trader_id);
+          } else {
+            setScanState("error");
+            setScanResult({ message: data.detail || "A queued invoice failed to process." });
+          }
+        } catch (err) {
+          break;
+        }
+      }
+    } finally {
+      draining.current = false;
+      await refreshQueuedCount();
     }
   }
 
@@ -308,17 +417,37 @@ export default function TraderApp() {
         </div>
       )}
 
+      {/* Persistent queued-uploads badge — visible independent of the
+          transient scan-result toast below, so a judge (or the trader) can
+          see queued work even after the "just queued this one" toast has
+          auto-dismissed. */}
+      {queuedCount > 0 && (
+        <div className="mx-4 mt-4 px-3 py-2 rounded-none border border-[var(--orange-primary)] bg-orange-50 flex items-center gap-2">
+          <CloudOff size={14} className="text-[var(--orange-primary)] flex-shrink-0" />
+          <p className="text-xs font-bold text-[var(--orange-primary)]">
+            {queuedCount} invoice{queuedCount > 1 ? "s" : ""} queued — will upload when back online
+          </p>
+        </div>
+      )}
+
       {/* Scan Result Toast */}
       {scanState !== "idle" && (
         <div className="mx-4 mt-4 p-4 rounded-none border border-[var(--border-subtle)] bg-white flex items-start gap-3">
           {scanState === "uploading" && <Loader2 size={18} className="animate-spin text-black mt-0.5 flex-shrink-0" />}
           {scanState === "success" && <CheckCircle2 size={18} className="text-black mt-0.5 flex-shrink-0" />}
+          {scanState === "queued" && <CloudOff size={18} className="text-[var(--orange-primary)] mt-0.5 flex-shrink-0" />}
           {scanState === "error" && <ShieldAlert size={18} className="text-[var(--red-primary)] mt-0.5 flex-shrink-0" />}
           <div className="flex-1">
             {scanState === "uploading" && (
               <>
                 <p className="font-bold text-black text-sm">Processing invoice...</p>
                 <p className="text-xs text-[var(--text-secondary)]">Checking GSTIN, HSN codes, GSTR-2B match</p>
+              </>
+            )}
+            {scanState === "queued" && scanResult && (
+              <>
+                <p className="font-bold text-[var(--orange-primary)] text-sm">Queued — Offline</p>
+                <p className="text-xs text-[var(--text-secondary)]">{scanResult.message}</p>
               </>
             )}
             {scanState === "success" && scanResult && (
