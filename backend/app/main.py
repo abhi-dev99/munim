@@ -144,6 +144,7 @@ app = FastAPI(
     lifespan=lifespan,
     docs_url=None,
     redoc_url=None,
+    openapi_url=None,  # the custom /docs page below no longer resolves a schema — see IQOO_SECURITY_AUDIT.md
 )
 
 @app.get("/docs", include_in_schema=False)
