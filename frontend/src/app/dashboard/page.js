@@ -436,6 +436,9 @@ export default function Home() {
   useEffect(() => {
     const authUser = localStorage.getItem("munim_auth_trader");
     if (!authUser) {
+      // Clear any orphaned token to prevent redirect loop
+      localStorage.removeItem("munim_auth_token");
+      localStorage.removeItem("munim_auth_trader");
       window.location.href = "/";
       return;
     }
