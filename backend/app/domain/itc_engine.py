@@ -98,26 +98,33 @@ class ITCRulesEngine:
         ])
 
     def is_within_time_limit(self, invoice_date_str: Optional[str]) -> bool:
-        """Check if ITC claim is within the statutory time limit (Section 16(4))."""
+        """
+        Check if ITC claim is within the statutory time limit (Section 16(4) CGST Act).
+        Statutory deadline is 30th November following the end of the financial year
+        in which the invoice was issued (e.g. FY 2024-25 invoice deadline is 30 Nov 2025).
+        """
         if not invoice_date_str:
             return True  # Assume valid if date unknown
 
         try:
             inv_date = date.fromisoformat(invoice_date_str)
-            deadline = inv_date + timedelta(days=self.ITC_CLAIM_DEADLINE_MONTHS * 30)
-            return date.today() <= deadline
+            # Indian Financial Year: April 1 to March 31
+            # If invoice is issued in April or later, FY ends in March of next year
+            # If invoice is issued in Jan-March, FY ends in March of current year
+            fy_end_year = inv_date.year + 1 if inv_date.month >= 4 else inv_date.year
+            statutory_deadline = date(fy_end_year, 11, 30)
+            return date.today() <= statutory_deadline
         except (ValueError, TypeError):
             return True
 
-    def is_within_payment_window(self, invoice_date_str: Optional[str]) -> bool:
+    def is_within_payment_window(self, invoice_date_str: Optional[str], is_paid: bool = True) -> bool:
         """
         Section 16(2) second proviso: ITC is not claimable if the supplier
         has not been paid within 180 days of the invoice date.
-        Returns True if still within the payment window (ITC is safe),
-        False if 180 days have elapsed (ITC must be reversed).
+        Returns True if paid OR within 180 days window.
         """
-        if not invoice_date_str:
-            return True  # Can't determine — don't block
+        if not invoice_date_str or is_paid:
+            return True
 
         try:
             inv_date = date.fromisoformat(invoice_date_str)
@@ -274,14 +281,15 @@ class ITCRulesEngine:
                     )
 
         # --- Check 9: 180-day payment rule (Section 16(2) second proviso) ---
-        if not self.is_within_payment_window(invoice.invoice_date):
+        is_paid = getattr(invoice, "is_paid", True)
+        if not self.is_within_payment_window(invoice.invoice_date, is_paid=is_paid):
             return ITCVerdict(
-                status=ITCStatus.FIXABLE_BLOCKED,
-                itc_amount=0.0,
-                itc_blocked=total_tax,
-                reason="ITC reversal required — invoice unpaid beyond 180 days (Section 16(2) second proviso)",
+                status=ITCStatus.AT_RISK,
+                itc_amount=total_tax,
+                itc_blocked=0.0,
+                reason="Invoice >180 days old: verify supplier payment status (Section 16(2) 2nd Proviso)",
                 legal_section="16(2)",
-                fix_action="Pay the supplier and re-claim ITC in the return for the month of payment. Interest is applicable on reversed ITC.",
+                fix_action="If unpaid >180 days, ITC reversal with interest is statutory; confirm payment status to clear warning.",
             )
 
         # --- Check 10: HSN rate mismatches (fixable blocks) ---
