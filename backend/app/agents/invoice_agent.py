@@ -98,6 +98,28 @@ async def extract_entities(state: InvoiceAgentState) -> dict:
             }
 
         # If confidence is None (field not returned by model), proceed — don't reject valid data
+        
+        # Check for URD / Missing GSTIN
+        if invoice_json and (not invoice_json.gstin_supplier or invoice_json.gstin_supplier.strip().upper() == "URD"):
+            if not invoice_json.total_tax_amount or invoice_json.total_tax_amount <= 0:
+                if invoice_json.supplier_name:
+                    try:
+                        db = get_supabase()
+                        res = db.table("suppliers").select("gstin").eq("legal_name", invoice_json.supplier_name).limit(1).execute()
+                        found_gstin = None
+                        if res.data and res.data[0].get("gstin"):
+                            found_gstin = res.data[0]["gstin"]
+                        else:
+                            res2 = db.table("invoices").select("gstin_supplier").eq("trader_id", state["trader_id"]).eq("supplier_name", invoice_json.supplier_name).not_.is_("gstin_supplier", "null").not_.eq("gstin_supplier", "URD").limit(1).execute()
+                            if res2.data and res2.data[0].get("gstin_supplier"):
+                                found_gstin = res2.data[0]["gstin_supplier"]
+                        
+                        if found_gstin and found_gstin != "MISSING_BUT_REGISTERED":
+                            logger.info(f"Historical GSTIN {found_gstin} found for {invoice_json.supplier_name}")
+                            invoice_json.gstin_supplier = "MISSING_BUT_REGISTERED"
+                    except Exception as db_e:
+                        logger.warning(f"Failed to lookup historical GSTIN for URD check: {db_e}")
+
         return {"invoice_json": invoice_json, "error": None}
 
 
