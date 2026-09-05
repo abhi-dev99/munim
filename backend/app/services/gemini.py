@@ -168,6 +168,13 @@ async def extract_invoice_from_image(image_bytes: bytes, mime_type: str = "image
         if invoice_dict:
             return InvoiceJSON(**{k: v for k, v in invoice_dict.items() if k in InvoiceJSON.model_fields})
         return InvoiceJSON(confidence=0.0)
+    except RuntimeError as e:
+        # GeminiKeyPool raises RuntimeError when all keys are rate-limited
+        if "rate-limited" in str(e).lower() or "quota" in str(e).lower():
+            logger.warning(f"All Gemini keys rate-limited during extraction: {e}")
+            return InvoiceJSON(confidence=-1.0)  # sentinel: quota exceeded
+        logger.error(f"Extraction runtime error: {e}")
+        return InvoiceJSON(confidence=0.0)
     except Exception as e:
         logger.error(f"Extraction via router failed: {e}")
         return InvoiceJSON(confidence=0.0)
@@ -178,6 +185,7 @@ async def generate_hindi_diagnosis(
     total_amount: float,
     itc_status: str,
     itc_amount: float,
+    invoice_number: str = "",
     itc_blocked: float = 0.0,
     block_reason: str = "None",
     fix_action: str = "None",
@@ -216,8 +224,11 @@ Rules:
 - Hinglish is fine (mix Hindi + English naturally)
 - No URLs
 - No mention of any dashboard (that is for CA, not trader)"""
+    bill_label = f"Bill #{invoice_number}" if invoice_number else "Invoice"
     context = {
         "supplier_name": supplier_name or "Unknown",
+        "invoice_number": invoice_number or "(not available)",
+        "bill_label": bill_label,
         "total_amount": total_amount or 0,
         "itc_status": itc_status,
         "itc_amount_eligible": itc_amount,
