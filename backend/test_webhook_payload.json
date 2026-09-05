@@ -1,0 +1,40 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "1036729162024059",
+      "changes": [
+        {
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "15552051919",
+              "phone_number_id": "1241297825724005"
+            },
+            "contacts": [
+              {
+                "profile": {"name": "Test User"},
+                "wa_id": "919822062252"
+              }
+            ],
+            "messages": [
+              {
+                "from": "919822062252",
+                "id": "wamid.test123",
+                "timestamp": "1721232600",
+                "type": "image",
+                "image": {
+                  "id": "FAKE_MEDIA_ID_12345",
+                  "mime_type": "image/jpeg",
+                  "sha256": "test",
+                  "caption": ""
+                }
+              }
+            ]
+          },
+          "field": "messages"
+        }
+      ]
+    }
+  ]
+}
