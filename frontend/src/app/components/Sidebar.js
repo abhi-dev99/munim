@@ -325,7 +325,7 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, trade
           onClick={() => { 
             localStorage.removeItem("munim_auth_trader"); 
             localStorage.removeItem("munim_auth_token"); 
-            router.push("/"); 
+            window.location.href = "/"; 
           }}
           className="flex items-center gap-3 px-3 py-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors w-full text-sm"
         >
