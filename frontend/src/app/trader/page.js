@@ -8,6 +8,7 @@ import MoneyMeter from "../components/MoneyMeter";
 import ActionQueue from "../components/ActionQueue";
 import InvoiceDetailModal from "../components/InvoiceDetailModal";
 import ReportsPanel from "../components/ReportsPanel";
+import VoiceQueryButton from "../components/VoiceQueryButton";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -267,6 +268,9 @@ export default function TraderApp() {
           </div>
         ) : activeTab === "home" ? (
           <>
+            <div className="mb-2">
+              <VoiceQueryButton summary={summary} />
+            </div>
             <div className="mb-2">
               <h2 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Financial Snapshot</h2>
               <MoneyMeter summary={summary} apiBase={API_BASE} />
