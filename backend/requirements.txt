@@ -33,3 +33,4 @@ python-Levenshtein==0.27.1
 numpy==2.2.6
 jinja2==3.1.6
 gtts
+groq==0.8.0

@@ -38,6 +38,13 @@ async def request_otp(data: OTPRequest):
     # Generate OTP
     otp = str(random.randint(100000, 999999))
     
+    # In development, print the OTP to the terminal since WhatsApp won't deliver it
+    from app.config import get_settings
+    if get_settings().debug:
+        logger.info("=" * 40)
+        logger.info(f"DEMO OTP FOR {phone}: {otp}")
+        logger.info("=" * 40)
+    
     # Store OTP with 5 min expiry
     otp_store[phone] = {
         "otp": otp,
