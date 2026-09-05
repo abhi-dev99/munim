@@ -256,6 +256,23 @@ async def handle_text_message(phone: str, text: str):
             await _answer_general_query(phone, text, trader)
 
 
+async def handle_voice_message(phone: str, msg: dict):
+    """Handle incoming voice messages."""
+    # For now, just reply with a generated voice note
+    from app.services.tts import generate_and_upload_tts
+    
+    await whatsapp.send_text_message(phone, "Voice note sun liya. Reply kar raha hun...")
+    
+    # Generate a voice response
+    reply_text = "Namaste! Aapka voice message mujhe mil gaya hai. Main abhi audio messages samajh nahi pata, par jaldi hi seekh jaunga. Kripya mujhe type karke bataiye."
+    audio_url = await generate_and_upload_tts(reply_text, lang="hi")
+    
+    if audio_url:
+        await whatsapp.send_audio_message(phone, audio_url)
+    else:
+        await whatsapp.send_text_message(phone, reply_text)
+
+
 async def handle_invoice_message(phone: str, msg: dict):
     """Handle image/document messages — process as invoice."""
     trader = await get_trader_by_phone(phone)
