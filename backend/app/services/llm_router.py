@@ -203,7 +203,8 @@ IMPORTANT rules:
         for model_name in model_chain:
             try:
                 logger.info(f"Attempting invoice extraction with model: {model_name}")
-                gemini_response = gemini_client.models.generate_content(
+                gemini_response = await asyncio.to_thread(
+                    gemini_client.models.generate_content,
                     model=model_name,
                     contents=[
                         types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
