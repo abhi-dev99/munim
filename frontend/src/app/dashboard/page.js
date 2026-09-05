@@ -544,6 +544,7 @@ export default function Home() {
         actionCount={actionCount}
         traderId={traderId}
         apiBase={API_BASE}
+        onTourClick={startTour}
       />
 
       <main className="flex-1 ml-64 flex flex-col overflow-hidden">
@@ -555,6 +556,15 @@ export default function Home() {
               {activeBusinessName && (
                 <span className="text-xs text-gray-500 font-medium bg-gray-100 px-2 py-0.5 rounded-full truncate max-w-[180px]">
                   {activeBusinessName}
+                </span>
+              )}
+              {activeTraderGstin && (
+                <span
+                  onClick={() => { navigator.clipboard.writeText(activeTraderGstin); }}
+                  title="Click to copy GSTIN"
+                  className="text-[10px] font-mono font-bold text-gray-400 cursor-pointer hover:text-gray-600 transition-colors select-none"
+                >
+                  {activeTraderGstin}
                 </span>
               )}
             </div>
@@ -602,24 +612,7 @@ export default function Home() {
                 )}
               </div>
 
-              {/* Language toggle */}
-              <button
-                onClick={() => changeLanguage(lang === "en" ? "hi" : "en")}
-                className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 hover:bg-gray-50 transition-colors shadow-sm"
-                title="Toggle Language"
-              >
-                <Globe size={15} className="text-gray-400" />
-                <span className="text-sm font-semibold text-gray-800">
-                  {lang === "en" ? "हिंदी" : "English"}
-                </span>
-              </button>
 
-              <button 
-                onClick={startTour} 
-                className="hidden md:block px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-semibold hover:bg-indigo-100 transition-colors shadow-sm"
-              >
-                Take Tour
-              </button>
 
               {/* Composition toggle */}
               <button
