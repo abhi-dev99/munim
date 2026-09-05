@@ -15,14 +15,15 @@ export default function MoneyMeter({ summary, apiBase, isComposition = false, on
   const mockTaxPayable  = mockTotalSales * 0.01;
   const confirmed       = itc_buckets?.confirmed || 0;
   const atRisk          = (itc_buckets?.fixable_blocked || 0) + (itc_buckets?.at_risk || 0);
-  const totalITC        = confirmed + atRisk;
+  const missed          = itc_buckets?.missed || 0;
+  const totalITC        = confirmed + atRisk + missed;
 
   const v = { hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } };
 
   // --- Handlers ---
   const handleSortTop = () => {
     if (!onSortTop || dragItem.current === null || dragOverItem.current === null) return;
-    const currentOrder = prefs?.money_meter_top || ["confirmed", "at_risk", "recovery"];
+    const currentOrder = prefs?.money_meter_top || ["confirmed", "at_risk", "missed", "recovery"];
     let _order = [...currentOrder];
     const draggedItemContent = _order.splice(dragItem.current, 1)[0];
     _order.splice(dragOverItem.current, 0, draggedItemContent);
@@ -43,7 +44,7 @@ export default function MoneyMeter({ summary, apiBase, isComposition = false, on
   };
 
   // --- Renderers ---
-  const topOrder = prefs?.money_meter_top || ["confirmed", "at_risk", "recovery"];
+  const topOrder = prefs?.money_meter_top || ["confirmed", "at_risk", "missed", "recovery"];
   const bottomOrder = prefs?.money_meter_bottom || ["invoices", "suppliers", "issues"];
 
   const renderTopWidget = (id, index) => {
@@ -87,6 +88,20 @@ export default function MoneyMeter({ summary, apiBase, isComposition = false, on
             >
               <ArrowUpRight size={11} />Requires action by 18th →
             </button>
+          </div>
+        );
+        break;
+      case "missed":
+        content = (
+          <div className="bg-white border border-gray-200 rounded-xl p-4 h-full">
+            <div className="flex items-center gap-1.5 mb-2">
+              <AlertCircle size={13} className="text-purple-500" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Missed ITC (GSTR-2B)</span>
+            </div>
+            <p className="text-2xl font-black text-purple-700">₹{missed.toLocaleString("en-IN")}</p>
+            <p className="text-xs text-purple-600 font-medium mt-2 flex items-center gap-1">
+              <ArrowUpRight size={11} />Unclaimed in portal
+            </p>
           </div>
         );
         break;
@@ -196,7 +211,7 @@ export default function MoneyMeter({ summary, apiBase, isComposition = false, on
       <motion.div
         initial="hidden" animate="show"
         variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.07 } } }}
-        className="grid grid-cols-3 gap-3"
+        className="grid grid-cols-2 lg:grid-cols-4 gap-3"
         id="money-meter-top"
       >
         {isComposition ? (
