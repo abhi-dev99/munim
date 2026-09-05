@@ -271,6 +271,18 @@ async def get_gstr2b_records(trader_id: str, month: int = None, year: int = None
 
 # --- Dashboard Operations ---
 
+async def get_recent_invoices(trader_id: str, limit: int = 5) -> list[dict]:
+    """Get recent invoices for a trader."""
+    try:
+        db = get_supabase()
+        response = db.table("invoices").select(
+            "supplier_name, total_amount, itc_status, invoice_date"
+        ).eq("trader_id", trader_id).order("created_at", desc=True).limit(limit).execute()
+        return response.data or []
+    except Exception as e:
+        logger.error(f"Failed to get recent invoices: {e}")
+        return []
+
 async def get_itc_summary(trader_id: str) -> dict:
     """Compute ITC summary buckets for a trader."""
     try:
