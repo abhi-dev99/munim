@@ -1,8 +1,20 @@
 "use client";
 
-import { LayoutDashboard, Users, AlertCircle, FileText, Settings, LogOut } from "lucide-react";
+import { useState } from "react";
+import { LayoutDashboard, Users, AlertCircle, FileText, Settings, LogOut, RefreshCw, CheckCircle2 } from "lucide-react";
 
 export default function Sidebar({ activeTab, onTabChange, actionCount = 0 }) {
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSynced, setLastSynced] = useState("Just now");
+
+  const handleSync = () => {
+    setIsSyncing(true);
+    setTimeout(() => {
+      setIsSyncing(false);
+      setLastSynced("Just now");
+    }, 2000);
+  };
+
   const navItems = [
     { id: "money-meter", label: "Money Meter", icon: LayoutDashboard },
     { id: "suppliers", label: "Supplier Trust", icon: Users },
@@ -50,17 +62,30 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0 }) {
 
       <div className="px-6 mb-6">
         <div className="p-4 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-subtle)] space-y-3">
-          <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center">
-            <AlertCircle size={16} />
+          <div className="flex items-center justify-between">
+            <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center">
+              <RefreshCw size={14} className={isSyncing ? "animate-spin" : ""} />
+            </div>
+            {isSyncing ? (
+              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">SYNCING</span>
+            ) : (
+              <span className="text-[10px] font-bold text-[var(--green-primary)] bg-green-50 px-2 py-1 rounded flex items-center gap-1">
+                <CheckCircle2 size={10} /> LIVE
+              </span>
+            )}
           </div>
           <div>
-            <h4 className="text-sm font-bold text-black">Need Help?</h4>
-            <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">
-              Having trouble with ITC claims? Contact your CA or our support team.
+            <h4 className="text-sm font-bold text-black">GST Portal Sync</h4>
+            <p className="text-[10px] text-[var(--text-secondary)] mt-1">
+              Last synced: {isSyncing ? "..." : lastSynced}
             </p>
           </div>
-          <button className="w-full py-2 bg-white border border-[var(--border-subtle)] rounded-lg text-xs font-bold text-black hover:bg-gray-50 transition-colors shadow-sm">
-            Contact Support
+          <button 
+            onClick={handleSync}
+            disabled={isSyncing}
+            className="w-full py-2 bg-white border border-[var(--border-subtle)] rounded-lg text-xs font-bold text-black hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50"
+          >
+            {isSyncing ? "Pulling Data..." : "Force Sync Now"}
           </button>
         </div>
       </div>
