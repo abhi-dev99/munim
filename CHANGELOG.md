@@ -7,6 +7,7 @@ All notable changes to Munim.ai are documented here. Format loosely follows [Kee
 ## 2026-09-03
 
 ### Added
+- On-device voice queries in the trader PWA ("Munim se poochein") — tap the mic, ask about ITC balance/invoice count/supplier status in Hindi or English, get an instant answer from data already loaded on the page (no new network call, no cloud speech round trip on supporting browsers).
 - The trader app is now a real, installable PWA (`frontend/public/manifest.json`, app icons, a minimal app-shell service worker) — previously it was only styled to *look* like a mobile app (a hardcoded fake iOS status bar) with no manifest, no service worker, and nothing for a browser's installability check to find.
 - JWT revocation: tokens now carry a `jti` claim, checked against a Redis-backed revocation list on every request; `POST /api/v1/auth/logout` revokes the caller's current token. Tokens issued before this migration have no `jti` and can't be individually revoked (an accepted limitation, not a bug).
 - First real backend test suite: 48 tests across `itc_engine`, `fraud`, `reconciler`, `gstin`, and a new shared error-handling helper — this repo had zero test infrastructure before today.
