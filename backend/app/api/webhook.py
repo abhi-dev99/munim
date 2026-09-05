@@ -468,50 +468,6 @@ async def handle_invoice_message(phone: str, msg: dict):
 
 
 
-async def handle_voice_message(phone: str, msg: dict):
-    """Handle voice notes — transcribe then route as if it were a text message."""
-    from app.services.gemini import transcribe_voice_note
-
-    trader = await get_trader_by_phone(phone)
-    if not trader:
-        await whatsapp.send_text_message(phone, "Pehle register karo! 'Hi' likh ke bhejo.")
-        return
-
-    media_id = msg.get("media_id")
-    if not media_id:
-        return
-
-    audio_bytes, mime_type = await whatsapp.download_media(media_id)
-    if not audio_bytes:
-        await whatsapp.send_text_message(phone, "⚠️ Audio sun nahi paya. Text mein likh ke bhejo.")
-        return
-
-    transcript = await transcribe_voice_note(audio_bytes, mime_type)
-
-    from app.services.gemini import QUOTA_EXCEEDED
-    if transcript == QUOTA_EXCEEDED:
-        await whatsapp.send_text_message(
-            phone,
-            "⚠️ Munim abhi thodi der ke liye available nahi hai.\n"
-            "Kripya 2-3 minute baad dobara try karein. 🙏\n"
-            "Ya apna message text mein likh ke bhej sakte hain."
-        )
-        return
-
-    if not transcript:
-        lang = trader.get("language_pref", "hi")
-        err_msgs = {
-            "en": "⚠️ Couldn't understand the audio. Please type your message instead.",
-            "mr": "⚠️ ऑडिओ समजला नाही. कृपया टेक्स्ट मध्ये लिहा.",
-            "gu": "⚠️ ઑડિઓ સમજાયો નહિ. કૃપા કરી ટેક્સ્ટ માં લખો.",
-            "hi": "⚠️ Audio samajh nahi aaya. Text mein likh ke bhejo.",
-        }
-        await whatsapp.send_text_message(phone, err_msgs.get(lang, err_msgs["hi"]))
-        return
-
-    # Route the transcript through the same text handler — avoids duplicating all the logic
-    await handle_text_message(phone, transcript)
-
 
 # --- Registration Flow ---
 

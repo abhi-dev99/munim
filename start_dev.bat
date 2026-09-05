@@ -34,8 +34,8 @@ start "Munim.ai Frontend" cmd /k "title Munim.ai Frontend && set PATH=C:\Users\H
 cd ..
 
 echo.
-echo [4/4] Starting Cloudflare tunnel on port 8000...
-start "Munim.ai Tunnel" cmd /k "title Munim.ai Tunnel && .\cloudflared.exe tunnel --url http://localhost:8000"
+echo [4/4] Starting Ngrok tunnel on port 8000...
+start "Munim.ai Tunnel" cmd /k "title Munim.ai Tunnel && .\ngrok.exe http --domain=moaning-thwarting-dinginess.ngrok-free.dev 8000"
 
 echo.
 echo Waiting for tunnel to initialise...
@@ -46,7 +46,7 @@ echo ====================================================
 echo  All set, son!
 echo  Frontend : http://localhost:3000
 echo  Backend  : http://localhost:8000
-echo  Tunnel   : check the 'Munim.ai Tunnel' window for your URL
+echo  Tunnel   : https://moaning-thwarting-dinginess.ngrok-free.dev
 echo ====================================================
 echo.
 echo  Copy the Webhook URL above into Meta Developer Console
