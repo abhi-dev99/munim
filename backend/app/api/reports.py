@@ -71,7 +71,7 @@ async def list_reports(trader_id: str):
     db = get_supabase()
     try:
         resp = db.table("munim_reports").select(
-            "id, month, year, pdf_url, total_invoices_processed, total_itc_confirmed, created_at"
+            "id, month, year, pdf_url, total_invoices_processed, total_itc_confirmed, total_issues_count"
         ).eq("trader_id", trader_id).order("year", desc=True).order("month", desc=True).execute()
 
         return {"reports": resp.data or []}
