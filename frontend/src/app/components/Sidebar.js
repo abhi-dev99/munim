@@ -11,14 +11,34 @@ import {
   CalendarClock,
   TrendingUp,
   LogOut,
-  User,
+  UserCircle,
 } from "lucide-react";
 
-export default function Sidebar({ activeTab, onTabChange, actionCount = 0, portfolioStats = null }) {
+// Mini sparkline bar chart (no recharts dependency in sidebar)
+function MiniSparkline({ data = [] }) {
+  if (!data.length) return <div className="h-12 flex items-end gap-0.5 px-1">{[...Array(6)].map((_, i) => <div key={i} className="flex-1 bg-gray-200 rounded-sm animate-pulse" style={{ height: `${30 + Math.random() * 20}%` }} />)}</div>;
+  const max = Math.max(...data.map(d => d.itc_claimed || 0), 1);
+  return (
+    <div className="h-12 flex items-end gap-0.5 px-1">
+      {data.slice(-6).map((d, i) => (
+        <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
+          <div
+            className="w-full rounded-sm bg-[#10b981] opacity-80"
+            style={{ height: `${Math.max(4, ((d.itc_claimed || 0) / max) * 44)}px` }}
+            title={`${d.label}: ₹${(d.itc_claimed || 0).toLocaleString("en-IN")}`}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function Sidebar({ activeTab, onTabChange, actionCount = 0, traderId, apiBase }) {
   const router = useRouter();
   const [isWhatsappEnabled, setIsWhatsappEnabled] = useState(false);
   const [testAlertSent, setTestAlertSent] = useState(false);
   const [authName, setAuthName] = useState("N");
+  const [itcData, setItcData] = useState([]);
 
   useEffect(() => {
     const authUser = localStorage.getItem("munim_auth_trader");
@@ -29,6 +49,15 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, portf
     }
   }, []);
 
+  // Fetch ITC trend for mini chart
+  useEffect(() => {
+    if (!traderId || !apiBase) return;
+    fetch(`${apiBase}/api/v1/dashboard/itc-timeline/${traderId}`)
+      .then(r => r.json())
+      .then(d => setItcData(d.timeline || []))
+      .catch(() => setItcData([]));
+  }, [traderId, apiBase]);
+
   const navItems = [
     { id: "money-meter", label: "Money Meter", icon: LayoutDashboard },
     { id: "suppliers", label: "Supplier Trust", icon: Users },
@@ -36,67 +65,39 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, portf
     { id: "reports", label: "Monthly Reports", icon: FileText },
   ];
 
-  // Compute upcoming GST deadlines dynamically
+  // Upcoming GST deadlines
   const today = new Date();
   const day = today.getDate();
   const monthName = today.toLocaleString("en-IN", { month: "long" });
-  const year = today.getFullYear();
 
   const deadlines = [
-    {
-      label: "GSTR-1",
-      day: 11,
-      desc: "Outward supplies",
-    },
-    {
-      label: "GSTR-3B",
-      day: 20,
-      desc: "Tax payment & filing",
-    },
-    {
-      label: "GSTR-2B Auto-draft",
-      day: 14,
-      desc: "ITC reconciliation window",
-    },
+    { label: "GSTR-1",           day: 11, desc: "Outward supplies"       },
+    { label: "GSTR-2B Auto",     day: 14, desc: "ITC reconciliation"     },
+    { label: "GSTR-3B",          day: 20, desc: "Tax payment & filing"   },
   ]
-    .map((d) => {
-      const daysLeft = d.day - day;
-      const isOverdue = daysLeft < 0;
-      const isToday = daysLeft === 0;
-      const isUrgent = daysLeft > 0 && daysLeft <= 3;
-      return { ...d, daysLeft, isOverdue, isToday, isUrgent };
-    })
-    .filter((d) => d.daysLeft >= -1) // show up to 1 day overdue
+    .map(d => ({ ...d, daysLeft: d.day - day }))
+    .filter(d => d.daysLeft >= -1)
     .sort((a, b) => a.daysLeft - b.daysLeft)
     .slice(0, 3);
 
-  const getDeadlineChip = (d) => {
-    if (d.isOverdue)
-      return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-600">OVERDUE</span>;
-    if (d.isToday)
-      return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-600 animate-pulse">TODAY</span>;
-    if (d.isUrgent)
-      return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">{d.daysLeft}d left</span>;
+  const getChip = (d) => {
+    if (d.daysLeft < 0)  return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-600">OVERDUE</span>;
+    if (d.daysLeft === 0) return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-600 animate-pulse">TODAY</span>;
+    if (d.daysLeft <= 3)  return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">{d.daysLeft}d left</span>;
     return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700">{d.daysLeft}d</span>;
   };
 
-  // Portfolio snapshot — use passed props or defaults
-  const stats = portfolioStats || {
-    totalClients: "—",
-    clientsWithIssues: "—",
-    totalITCAtRisk: "—",
-    avgScore: "—",
-  };
+  const isDeadlineUrgent = deadlines.some(d => d.daysLeft <= 3);
 
   return (
-    <aside className="w-64 fixed h-full bg-[#f8f9fa] border-r border-gray-200 z-10 flex flex-col overflow-y-auto">
-      {/* Logo */}
-      <div className="px-6 py-5 border-b border-gray-200">
+    <aside className="w-64 fixed h-full bg-white border-r border-gray-200 z-10 flex flex-col overflow-y-auto">
+      {/* Logo — same height as main header */}
+      <div className="px-6 h-[65px] flex items-center border-b border-gray-200 flex-none">
         <span className="font-bold text-xl tracking-tight text-gray-900">Munim.ai</span>
       </div>
 
       {/* Main Nav */}
-      <nav className="px-3 pt-4 pb-2 space-y-1">
+      <nav className="px-3 pt-4 pb-2 space-y-1 flex-none">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
@@ -107,17 +108,13 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, portf
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-semibold ${
                 isActive
                   ? "bg-[#10b981] text-white shadow-sm"
-                  : "text-gray-600 hover:bg-white hover:text-gray-900"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
               }`}
             >
               <Icon size={18} />
               <span>{item.label}</span>
               {item.badge > 0 && (
-                <span
-                  className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    isActive ? "bg-white text-[#10b981]" : "bg-red-500 text-white"
-                  }`}
-                >
+                <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full ${isActive ? "bg-white text-[#10b981]" : "bg-red-500 text-white"}`}>
                   {item.badge}
                 </span>
               )}
@@ -126,70 +123,59 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, portf
         })}
       </nav>
 
-      {/* Divider */}
-      <div className="mx-4 my-3 border-t border-gray-200" />
+      <div className="mx-4 my-3 border-t border-gray-100 flex-none" />
 
       {/* Upcoming Deadlines */}
-      <div className="px-4 pb-3">
+      <div className="px-4 pb-3 flex-none">
         <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 flex items-center gap-1.5">
           <CalendarClock size={11} />
           Upcoming Deadlines
+          {/* Pulsing indicator if any deadline is close */}
+          {isDeadlineUrgent && (
+            <span className="relative ml-1 flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+            </span>
+          )}
         </p>
         <div className="space-y-2">
           {deadlines.length === 0 ? (
-            <p className="text-xs text-gray-400">All deadlines passed for this month.</p>
-          ) : (
-            deadlines.map((d, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-gray-100"
-              >
-                <div>
-                  <p className="text-xs font-bold text-gray-900">{d.label}</p>
-                  <p className="text-[10px] text-gray-400">{d.day} {monthName}</p>
-                </div>
-                {getDeadlineChip(d)}
+            <p className="text-xs text-gray-400 py-1">No upcoming deadlines this month.</p>
+          ) : deadlines.map((d, i) => (
+            <div key={i} className={`flex items-center justify-between rounded-lg px-3 py-2 border ${d.daysLeft <= 3 ? "bg-red-50 border-red-100" : "bg-gray-50 border-gray-100"}`}>
+              <div>
+                <p className={`text-xs font-bold ${d.daysLeft <= 3 ? "text-red-800" : "text-gray-900"}`}>{d.label}</p>
+                <p className={`text-[10px] ${d.daysLeft <= 3 ? "text-red-500" : "text-gray-400"}`}>{d.day} {monthName}</p>
               </div>
-            ))
-          )}
+              {getChip(d)}
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Divider */}
-      <div className="mx-4 my-1 border-t border-gray-200" />
+      <div className="mx-4 my-1 border-t border-gray-100 flex-none" />
 
-      {/* Portfolio Snapshot */}
-      <div className="px-4 py-3">
+      {/* ITC Mini Trend */}
+      <div className="px-4 py-3 flex-none">
         <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 flex items-center gap-1.5">
           <TrendingUp size={11} />
-          Portfolio Snapshot
+          ITC Trend (6mo)
         </p>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="bg-white rounded-lg px-3 py-2 border border-gray-100">
-            <p className="text-[10px] text-gray-400">Total Clients</p>
-            <p className="text-base font-bold text-gray-900 mt-0.5">{stats.totalClients}</p>
-          </div>
-          <div className="bg-white rounded-lg px-3 py-2 border border-gray-100">
-            <p className="text-[10px] text-gray-400">With Issues</p>
-            <p className="text-base font-bold text-red-600 mt-0.5">{stats.clientsWithIssues}</p>
-          </div>
-          <div className="bg-white rounded-lg px-3 py-2 border border-gray-100">
-            <p className="text-[10px] text-gray-400">ITC at Risk</p>
-            <p className="text-base font-bold text-amber-600 mt-0.5 truncate">{stats.totalITCAtRisk}</p>
-          </div>
-          <div className="bg-white rounded-lg px-3 py-2 border border-gray-100">
-            <p className="text-[10px] text-gray-400">Avg Score</p>
-            <p className="text-base font-bold text-[#10b981] mt-0.5">{stats.avgScore}</p>
+        <div className="bg-gray-50 rounded-lg border border-gray-100 py-2">
+          <MiniSparkline data={itcData} />
+          <div className="flex justify-between px-2 mt-1">
+            {(itcData.length ? itcData.slice(-6) : [...Array(6)].map((_, i) => ({ label: ["F","M","A","M","J","J"][i] }))).map((d, i) => (
+              <span key={i} className="text-[9px] text-gray-400 font-medium">{d.label}</span>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Divider */}
-      <div className="mx-4 my-1 border-t border-gray-200" />
+      <div className="mx-4 my-1 border-t border-gray-100 flex-none" />
 
       {/* WhatsApp Alerts */}
-      <div className="px-4 py-3">
-        <div className="bg-white rounded-lg border border-gray-100 p-3 space-y-2">
+      <div className="px-4 py-3 flex-none">
+        <div className="bg-gray-50 rounded-lg border border-gray-100 p-3 space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-full bg-[#25D366] text-white flex items-center justify-center">
@@ -199,28 +185,17 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, portf
             </div>
             <button
               onClick={() => setIsWhatsappEnabled(!isWhatsappEnabled)}
-              className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
-                isWhatsappEnabled ? "bg-[#25D366]" : "bg-gray-300"
-              }`}
+              className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${isWhatsappEnabled ? "bg-[#25D366]" : "bg-gray-300"}`}
             >
-              <span
-                className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                  isWhatsappEnabled ? "translate-x-3.5" : "translate-x-0.5"
-                }`}
-              />
+              <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${isWhatsappEnabled ? "translate-x-3.5" : "translate-x-0.5"}`} />
             </button>
           </div>
           <p className="text-[10px] text-gray-400 leading-relaxed">
-            {isWhatsappEnabled
-              ? "You'll get deadline & mismatch alerts on WhatsApp."
-              : "Turn on for instant compliance reminders."}
+            {isWhatsappEnabled ? "You'll get deadline & mismatch alerts." : "Turn on for instant compliance reminders."}
           </p>
           {isWhatsappEnabled && (
             <button
-              onClick={() => {
-                setTestAlertSent(true);
-                setTimeout(() => setTestAlertSent(false), 3000);
-              }}
+              onClick={() => { setTestAlertSent(true); setTimeout(() => setTestAlertSent(false), 3000); }}
               disabled={testAlertSent}
               className="w-full py-1.5 bg-white border border-[#25D366] text-[#25D366] rounded-lg text-[11px] font-bold hover:bg-green-50 transition-colors disabled:opacity-50"
             >
@@ -230,20 +205,34 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, portf
         </div>
       </div>
 
-      {/* Sign Out — pinned to bottom */}
-      <div className="mt-auto p-4 border-t border-gray-200">
+      {/* Spacer */}
+      <div className="flex-1" />
+
+      {/* My Profile */}
+      <div className="px-4 pb-2 flex-none">
         <button
-          onClick={() => {
-            localStorage.removeItem("munim_auth_trader");
-            router.push("/");
-          }}
-          className="flex items-center gap-3 px-3 py-2 text-gray-500 hover:text-gray-900 hover:bg-white rounded-lg transition-colors w-full text-sm"
+          onClick={() => router.push("/dashboard/profile")}
+          className="flex items-center gap-3 px-3 py-2.5 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors w-full text-sm font-semibold"
         >
-          <div className="w-6 h-6 rounded-full bg-gray-900 text-white flex items-center justify-center font-bold text-[10px]">
+          <div className="w-7 h-7 rounded-full bg-[#10b981] text-white flex items-center justify-center font-bold text-[11px]">
             {authName}
           </div>
+          <div className="text-left">
+            <p className="text-sm font-semibold text-gray-900">My Profile</p>
+            <p className="text-[10px] text-gray-400">View & edit your CA details</p>
+          </div>
+          <UserCircle size={15} className="ml-auto text-gray-400" />
+        </button>
+      </div>
+
+      {/* Sign Out */}
+      <div className="px-4 pb-4 flex-none border-t border-gray-100 pt-2">
+        <button
+          onClick={() => { localStorage.removeItem("munim_auth_trader"); router.push("/"); }}
+          className="flex items-center gap-3 px-3 py-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors w-full text-sm"
+        >
+          <LogOut size={15} />
           <span className="font-medium">Sign Out</span>
-          <LogOut size={14} className="ml-auto" />
         </button>
       </div>
     </aside>
