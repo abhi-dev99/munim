@@ -6,6 +6,7 @@ import SupplierHealth from "./components/SupplierHealth";
 import ActionQueue from "./components/ActionQueue";
 import Sidebar from "./components/Sidebar";
 import InvoiceFeed from "./components/InvoiceFeed";
+import GSTR2BUpload from "./components/GSTR2BUpload";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -90,6 +91,7 @@ export default function Home() {
               {activeTab === "money-meter" && <MoneyMeter summary={summary} apiBase={API_BASE} />}
               {activeTab === "suppliers" && <SupplierHealth traderId={traderId} apiBase={API_BASE} />}
               {activeTab === "actions" && <ActionQueue traderId={traderId} apiBase={API_BASE} />}
+              {activeTab === "upload" && <GSTR2BUpload traderId={traderId} apiBase={API_BASE} />}
             </div>
             <div className="lg:col-span-1">
               <InvoiceFeed traderId={traderId} apiBase={API_BASE} />
