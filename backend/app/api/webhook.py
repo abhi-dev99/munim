@@ -602,6 +602,14 @@ async def _process_registration_step(phone: str, text: str, trader: dict, state:
         }
         await whatsapp.send_text_message(phone, completion_msgs.get(current_lang, completion_msgs["hi"]))
 
+        email_msgs = {
+            "en": "📧 You've also been assigned an official Munim-AI email address:\n\n*11c6f792d6e48b4d78d2@cloudmailin.net*\n\nYou can give this to your vendors so that all invoices sent by them directly sync with your dashboard!",
+            "mr": "📧 तुम्हाला अधिकृत मुनीम-AI ईमेल दिला गेला आहे:\n\n*11c6f792d6e48b4d78d2@cloudmailin.net*\n\nतुम्ही हे तुमच्या विक्रेत्यांना देऊ शकता जेणेकरून त्यांचे इनव्हॉइस थेट डॅशबोर्डवर सिंक होतील!",
+            "gu": "📧 તમને સત્તાવાર મુનિમ-AI ઈમેલ આપવામાં આવ્યો છે:\n\n*11c6f792d6e48b4d78d2@cloudmailin.net*\n\nતમે આ તમારા વિક્રેતાઓને આપી શકો છો જેથી તેમના ઇન્વૉઇસ સીધા ડેશબોર્ડ પર સિંક થાય!",
+            "hi": "📧 Aapko ek official Munim-AI email address bhi diya gaya hai:\n\n*11c6f792d6e48b4d78d2@cloudmailin.net*\n\nAap yeh apne vendors ko de sakte hain taaki unke bheje gaye invoices seedhe dashboard se sync ho jayein!"
+        }
+        await whatsapp.send_text_message(phone, email_msgs.get(current_lang, email_msgs["hi"]))
+
 async def _answer_general_query(phone: str, text: str, trader: dict):
     from app.services.supabase_client import get_itc_summary, get_recent_invoices
     from app.services.gemini import answer_trader_question
