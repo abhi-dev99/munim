@@ -47,6 +47,37 @@ Each entry: **ID · name** — mechanism → why → effort (S/M/L) → tags →
 
 **OCV-3 · On-device OCR triage for offline capture** — Android's on-device text-recognition (or a tiny local OCR pass) does a first read when network is unavailable, queues the raw text + image locally, and defers full structured Gemini extraction until connectivity returns. → This is the *only* item in this catalog that's a genuine architectural extension of Munim's own positioning ("checks invoices while there's still time to fix a filing," built for low-connectivity Bharat MSMEs) rather than a bolt-on — it's the on-device story the product already claims to need. → **L** (requires an offline queue + sync-on-reconnect flow that doesn't exist today) → `PRODUCT` + `SCORE` → **catalog for Grand Finale, too large for this weekend.**
 
+  **Status: BUILT** (branch `iqoo/offline-queue`). Shipped as queue-and-defer,
+  not on-device OCR triage — this entry's original mechanism assumed a local
+  text-recognition first pass on the captured image while offline; that part
+  was never attempted and is now understood to be unnecessary scope for what
+  the product actually needed, which was simpler: don't lose the photo. The
+  on-device blur/glare gate (OCV-1) already runs before this point, so the
+  image reaching the queue has already passed a quality check; no local OCR
+  reads it before upload. `handleInvoiceUpload` in
+  `frontend/src/app/trader/page.js` now checks `navigator.onLine` and wraps
+  the upload `fetch` in a try/catch (plus a 30s `AbortController` timeout for
+  a connection that reports itself online but is dead) — either path falls
+  back to `queueUpload()` instead of losing the file. The queue itself
+  (`frontend/src/app/utils/offlineQueue.js`) is raw `indexedDB`, storing each
+  pending file as an `ArrayBuffer` + its upload metadata (not a `Blob`
+  directly — cross-browser structured-clone support for `Blob` is
+  inconsistent, `ArrayBuffer` is universally safe to persist). Draining is a
+  plain `window.addEventListener('online', ...)` retry loop in `page.js`,
+  not the Background Sync API — Background Sync would let a service worker
+  drain the queue even with the PWA tab closed, but needs a fallback path
+  anyway for unsupported browsers, so the `online`-listener baseline is the
+  entire implementation rather than a fallback bolted onto something fancier.
+  A persistent orange pill shows the queued count so it's demoable without
+  devtools. Unit-tested with Vitest + `fake-indexeddb`
+  (`frontend/src/app/utils/offlineQueue.test.js`). Known limitation carried
+  over from the existing upload flow, not introduced here: neither the live
+  nor the queued upload path is idempotent server-side, so a request that
+  reaches the backend but whose response is lost to a flaky connection can
+  still produce a duplicate invoice on retry — a pre-existing gap, sized here
+  rather than fixed, since fixing it is a backend change out of scope for a
+  frontend queue.
+
 **OCV-4 · Tamper/re-photograph forensics signal** — on-device error-level-analysis or a small tamper-detection pass run on the captured image before upload, feeding a **7th fraud signal** ("was this image itself manipulated") alongside the existing 6-signal scorer (Benford's Law, sequential-invoice, velocity, GSTIN age, etc.). → Genuinely novel: none of the existing fraud signals look at the image itself, only at the extracted data. A security-literate judge will recognize this as a real, non-obvious contribution. → **L** (forensics models are finicky, false-positive risk is real, needs careful threshold tuning under time pressure) → `PRODUCT` → **catalog, don't attempt live-coded under a 30-hour clock — a bad demo of this is worse than not having it.**
 
 ### VOI — Voice (mic + on-device speech)
@@ -85,7 +116,7 @@ Be explicit about this distinction in the pitch: **Office Kit is a hackathon bui
 3. **OCV-2 (auto-crop)** — only if OCV-1 lands with room to spare; shares its scaffolding.
 4. **MDX-1 + MDX-2 (demo choreography)** — zero new code, pure rehearsal; do this regardless of how the build goes, since it costs nothing but planning time.
 5. **VOI-1 (voice queries)** — stretch goal, after 1–4 are solid.
-6. Everything else in the catalog (OCV-3, OCV-4, VOI-3, NPU-1) — **do not attempt live**. These are Grand Finale / post-event roadmap items. Naming them in the pitch as "what's next" costs nothing and signals technical range without the risk of a half-built feature failing on stage.
+6. Everything else in the catalog (OCV-4, VOI-3, NPU-1) — **do not attempt live**. These are Grand Finale / post-event roadmap items. Naming them in the pitch as "what's next" costs nothing and signals technical range without the risk of a half-built feature failing on stage. (OCV-3 was later built post-event, with more time available than this list assumed — see its entry above.)
 
 Do not let `SCORE`-chasing crowd out the actual bug-fix backlog (§ below) — a product that's polished on telemetry but breaks when a judge asks for a real reconciled invoice loses more on the 70% jury-scored side than it gains on the 25% device-scored side.
 

@@ -4,6 +4,13 @@ All notable changes to Munim.ai are documented here. Format loosely follows [Kee
 
 ---
 
+## 2026-09-04
+
+### Added
+- **On feature branch, not yet merged to `main`:** `iqoo/offline-queue` — an offline invoice upload queue for the trader PWA. A photo captured with no connectivity (or that fails a live upload — network error, or a 30s timeout for a connection that reports itself online but is dead) now queues locally via IndexedDB (`frontend/src/app/utils/offlineQueue.js`) instead of being lost, and auto-uploads on the browser's `online` event. A persistent badge shows the queued count; a drained upload goes through the identical success path (toast, TTS hook, invoice-history refresh) as a live upload. This is OCV-3 from `IQOO_DEVICE_CAPABILITY_SPEC.md`, previously catalogued as too large for the original 30-hour hackathon window — built as queue-and-defer rather than the originally-assumed on-device OCR triage, since OCV-1's photo-quality gate already screens the image before it ever reaches this queue.
+
+---
+
 ## 2026-09-03
 
 ### Added
