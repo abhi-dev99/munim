@@ -210,30 +210,6 @@ export default function DevDashboard() {
 
       {/* Main Content Area */}
       <main className="flex-1 p-8 overflow-y-auto space-y-8 max-w-7xl mx-auto w-full">
-          {/* Live Warning Banner if any API Keys hit rate limits */}
-          {geminiStatus && geminiStatus.rate_limited_count > 0 && (
-            <div className={`p-4 rounded-2xl flex items-center justify-between text-xs font-bold shadow-sm ${
-              geminiStatus.all_exhausted 
-                ? "bg-red-500 text-white border border-red-600" 
-                : "bg-amber-500 text-white border border-amber-600"
-            }`}>
-              <div className="flex items-center gap-2.5">
-                <AlertTriangle size={18} className={geminiStatus.all_exhausted ? "animate-pulse" : ""} />
-                <span>
-                  {geminiStatus.all_exhausted
-                    ? "🚨 CRITICAL: All Gemini API keys hit rate limits (429/Quota Exceeded). Pipeline fallback to Groq Llama-3.3 active."
-                    : `⚠️ AI Pipeline Alert: ${geminiStatus.rate_limited_count} of ${geminiStatus.total_keys} Gemini API keys hit rate limits and rotated.`}
-                </span>
-              </div>
-              <button
-                onClick={() => setShowGeminiModal(true)}
-                className="px-4 py-1.5 bg-white/20 hover:bg-white/30 rounded-xl text-white font-extrabold transition-colors"
-              >
-                Manage AI Keys
-              </button>
-            </div>
-          )}
-
           {/* Gemini API Key Pool Telemetry & Control Card */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
