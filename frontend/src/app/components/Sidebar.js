@@ -13,6 +13,7 @@ import {
   LogOut,
   UserCircle,
 } from "lucide-react";
+import { useLanguage } from "../context/LanguageContext";
 
 // Mini sparkline bar chart (no recharts dependency in sidebar)
 function MiniSparkline({ data = [] }) {
@@ -35,6 +36,7 @@ function MiniSparkline({ data = [] }) {
 
 export default function Sidebar({ activeTab, onTabChange, actionCount = 0, traderId, apiBase }) {
   const router = useRouter();
+  const { t } = useLanguage();
   const [isWhatsappEnabled, setIsWhatsappEnabled] = useState(false);
   const [testAlertSent, setTestAlertSent] = useState(false);
   const [testAlertLoading, setTestAlertLoading] = useState(false);
@@ -61,10 +63,10 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, trade
   }, [traderId, apiBase]);
 
   const navItems = [
-    { id: "money-meter", label: "Money Meter", icon: LayoutDashboard },
-    { id: "suppliers", label: "Supplier Trust", icon: Users },
-    { id: "actions", label: "Action Queue", icon: AlertCircle, badge: actionCount },
-    { id: "reports", label: "Monthly Reports", icon: FileText },
+    { id: "money-meter", label: t("nav_money_meter"), icon: LayoutDashboard },
+    { id: "suppliers", label: t("nav_supplier_trust"), icon: Users },
+    { id: "actions", label: t("nav_action_queue"), icon: AlertCircle, badge: actionCount },
+    { id: "reports", label: t("nav_monthly_reports"), icon: FileText },
   ];
 
   // Upcoming GST deadlines
@@ -131,7 +133,7 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, trade
       <div className="px-4 pb-3 flex-none">
         <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 flex items-center gap-1.5">
           <CalendarClock size={11} />
-          Upcoming Deadlines
+          {t("sb_upcoming_deadlines")}
           {/* Pulsing indicator if any deadline is close */}
           {isDeadlineUrgent && (
             <span className="relative ml-1 flex h-2 w-2">
@@ -161,7 +163,7 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, trade
       <div className="px-4 py-3 flex-none">
         <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 flex items-center gap-1.5">
           <TrendingUp size={11} />
-          ITC Trend (6mo)
+          {t("sb_itc_trend")}
         </p>
         <div className="bg-gray-50 rounded-lg border border-gray-100 py-2">
           <MiniSparkline data={itcData} />
@@ -183,7 +185,7 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, trade
               <div className="w-7 h-7 rounded-full bg-[#25D366] text-white flex items-center justify-center">
                 <MessageCircle size={13} />
               </div>
-              <span className="text-xs font-bold text-gray-900">WhatsApp Alerts</span>
+              <span className="text-xs font-bold text-gray-900">{t("nav_whatsapp_alerts")}</span>
             </div>
             <button
               onClick={() => setIsWhatsappEnabled(!isWhatsappEnabled)}
@@ -193,7 +195,7 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, trade
             </button>
           </div>
           <p className="text-[10px] text-gray-400 leading-relaxed">
-            {isWhatsappEnabled ? "You'll get deadline & mismatch alerts." : "Turn on for instant compliance reminders."}
+            {isWhatsappEnabled ? t("sb_wa_active") : t("sb_wa_turn_on")}
           </p>
           {isWhatsappEnabled && (
             <div className="space-y-1.5">
@@ -221,8 +223,8 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, trade
                 className="w-full py-1.5 bg-white border border-[#25D366] text-[#25D366] rounded-lg text-[11px] font-bold hover:bg-green-50 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
               >
                 {testAlertLoading ? (
-                  <><div className="animate-spin rounded-full h-3 w-3 border-b-2 border-[#25D366]" />Sending…</>
-                ) : testAlertSent ? "Sent ✅" : "Send Test Alert"}
+                  <><div className="animate-spin rounded-full h-3 w-3 border-b-2 border-[#25D366]" />{t("nav_sending")}</>
+                ) : testAlertSent ? "Sent ✅" : t("nav_send_test_alert")}
               </button>
               {testAlertError && <p className="text-[10px] text-red-500 text-center">{testAlertError}</p>}
             </div>
@@ -243,8 +245,8 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, trade
             {authName}
           </div>
           <div className="text-left">
-            <p className="text-sm font-semibold text-gray-900">My Profile</p>
-            <p className="text-[10px] text-gray-400">View & edit your CA details</p>
+            <p className="text-sm font-semibold text-gray-900">{t("nav_my_profile")}</p>
+            <p className="text-[10px] text-gray-400">{t("pro_view_edit")}</p>
           </div>
           <UserCircle size={15} className="ml-auto text-gray-400" />
         </button>
@@ -257,7 +259,7 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, trade
           className="flex items-center gap-3 px-3 py-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors w-full text-sm"
         >
           <LogOut size={15} />
-          <span className="font-medium">Sign Out</span>
+          <span className="font-medium">{t("nav_sign_out")}</span>
         </button>
       </div>
     </aside>
