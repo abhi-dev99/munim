@@ -205,7 +205,7 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, trade
                   setTestAlertLoading(true);
                   setTestAlertError(null);
                   try {
-                    const res = await fetch(`${apiBase}/api/v1/communicate/test-alert/${traderId}`, { method: "POST" });
+                    const res = await fetch(`${apiBase}/api/v1/communicate/test-alert/${traderId}?lang=${lang}`, { method: "POST" });
                     if (res.ok) {
                       setTestAlertSent(true);
                       setTimeout(() => setTestAlertSent(false), 4000);
