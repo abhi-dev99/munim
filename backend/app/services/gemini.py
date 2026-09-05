@@ -158,7 +158,12 @@ async def generate_hindi_diagnosis(
 
 
 async def transcribe_voice_note(audio_bytes: bytes, mime_type: str = "audio/ogg") -> str:
-    """Transcribe a WhatsApp voice note using Gemini."""
+    """Transcribe a WhatsApp voice note using Gemini. Supports Hindi, English, Marathi, Gujarati."""
+    if mime_type and "ogg" in mime_type and "opus" not in mime_type:
+        mime_type = "audio/ogg;codecs=opus"
+    elif not mime_type:
+        mime_type = "audio/ogg;codecs=opus"
+
     try:
         response = client.models.generate_content(
             model=settings.gemini_model,
@@ -167,17 +172,24 @@ async def transcribe_voice_note(audio_bytes: bytes, mime_type: str = "audio/ogg"
                     parts=[
                         types.Part.from_bytes(data=audio_bytes, mime_type=mime_type),
                         types.Part.from_text(
-                            text="Transcribe this Hindi/Hinglish audio. Return only the transcription, no commentary."
+                            text=(
+                                "You are a transcription assistant for an Indian GST compliance app. "
+                                "The speaker may use Hindi, English, Hinglish, Marathi, or Gujarati. "
+                                "Transcribe exactly as spoken in the original language. "
+                                "Return ONLY the transcript."
+                            )
                         ),
                     ]
                 )
             ],
             config=types.GenerateContentConfig(
-                temperature=0.1,
-                max_output_tokens=2048,
+                temperature=0.0,
+                max_output_tokens=512,
             ),
         )
-        return response.text.strip()
+        transcript = response.text.strip() if response.text else ""
+        logger.info(f"Voice transcribed: '{transcript[:80]}'")
+        return transcript
     except Exception as e:
         logger.error(f"Voice transcription failed: {e}")
         return ""

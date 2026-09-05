@@ -397,7 +397,7 @@ async def handle_invoice_message(phone: str, msg: dict):
 
 
 async def handle_voice_message(phone: str, msg: dict):
-    """Handle voice notes — transcribe and acknowledge."""
+    """Handle voice notes — transcribe then route as if it were a text message."""
     from app.services.gemini import transcribe_voice_note
 
     trader = await get_trader_by_phone(phone)
@@ -414,47 +414,20 @@ async def handle_voice_message(phone: str, msg: dict):
         await whatsapp.send_text_message(phone, "⚠️ Audio sun nahi paya. Text mein likh ke bhejo.")
         return
 
-    transcript = await transcribe_voice_note(audio_bytes, mime_type or "audio/ogg")
+    transcript = await transcribe_voice_note(audio_bytes, mime_type)
     if not transcript:
-        await whatsapp.send_text_message(
-            phone, "⚠️ Audio samajh nahi aaya. Text mein likh ke bhejo."
-        )
+        lang = trader.get("language_pref", "hi")
+        err_msgs = {
+            "en": "⚠️ Couldn't understand the audio. Please type your message instead.",
+            "mr": "⚠️ ऑडिओ समजला नाही. कृपया टेक्स्ट मध्ये लिहा.",
+            "gu": "⚠️ ઑડિઓ સમજાયો નહિ. કૃપા કરી ટેક્સ્ટ માં લખો.",
+            "hi": "⚠️ Audio samajh nahi aaya. Text mein likh ke bhejo.",
+        }
+        await whatsapp.send_text_message(phone, err_msgs.get(lang, err_msgs["hi"]))
         return
 
-    await whatsapp.send_text_message(
-        phone, f"🎤 Aapne kaha: \"{transcript}\"\n\n⚙️ Intent process kar raha hoon..."
-    )
-
-    from app.services.gemini import understand_intent
-    parsed = await understand_intent(transcript)
-    intent = parsed.get("intent", "unknown")
-
-    if intent == "itc_status":
-        await _send_itc_status(phone, trader)
-    elif intent == "supplier_check":
-        supplier_name = parsed.get("entities", {}).get("supplier_name", "")
-        if supplier_name:
-            await whatsapp.send_text_message(
-                phone, f"🔍 '{supplier_name}' ka status check kar raha hoon..."
-            )
-            await _send_supplier_check(phone, trader, supplier_name)
-        else:
-            await whatsapp.send_text_message(phone, "Supplier ka naam samajh nahi aaya. Phir se bolo.")
-    elif intent == "report_request":
-        from app.agents.report_agent import generate_munim_report, send_report_to_trader
-        from datetime import date
-        now = date.today()
-        await whatsapp.send_text_message(phone, "📄 Munim Report bana raha hoon. 15 second lagte hain...")
-        pdf_url = await generate_munim_report(trader["id"], now.month, now.year)
-        if pdf_url:
-            await send_report_to_trader(trader["id"], pdf_url)
-        else:
-            await whatsapp.send_text_message(phone, "Report generate karne mein dikkat aayi. CA se contact karo.")
-    elif intent == "general_query":
-        await _answer_general_query(phone, transcript, trader)
-    else:
-        # Fallback to general query for voice notes too!
-        await _answer_general_query(phone, transcript, trader)
+    # Route the transcript through the same text handler — avoids duplicating all the logic
+    await handle_text_message(phone, transcript)
 
 
 # --- Registration Flow ---
