@@ -9,6 +9,7 @@ import MoneyMeter from "../components/MoneyMeter";
 import ActionQueue from "../components/ActionQueue";
 import InvoiceDetailModal from "../components/InvoiceDetailModal";
 import ReportsPanel from "../components/ReportsPanel";
+import ListenButton from "../components/ListenButton";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -148,6 +149,9 @@ export default function TraderApp() {
           status: data.itc_verdict?.status || "PROCESSING",
           itc_amount: data.itc_verdict?.itc_amount || 0,
           message: data.diagnosis_hi || data.diagnosis_en || "Invoice processed!",
+          // Hint the TTS voice picker toward Hindi only when we actually got
+          // Hindi text back — otherwise fall back to English.
+          lang: data.diagnosis_hi ? "hi-IN" : "en-IN",
         });
         setTimeout(() => {
           setScanState("idle");
@@ -326,6 +330,7 @@ export default function TraderApp() {
                   <p className="text-xs font-bold text-black">ITC: ₹{scanResult.itc_amount.toLocaleString("en-IN")}</p>
                 )}
                 <p className="text-xs text-[var(--text-secondary)] mt-1">{scanResult.message}</p>
+                <ListenButton text={scanResult.message} lang={scanResult.lang} className="mt-1.5" />
               </>
             )}
             {scanState === "error" && scanResult && (
