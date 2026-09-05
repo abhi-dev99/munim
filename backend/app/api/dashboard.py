@@ -383,6 +383,8 @@ async def get_gstr3b_draft(trader_id: str, month: int = None, year: int = None):
         year = year or now.year
 
         invoices = await get_invoices_for_trader(trader_id, month, year)
+        if not invoices:
+            invoices = await get_invoices_for_trader(trader_id)  # fallback: all invoices
 
         # Table 4: ITC Availability — from real engine verdicts
         itc_igst = itc_cgst = itc_sgst = 0.0
@@ -396,9 +398,9 @@ async def get_gstr3b_draft(trader_id: str, month: int = None, year: int = None):
 
         for inv in invoices:
             status = inv.get("itc_status", "")
-            igst = float(inv.get("igst") or 0)
-            cgst = float(inv.get("cgst") or 0)
-            sgst = float(inv.get("sgst") or 0)
+            igst = float(inv.get("igst_amount") or inv.get("igst") or 0)
+            cgst = float(inv.get("cgst_amount") or inv.get("cgst") or 0)
+            sgst = float(inv.get("sgst_amount") or inv.get("sgst") or 0)
             total_tax = igst + cgst + sgst
 
             if status == "CONFIRMED":
@@ -481,7 +483,11 @@ async def get_ims_invoices(trader_id: str, month: int = None, year: int = None):
         month = month or now.month
         year = year or now.year
 
+        # Try current month first; if empty fall back to ALL invoices for the trader
+        # (invoices may have been uploaded in a different month or have no invoice_date)
         invoices = await get_invoices_for_trader(trader_id, month, year)
+        if not invoices:
+            invoices = await get_invoices_for_trader(trader_id)  # no date filter
 
         IMS_DEFAULT = {
             "CONFIRMED": "accept",
@@ -494,9 +500,9 @@ async def get_ims_invoices(trader_id: str, month: int = None, year: int = None):
         ims_rows = []
         for inv in invoices:
             status = inv.get("itc_status", "")
-            igst = float(inv.get("igst") or 0)
-            cgst = float(inv.get("cgst") or 0)
-            sgst = float(inv.get("sgst") or 0)
+            igst = float(inv.get("igst_amount") or inv.get("igst") or 0)
+            cgst = float(inv.get("cgst_amount") or inv.get("cgst") or 0)
+            sgst = float(inv.get("sgst_amount") or inv.get("sgst") or 0)
             ims_rows.append({
                 "invoice_id": inv["id"],
                 "invoice_number": inv.get("invoice_number", ""),
@@ -504,7 +510,7 @@ async def get_ims_invoices(trader_id: str, month: int = None, year: int = None):
                 "supplier_name": inv.get("supplier_name") or inv.get("gstin_supplier", "Unknown"),
                 "supplier_gstin": inv.get("gstin_supplier", ""),
                 "total_amount": float(inv.get("total_amount") or 0),
-                "taxable_value": float(inv.get("taxable_value") or 0),
+                "taxable_value": float(inv.get("taxable_amount") or inv.get("taxable_value") or 0),
                 "igst": igst,
                 "cgst": cgst,
                 "sgst": sgst,
