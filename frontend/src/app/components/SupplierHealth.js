@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { AlertTriangle, CheckCircle2, XCircle, Search, ChevronUp, ChevronDown, ArrowUpRight, X, FileText, ShieldAlert } from "lucide-react";
+import { AlertTriangle, CheckCircle2, XCircle, Search, ChevronUp, ChevronDown, ArrowUpRight, X, FileText, ShieldAlert, ChevronRight } from "lucide-react";
 import InvoiceDetailModal from "./InvoiceDetailModal";
+import { useLanguage } from "../context/LanguageContext";
 
 const STATUS_CONFIG = {
-  GOOD:     { label: "Good",     chip: "bg-emerald-50 text-emerald-700 border-emerald-200",  dot: "bg-emerald-500", bar: "bg-emerald-500" },
-  RISK:     { label: "At Risk",  chip: "bg-amber-50 text-amber-700 border-amber-200",        dot: "bg-amber-500",   bar: "bg-amber-500"   },
-  CRITICAL: { label: "Blocked",  chip: "bg-red-50 text-red-700 border-red-200",              dot: "bg-red-500",     bar: "bg-red-500"     },
+  GOOD:     { labelKey: "sup_good_standing", chip: "bg-emerald-50 text-emerald-700 border-emerald-200",  dot: "bg-emerald-500", bar: "bg-emerald-500" },
+  RISK:     { labelKey: "sup_at_risk",  chip: "bg-amber-50 text-amber-700 border-amber-200",        dot: "bg-amber-500",   bar: "bg-amber-500"   },
+  CRITICAL: { labelKey: "sup_blocked",  chip: "bg-red-50 text-red-700 border-red-200",              dot: "bg-red-500",     bar: "bg-red-500"     },
 };
 
 function formatINR(amount) {
@@ -40,6 +41,7 @@ function getStatusLabel(status) {
 
 /* ─── Supplier Invoice Overlay ─────────────────────────────────────────── */
 function SupplierInvoiceOverlay({ supplier, apiBase, traderId, onClose }) {
+  const { t } = useLanguage();
   const [invoices, setInvoices]           = useState([]);
   const [loading, setLoading]             = useState(true);
   const [selectedIndex, setSelectedIndex] = useState(null);
@@ -68,16 +70,11 @@ function SupplierInvoiceOverlay({ supplier, apiBase, traderId, onClose }) {
   const cfg = STATUS_CONFIG[supplier.status];
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-40 bg-gray-900/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      {/* Panel */}
-      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-lg bg-white shadow-2xl flex flex-col">
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-gray-900/50 p-2 md:p-8 backdrop-blur-md transition-all duration-300 ease-in-out">
+      {/* Main Card (Sharp Corners to match InvoiceDetailModal) */}
+      <div className="bg-white rounded-none w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col relative border border-[#E0E0E0] shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div className="flex items-center gap-3">
             <div className={`w-2.5 h-2.5 rounded-full ${cfg.dot}`} />
             <div>
@@ -85,27 +82,27 @@ function SupplierInvoiceOverlay({ supplier, apiBase, traderId, onClose }) {
               <p className="text-[10px] font-mono text-gray-400">{supplier.gstin}</p>
             </div>
             <span className={`ml-2 inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${cfg.chip}`}>
-              {cfg.label}
+              {t(cfg.labelKey)}
             </span>
           </div>
           <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
-            <X size={16} className="text-gray-500" />
+            <X size={18} className="text-gray-500" />
           </button>
         </div>
 
         {/* Stats strip */}
-        <div className="flex divide-x divide-gray-100 border-b border-gray-100 text-center">
-          <div className="flex-1 py-3">
-            <p className="text-lg font-black text-gray-900">{invoices.length}</p>
-            <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Invoices</p>
+        <div className="flex divide-x divide-gray-100 border-b border-gray-100 text-center bg-gray-50">
+          <div className="flex-1 py-4">
+            <p className="text-xl font-black text-gray-900">{invoices.length}</p>
+            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{t("sup_invoices")}</p>
           </div>
-          <div className="flex-1 py-3">
-            <p className="text-lg font-black text-gray-900">{supplier.health}</p>
-            <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Health Score</p>
+          <div className="flex-1 py-4">
+            <p className="text-xl font-black text-gray-900">{supplier.health}</p>
+            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{t("sup_health_score")}</p>
           </div>
-          <div className="flex-1 py-3">
-            <p className={`text-lg font-black ${supplier.issues > 0 ? "text-red-600" : "text-gray-900"}`}>{supplier.issues}</p>
-            <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Open Issues</p>
+          <div className="flex-1 py-4">
+            <p className={`text-xl font-black ${supplier.issues > 0 ? "text-red-600" : "text-gray-900"}`}>{supplier.issues}</p>
+            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{t("sup_open_issues")}</p>
           </div>
         </div>
 
@@ -124,9 +121,9 @@ function SupplierInvoiceOverlay({ supplier, apiBase, traderId, onClose }) {
               ))}
             </div>
           ) : invoices.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-2">
+            <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-2 py-20">
               <FileText size={32} className="opacity-30" />
-              <p className="text-sm">No invoices found for this supplier</p>
+              <p className="text-sm">{t("sup_no_invoices")}</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
@@ -139,24 +136,24 @@ function SupplierInvoiceOverlay({ supplier, apiBase, traderId, onClose }) {
                 return (
                   <button
                     key={inv.id}
-                    onClick={() => setSelectedIndex(idx)}
-                    className={`w-full flex items-center justify-between px-4 py-3 transition-colors ${rowBg} group text-left`}
+                    onClick={() => navigate(idx)}
+                    className={`w-full flex items-center justify-between px-6 py-4 border-b border-gray-100 text-left transition-colors ${rowBg} group`}
                   >
                     <div>
-                      <p className="text-sm font-semibold text-gray-900 group-hover:text-[#10b981] transition-colors flex items-center gap-1.5">
-                        {inv.invoice_number || "No Invoice #"}
-                        <ArrowUpRight size={11} className="opacity-0 group-hover:opacity-100 transition-opacity text-[#10b981]" />
-                      </p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-mono text-[11px] font-bold text-gray-900">{inv.invoice_number || "NO_NUM"}</span>
+                        <span className="text-[10px] text-gray-400">•</span>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${inv.itc_status === "CONFIRMED" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-gray-50 text-gray-600 border-gray-200"}`}>
+                          {getStatusLabel(inv.itc_status)}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-gray-400">
                         {new Date(inv.processed_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                       </p>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
+                    <div className="flex items-center gap-4">
                       <p className="text-sm font-bold text-gray-900">₹{Number(inv.total_amount || 0).toLocaleString("en-IN")}</p>
-                      <div className="flex items-center gap-1 text-[10px] font-semibold text-gray-500">
-                        {getStatusIcon(inv.itc_status)}
-                        {getStatusLabel(inv.itc_status)}
-                      </div>
+                      <ChevronRight size={14} className="text-gray-300 group-hover:text-gray-500" />
                     </div>
                   </button>
                 );
@@ -188,12 +185,13 @@ function SupplierInvoiceOverlay({ supplier, apiBase, traderId, onClose }) {
           />
         )
       )}
-    </>
+    </div>
   );
 }
 
 /* ─── Main SupplierHealth Component ────────────────────────────────────── */
 export default function SupplierHealth({ traderId, apiBase, onSwitchTab }) {
+  const { t } = useLanguage();
   const [suppliers, setSuppliers]     = useState([]);
   const [loading, setLoading]         = useState(true);
   const [search, setSearch]           = useState("");
@@ -240,9 +238,11 @@ export default function SupplierHealth({ traderId, apiBase, onSwitchTab }) {
       return sortDir === "asc" ? cmp : -cmp;
     });
 
-  const totalGood     = suppliers.filter(s => s.status === "GOOD").length;
-  const totalAtRisk   = suppliers.filter(s => s.status === "RISK").length;
-  const totalBlocked  = suppliers.filter(s => s.status === "CRITICAL").length;
+  const counts = {
+    GOOD:     suppliers.filter(s => s.status === "GOOD").length,
+    RISK:     suppliers.filter(s => s.status === "RISK").length,
+    CRITICAL: suppliers.filter(s => s.status === "CRITICAL").length,
+  };
 
   const SortIcon = ({ field }) => sortField !== field ? null : sortDir === "asc"
     ? <ChevronUp size={13} className="inline ml-0.5" />
@@ -258,23 +258,19 @@ export default function SupplierHealth({ traderId, apiBase, onSwitchTab }) {
     <>
       <div className="space-y-4 w-full">
         {/* Summary stat cards */}
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: "Good Standing", value: totalGood,    color: "emerald", filter: "GOOD"     },
-            { label: "At Risk",       value: totalAtRisk,  color: "amber",   filter: "RISK"     },
-            { label: "Blocked",       value: totalBlocked, color: "red",     filter: "CRITICAL" },
-          ].map(({ label, value, color, filter }) => (
+        <div className="grid grid-cols-4 gap-3">
+          {["ALL", "GOOD", "RISK", "CRITICAL"].map((f) => (
             <button
-              key={filter}
-              onClick={() => setFilterStatus(f => f === filter ? "ALL" : filter)}
+              key={f}
+              onClick={() => setFilterStatus(f)}
               className={`text-left bg-white rounded-xl border p-3 transition-all hover:shadow-sm ${
-                filterStatus === filter
-                  ? `border-${color}-400 ring-1 ring-${color}-300`
+                filterStatus === f
+                  ? "border-emerald-500 ring-1 ring-emerald-500"
                   : "border-gray-200"
               }`}
             >
-              <p className={`text-2xl font-bold text-${color}-600`}>{value}</p>
-              <p className={`text-xs text-${color}-500 mt-0.5 font-medium`}>{label}</p>
+              <p className="text-2xl font-bold text-gray-900">{f === "ALL" ? suppliers.length : counts[f]}</p>
+              <p className="text-xs text-gray-500 mt-0.5 font-medium">{f === "ALL" ? t("sup_all_status") : t(STATUS_CONFIG[f].labelKey)}</p>
             </button>
           ))}
         </div>
@@ -291,41 +287,21 @@ export default function SupplierHealth({ traderId, apiBase, onSwitchTab }) {
               className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981]/20"
             />
           </div>
-          <select
-            value={filterStatus}
-            onChange={e => setFilterStatus(e.target.value)}
-            className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-[#10b981] text-gray-700"
-          >
-            <option value="ALL">All Status</option>
-            <option value="GOOD">Good</option>
-            <option value="RISK">At Risk</option>
-            <option value="CRITICAL">Blocked</option>
-          </select>
         </div>
 
-        {/* Table — w-full, no forced min-w so it doesn't overflow */}
+        {/* Table */}
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
-                  {[
-                    { label: "Supplier",     field: "name",      cls: "text-left pl-4 pr-3 w-[28%]" },
-                    { label: "GSTIN",        field: null,        cls: "text-left w-[22%]"            },
-                    { label: "Health",       field: "health",    cls: "text-left w-[18%]"            },
-                    { label: "Status",       field: "status",    cls: "text-left w-[14%]"            },
-                    { label: "ITC",          field: "itcAmount", cls: "text-right w-[10%]"           },
-                    { label: "Issues",       field: "issues",    cls: "text-center w-[8%]"           },
-                  ].map(({ label, field, cls }) => (
-                    <th
-                      key={label}
-                      onClick={() => field && handleSort(field)}
-                      className={`py-2.5 px-3 text-[10px] font-bold uppercase tracking-wide text-gray-400 ${cls} ${field ? "cursor-pointer hover:text-gray-700 select-none" : ""}`}
-                    >
-                      {label}<SortIcon field={field} />
-                    </th>
-                  ))}
-                  <th className="py-2.5 px-3 text-[10px] font-bold uppercase tracking-wide text-gray-400 text-center w-[10%]">Action</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-gray-500 cursor-pointer" onClick={() => handleSort("name")}>{t("sup_supplier")}<SortIcon field="name" /></th>
+                  <th className="text-left px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-gray-500">{t("sup_gstin")}</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-gray-500 cursor-pointer" onClick={() => handleSort("health")}>{t("sup_health")}<SortIcon field="health" /></th>
+                  <th className="text-left px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-gray-500 cursor-pointer" onClick={() => handleSort("status")}>{t("sup_status")}<SortIcon field="status" /></th>
+                  <th className="text-right px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-gray-500 cursor-pointer" onClick={() => handleSort("itcAmount")}>{t("sup_itc")}<SortIcon field="itcAmount" /></th>
+                  <th className="text-right px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-gray-500 cursor-pointer" onClick={() => handleSort("issues")}>{t("sup_issues")}<SortIcon field="issues" /></th>
+                  <th className="text-center px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-gray-500">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -343,19 +319,16 @@ export default function SupplierHealth({ traderId, apiBase, onSwitchTab }) {
                       className="hover:bg-gray-50/80 transition-colors group cursor-pointer"
                       onClick={() => setActiveSupplier(sup)}
                     >
-                      {/* Supplier name */}
-                      <td className="py-3 pl-4 pr-3">
+                      <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
                           <div className={`w-2 h-2 rounded-full flex-none ${cfg.dot}`} />
                           <span className="font-semibold text-gray-900 group-hover:text-[#10b981] transition-colors text-sm">{sup.name}</span>
                         </div>
                       </td>
-                      {/* GSTIN */}
-                      <td className="py-3 px-3">
+                      <td className="py-3 px-4">
                         <span className="font-mono text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{sup.gstin}</span>
                       </td>
-                      {/* Health bar + score */}
-                      <td className="py-3 px-3">
+                      <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
                           <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                             <div
@@ -368,31 +341,24 @@ export default function SupplierHealth({ traderId, apiBase, onSwitchTab }) {
                           </span>
                         </div>
                       </td>
-                      {/* Status chip */}
-                      <td className="py-3 px-3">
+                      <td className="py-3 px-4">
                         <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${cfg.chip}`}>
-                          {sup.status === "GOOD"     && <CheckCircle2 size={10} />}
-                          {sup.status === "RISK"     && <AlertTriangle size={10} />}
-                          {sup.status === "CRITICAL" && <XCircle size={10} />}
-                          {cfg.label}
+                          {t(cfg.labelKey)}
                         </span>
                       </td>
-                      {/* ITC Amount */}
-                      <td className="py-3 px-3 text-right font-semibold text-gray-900 text-sm">
+                      <td className="py-3 px-4 text-right font-semibold text-gray-900 text-sm">
                         {formatINR(sup.itcAmount)}
                       </td>
-                      {/* Issues */}
-                      <td className="py-3 px-3 text-center" onClick={e => { e.stopPropagation(); onSwitchTab?.("actions"); }}>
+                      <td className="py-3 px-4 text-right">
                         {sup.issues > 0 ? (
-                          <span className="inline-flex items-center gap-0.5 text-xs font-bold text-red-600 hover:underline cursor-pointer">
+                          <span className="inline-flex items-center justify-end gap-0.5 text-xs font-bold text-red-600 hover:underline cursor-pointer" onClick={e => { e.stopPropagation(); onSwitchTab?.("actions"); }}>
                             {sup.issues}<ArrowUpRight size={10} />
                           </span>
                         ) : (
                           <span className="text-gray-300 text-xs">—</span>
                         )}
                       </td>
-                      {/* Action */}
-                      <td className="py-3 px-3 text-center" onClick={e => e.stopPropagation()}>
+                      <td className="py-3 px-4 text-center">
                         {sup.status === "GOOD" ? (
                           <button
                             onClick={() => setActiveSupplier(sup)}

@@ -121,31 +121,29 @@ function FilingReadinessCard({ traderId, summary, onSwitchTab }) {
   let readiness = 100;
   if (issuesOpen > 0) readiness = Math.max(30, 100 - issuesOpen * 10);
   if (invoicesProcessed === 0) readiness = 0;
-
-  const barColor =
-    readiness >= 80
-      ? "bg-emerald-500"
-      : readiness >= 50
-      ? "bg-amber-500"
-      : "bg-red-500";
+function FilingReadinessCard({ summary, onSwitchTab, traderId }) {
+  const { t } = useLanguage();
+  const readiness = summary?.readiness?.gstr3b_readiness || 0;
+  const invoicesProcessed = summary?.readiness?.invoices_processed || 0;
+  const issuesOpen = summary?.readiness?.issues_open || 0;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4">
+    <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
       <div className="flex items-center gap-2 mb-3">
-        <CheckCircle2 size={15} className="text-gray-400" />
-        <h3 className="text-sm font-bold text-gray-900">Filing Readiness</h3>
+        <CheckCircle2 size={14} className="text-gray-400" />
+        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">{t("fr_gstr3b_readiness") || "Filing Readiness"}</h3>
       </div>
 
-      <div className="mb-3">
-        <div className="flex justify-between items-center mb-1.5">
-          <span className="text-[11px] text-gray-500">GSTR-3B Readiness</span>
-          <span className={`text-sm font-bold ${readiness >= 80 ? "text-emerald-600" : readiness >= 50 ? "text-amber-600" : "text-red-600"}`}>
+      <div className="space-y-1 mb-4">
+        <div className="flex justify-between text-xs mb-1">
+          <span className="text-gray-500">GSTR-3B Readiness</span>
+          <span className={`font-bold ${readiness >= 80 ? 'text-[#10b981]' : readiness >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
             {readiness}%
           </span>
         </div>
-        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+        <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+            className={`h-full rounded-full transition-all duration-500 ${readiness >= 80 ? 'bg-[#10b981]' : readiness >= 50 ? 'bg-amber-500' : 'bg-red-500'}`}
             style={{ width: `${readiness}%` }}
           />
         </div>
@@ -153,7 +151,7 @@ function FilingReadinessCard({ traderId, summary, onSwitchTab }) {
 
       <div className="space-y-2">
         <div className="flex justify-between text-xs">
-          <span className="text-gray-500">Invoices processed</span>
+          <span className="text-gray-500">{t("fr_invoices_processed") || "Invoices processed"}</span>
           <span className="font-semibold text-gray-900">{invoicesProcessed}</span>
         </div>
         {issuesOpen > 0 && (
@@ -163,20 +161,20 @@ function FilingReadinessCard({ traderId, summary, onSwitchTab }) {
           >
             <AlertTriangle size={12} className="text-amber-600 flex-none" />
             <span className="text-[11px] text-amber-700 font-medium group-hover:underline">
-              {issuesOpen} issue{issuesOpen > 1 ? "s" : ""} need attention →
+              {issuesOpen} {t("fr_issues_need_attention") || "issues need attention →"}
             </span>
           </button>
         )}
         {readiness === 0 && (
           <div className="flex items-center gap-1.5 bg-red-50 rounded-lg px-3 py-2">
             <AlertTriangle size={12} className="text-red-600 flex-none" />
-            <span className="text-[11px] text-red-700 font-medium">Upload GSTR-2B to start</span>
+            <span className="text-[11px] text-red-700 font-medium">{t("fr_upload_start") || "Upload GSTR-2B to start"}</span>
           </div>
         )}
         {readiness >= 80 && issuesOpen === 0 && (
           <div className="flex items-center gap-1.5 bg-emerald-50 rounded-lg px-3 py-2">
             <CheckCircle2 size={12} className="text-emerald-600 flex-none" />
-            <span className="text-[11px] text-emerald-700 font-medium">Ready to file!</span>
+            <span className="text-[11px] text-emerald-700 font-medium">{t("fr_ready_to_file") || "Ready to file!"}</span>
           </div>
         )}
       </div>
