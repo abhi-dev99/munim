@@ -132,7 +132,7 @@ async def verify_otp(data: OTPVerify):
     if trader:
         payload = {
             "sub": trader["id"],
-            "exp": datetime.utcnow() + timedelta(days=7),
+            "exp": datetime.utcnow() + timedelta(days=365),
             "iat": datetime.utcnow(),
         }
         token = jwt.encode(payload, settings.jwt_secret, algorithm="HS256")
