@@ -47,7 +47,7 @@ def embed_texts_batch(texts: list[str]) -> list[list[float]]:
 
 def generate_hsn_embeddings():
     """Main function: fetch HSN codes without embeddings, generate and store."""
-    print("🚀 Starting HSN embedding generation...")
+    print("Starting HSN embedding generation...")
     print(f"   Model: {EMBEDDING_MODEL}")
     print(f"   Batch size: {BATCH_SIZE}")
     print()
@@ -55,10 +55,10 @@ def generate_hsn_embeddings():
     # Count total to process
     total_resp = db.table("hsn_codes").select("id", count="exact").is_("embedding", "null").execute()
     total_missing = total_resp.count or 0
-    print(f"📊 HSN codes missing embeddings: {total_missing}")
+    print(f"HSN codes missing embeddings: {total_missing}")
 
     if total_missing == 0:
-        print("✅ All HSN codes already have embeddings!")
+        print("All HSN codes already have embeddings!")
         return
 
     total_processed = 0
@@ -76,7 +76,7 @@ def generate_hsn_embeddings():
         if not records:
             break
 
-        print(f"\n📦 Processing {len(records)} records (offset {offset})...")
+        print(f"\nProcessing {len(records)} records (offset {offset})...")
 
         # Process in batches of BATCH_SIZE
         for i in range(0, len(records), BATCH_SIZE):
@@ -97,10 +97,10 @@ def generate_hsn_embeddings():
                     break
                 except Exception as e:
                     if attempt < 2:
-                        print(f"  ⚠️ Attempt {attempt+1} failed: {e}. Retrying in 5s...")
+                        print(f"  Attempt {attempt+1} failed: {e}. Retrying in 5s...")
                         time.sleep(5)
                     else:
-                        print(f"  ❌ Failed after 3 attempts: {e}")
+                        print(f"  Failed after 3 attempts: {e}")
                         total_errors += len(batch)
 
             if not embeddings:
@@ -114,7 +114,7 @@ def generate_hsn_embeddings():
                     }).eq("id", rec["id"]).execute()
                     total_processed += 1
                 except Exception as e:
-                    print(f"  ❌ Store failed for {rec['hsn_code']}: {e}")
+                    print(f"  Store failed for {rec['hsn_code']}: {e}")
                     total_errors += 1
 
             # Rate limiting
@@ -122,13 +122,13 @@ def generate_hsn_embeddings():
 
         # Progress report
         pct = (total_processed / max(total_missing, 1)) * 100
-        print(f"  ✅ Progress: {total_processed}/{total_missing} ({pct:.1f}%) | Errors: {total_errors}")
+        print(f"  Progress: {total_processed}/{total_missing} ({pct:.1f}%) | Errors: {total_errors}")
 
         offset += page_size
         if len(records) < page_size:
             break
 
-    print(f"\n🏁 Done! Processed {total_processed} HSN embeddings. Errors: {total_errors}")
+    print(f"\nDone! Processed {total_processed} HSN embeddings. Errors: {total_errors}")
 
     # Verify
     remaining = db.table("hsn_codes").select("id", count="exact").is_("embedding", "null").execute()
