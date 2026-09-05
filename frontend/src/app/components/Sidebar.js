@@ -14,7 +14,7 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0 }) {
     <aside className="w-64 fixed h-full bg-[var(--bg-primary)] border-r border-[var(--border-subtle)] z-10 flex flex-col">
       <div className="p-6">
         <div className="flex items-center gap-3">
-          <span className="font-bold text-xl tracking-tight text-black">Dashboard</span>
+          <span className="font-bold text-xl tracking-tight text-black">Munim.ai</span>
         </div>
       </div>
 
@@ -49,13 +49,11 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0 }) {
       </nav>
 
       <div className="p-4 border-t border-[var(--border-subtle)] space-y-1">
-        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-black transition-all">
-          <Settings size={20} />
-          <span className="font-semibold text-sm">Settings</span>
-        </button>
-        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--red-primary)] transition-all">
-          <LogOut size={20} />
-          <span className="font-semibold text-sm">Sign Out</span>
+        <button className="flex items-center gap-3 px-3 py-2 text-[var(--text-secondary)] hover:text-black hover:bg-[var(--bg-secondary)] rounded-lg transition-colors w-full">
+          <div className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center font-bold text-[10px]">
+            N
+          </div>
+          <span className="font-medium text-sm">Sign Out</span>
         </button>
       </div>
     </aside>
