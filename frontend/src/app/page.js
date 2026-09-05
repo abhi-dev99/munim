@@ -52,6 +52,38 @@ export default function LoginPage() {
     }
   };
 
+  const handleQuickDemoLogin = async () => {
+    setLoading(true);
+    setError("");
+    const demoPhone = "919876543210";
+    const demoOtp = "123456";
+    try {
+      await fetch(`${API_BASE}/api/v1/auth/request-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mobile_number: demoPhone }),
+      });
+      const res = await fetch(`${API_BASE}/api/v1/auth/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mobile_number: demoPhone, otp: demoOtp }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Demo login failed");
+      if (data.trader) {
+        localStorage.setItem("munim_auth_trader", JSON.stringify(data.trader));
+      }
+      if (data.token) {
+        localStorage.setItem("munim_auth_token", data.token);
+      }
+      router.push("/dashboard");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     if (!otp || otp.length < 4) {
@@ -166,6 +198,20 @@ export default function LoginPage() {
                 >
                   {loading ? <Loader2 size={18} className="animate-spin" /> : "Send OTP via WhatsApp"}
                 </button>
+
+                <div className="pt-4 border-t border-[#2a2a2a] mt-4 space-y-2">
+                  <button
+                    type="button"
+                    onClick={handleQuickDemoLogin}
+                    disabled={loading}
+                    className="w-full py-2.5 bg-[#10b981] hover:bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 shadow-md"
+                  >
+                    ⚡ Quick Demo Login (Admin / Judge)
+                  </button>
+                  <p className="text-[11px] text-gray-500 text-center font-mono">
+                    ID: 919876543210 &bull; OTP: 123456
+                  </p>
+                </div>
               </form>
             ) : (
               <form onSubmit={handleVerifyOtp} className="space-y-5">

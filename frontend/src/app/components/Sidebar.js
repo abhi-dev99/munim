@@ -96,12 +96,12 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, trade
 
   // Fetch ITC trend for mini chart
   useEffect(() => {
-    if (!traderId || !apiBase) return;
+    if (!traderId || !apiBase || traderId === "demo" || pathname === "/dev") return;
     authFetch(`${apiBase}/api/v1/dashboard/itc-timeline/${traderId}`)
       .then(r => r.json())
       .then(d => setItcData(d.timeline || []))
       .catch(() => setItcData([]));
-  }, [traderId, apiBase]);
+  }, [traderId, apiBase, pathname]);
 
 
   // Upcoming GST deadlines
