@@ -50,7 +50,7 @@ function MiniSparkline({ data = [] }) {
   );
 }
 
-export default function Sidebar({ activeTab, onTabChange, actionCount = 0, traderId, apiBase, onTourClick }) {
+export default function Sidebar({ activeTab, onTabChange, actionCount = 0, traderId, apiBase, onTourClick, mobileOpen = false, onMobileClose = () => {} }) {
   const router = useRouter();
   const pathname = usePathname();
   const { t } = useLanguage();
@@ -129,7 +129,16 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, trade
   const isDeadlineUrgent = deadlines.some(d => d.daysLeft <= 3);
 
   return (
-    <aside className="w-64 fixed h-full bg-white border-r border-gray-200 z-10 flex flex-col overflow-y-auto">
+    <>
+      {/* Backdrop — mobile only, closes drawer on outside click */}
+      {mobileOpen && (
+        <div className="fixed inset-0 bg-black/40 z-30 md:hidden" onClick={onMobileClose} />
+      )}
+      <aside
+        className={`w-64 fixed inset-y-0 left-0 h-full bg-white border-r border-gray-200 z-40 md:z-10 flex flex-col overflow-y-auto transform transition-transform duration-200 ease-in-out ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        } md:translate-x-0`}
+      >
       {/* Logo — same height as main header */}
       <div className="px-6 h-[65px] flex items-center border-b border-gray-200 flex-none">
         <span className="font-bold text-xl tracking-tight text-gray-900">Munim.ai</span>
@@ -144,7 +153,7 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, trade
             <button
               key={item.id}
               id={`sidebar-nav-${item.id}`}
-              onClick={() => onTabChange(item.id)}
+              onClick={() => { onTabChange(item.id); onMobileClose(); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-semibold ${
                 isActive
                   ? "bg-[#10b981] text-white shadow-sm"
@@ -305,7 +314,7 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, trade
       <div className="px-4 pb-2 flex-none">
         <button
           id="sidebar-my-profile"
-            onClick={() => router.push("/dashboard/profile")}
+            onClick={() => { router.push("/dashboard/profile"); onMobileClose(); }}
           className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors w-full text-sm font-semibold ${pathname === "/dashboard/profile" ? "bg-emerald-50 text-emerald-600 font-bold" : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"}`}
         >
           <div className="w-7 h-7 rounded-full bg-[#10b981] text-white flex items-center justify-center font-bold text-[11px]">
@@ -333,6 +342,7 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, trade
           <span className="font-medium">{t("nav_sign_out")}</span>
         </button>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }
