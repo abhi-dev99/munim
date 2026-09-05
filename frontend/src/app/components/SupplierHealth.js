@@ -253,21 +253,46 @@ export default function SupplierHealth({ traderId, apiBase, onSwitchTab }) {
     : <ChevronDown size={13} className="inline ml-0.5" />;
 
   if (loading) return (
-    <div className="space-y-3">
-      {[1,2,3].map(i => <div key={i} className="h-14 bg-gray-100 rounded-xl animate-pulse" />)}
+    <div className="flex flex-col h-[calc(100vh-80px)] w-full">
+      <div className="grid grid-cols-4 gap-3 mb-4">
+        {[1,2,3,4].map(i => <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />)}
+      </div>
+      <div className="h-12 bg-gray-100 rounded-xl animate-pulse mb-6" />
+      <div className="flex-1 space-y-3">
+        {[1,2,3,4,5].map(i => <div key={i} className="h-14 bg-gray-50 rounded-lg animate-pulse" />)}
+      </div>
     </div>
   );
 
-  return (
-    <>
-      <div className="space-y-4 w-full">
-        {/* Summary stat cards */}
+  const dragItem = React.useRef(null);
+  const dragOverItem = React.useRef(null);
+  const [cardOrder, setCardOrder] = useState(["ALL", "GOOD", "RISK", "CRITICAL"]);
+
+  const handleSort = () => {
+    if (dragItem.current === null || dragOverItem.current === null) return;
+    let _order = [...cardOrder];
+    const draggedItemContent = _order.splice(dragItem.current, 1)[0];
+    _order.splice(dragOverItem.current, 0, draggedItemContent);
+    dragItem.current = null;
+    dragOverItem.current = null;
+    setCardOrder(_order);
+  };
+
+    return (
+      <div className="flex flex-col h-[calc(100vh-120px)] w-full overflow-hidden">
+        <div className="z-10 bg-[#f8fafc] pt-2 pb-4 space-y-4 flex-none">
+          {/* Summary stat cards */}
         <div className="grid grid-cols-4 gap-3">
-          {["ALL", "GOOD", "RISK", "CRITICAL"].map((f) => (
+          {cardOrder.map((f, idx) => (
             <button
               key={f}
+              draggable
+              onDragStart={() => { dragItem.current = idx; }}
+              onDragEnter={(e) => { dragOverItem.current = idx; e.preventDefault(); }}
+              onDragOver={(e) => e.preventDefault()}
+              onDragEnd={handleSort}
               onClick={() => setFilterStatus(f)}
-              className={`text-left bg-white rounded-xl border p-3 transition-all hover:shadow-sm ${
+              className={`text-left bg-white rounded-xl border p-3 transition-all hover:shadow-sm cursor-grab active:cursor-grabbing ${
                 filterStatus === f
                   ? "border-emerald-500 ring-1 ring-emerald-500"
                   : "border-gray-200"
@@ -294,11 +319,11 @@ export default function SupplierHealth({ traderId, apiBase, onSwitchTab }) {
         </div>
 
         {/* Table */}
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="border-b border-gray-100 bg-gray-50">
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col flex-1 min-h-0 mb-4">
+          <div className="overflow-auto flex-1">
+            <table className="w-full text-sm border-collapse relative">
+              <thead className="sticky top-0 z-20 shadow-sm">
+                <tr className="border-b border-gray-100">
                   <th className="text-left px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-gray-500 cursor-pointer" onClick={() => handleSort("name")}>{t("sup_supplier")}<SortIcon field="name" /></th>
                   <th className="text-left px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-gray-500">{t("sup_gstin")}</th>
                   <th className="text-left px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-gray-500 cursor-pointer" onClick={() => handleSort("health")}>{t("sup_health")}<SortIcon field="health" /></th>
@@ -315,11 +340,12 @@ export default function SupplierHealth({ traderId, apiBase, onSwitchTab }) {
                       {search || filterStatus !== "ALL" ? "No suppliers match your filter." : "No supplier data yet. Upload a GSTR-2B to start."}
                     </td>
                   </tr>
-                ) : displayed.map((sup) => {
+                ) : displayed.map((sup, idx) => {
                   const cfg = STATUS_CONFIG[sup.status];
                   return (
                     <tr
                       key={sup.id}
+                      id={`supplier-table-row-${idx}`}
                       className="hover:bg-gray-50/80 transition-colors group cursor-pointer"
                       onClick={() => setActiveSupplier(sup)}
                     >

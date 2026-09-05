@@ -149,6 +149,7 @@ export default function ActionQueue({ traderId, apiBase, traderPhone }) {
             return (
               <motion.div
                 key={action.id}
+                id={`action-queue-card-${idx}`}
                 layout
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
