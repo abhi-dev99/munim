@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowUpRight, IndianRupee, ShieldAlert, CheckCircle2, TrendingUp } from "lucide-react";
+import { ArrowUpRight, IndianRupee, ShieldAlert, CheckCircle2, TrendingUp, FileText, Users, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -100,38 +100,32 @@ export default function MoneyMeter({ summary, apiBase }) {
         className="grid grid-cols-1 md:grid-cols-3 gap-6"
       >
         {/* Invoices Processed */}
-        <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }} className="glass-card p-6 flex items-center justify-between border-[var(--border-subtle)]">
-          <div>
-            <h4 className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)] mb-1">Invoices Scanned</h4>
-            <span className="text-3xl font-black text-black">{summary.invoices_processed || 0}</span>
+        <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }} className="glass-card p-5 flex flex-col justify-between border-[var(--border-subtle)] h-full">
+          <div className="flex items-center gap-2 mb-3">
+            <FileText className="text-[var(--text-muted)]" size={18} />
+            <h4 className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">Invoices Scanned</h4>
           </div>
-          <div className="w-12 h-12 bg-gray-100 flex items-center justify-center">
-            <span className="text-xl font-bold text-gray-500">📄</span>
-          </div>
+          <span className="text-4xl font-black text-black tracking-tight">{summary.invoices_processed || 0}</span>
         </motion.div>
 
         {/* Suppliers Monitored */}
-        <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }} className="glass-card p-6 flex items-center justify-between border-[var(--border-subtle)]">
-          <div>
-            <h4 className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)] mb-1">Suppliers Tracked</h4>
-            <span className="text-3xl font-black text-black">{summary.suppliers_monitored || 0}</span>
+        <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }} className="glass-card p-5 flex flex-col justify-between border-[var(--border-subtle)] h-full">
+          <div className="flex items-center gap-2 mb-3">
+            <Users className="text-[var(--text-muted)]" size={18} />
+            <h4 className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">Suppliers Tracked</h4>
           </div>
-          <div className="w-12 h-12 bg-gray-100 flex items-center justify-center">
-            <span className="text-xl font-bold text-gray-500">🏢</span>
-          </div>
+          <span className="text-4xl font-black text-black tracking-tight">{summary.suppliers_monitored || 0}</span>
         </motion.div>
 
         {/* Action Items */}
-        <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }} className="glass-card p-6 flex items-center justify-between border-[var(--border-subtle)]">
-          <div>
-            <h4 className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)] mb-1">Open Issues</h4>
-            <span className={`text-3xl font-black ${(summary.issues_open || 0) > 0 ? "text-[var(--red-primary)]" : "text-[var(--green-primary)]"}`}>
-              {summary.issues_open || 0}
-            </span>
+        <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }} className="glass-card p-5 flex flex-col justify-between border-[var(--border-subtle)] h-full">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertCircle className={(summary.issues_open || 0) > 0 ? "text-[var(--red-primary)]" : "text-[var(--green-primary)]"} size={18} />
+            <h4 className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">Open Issues</h4>
           </div>
-          <div className={`w-12 h-12 flex items-center justify-center ${(summary.issues_open || 0) > 0 ? "bg-red-50" : "bg-green-50"}`}>
-            <span className="text-xl font-bold">{(summary.issues_open || 0) > 0 ? "⚠️" : "✅"}</span>
-          </div>
+          <span className={`text-4xl font-black tracking-tight ${(summary.issues_open || 0) > 0 ? "text-[var(--red-primary)]" : "text-[var(--green-primary)]"}`}>
+            {summary.issues_open || 0}
+          </span>
         </motion.div>
       </motion.div>
     </div>
