@@ -34,6 +34,7 @@ All notable changes to Munim.ai are documented here. Format loosely follows [Kee
 - Full API schema was publicly exposed via `/openapi.json` despite `/docs`/`/redoc` looking disabled (`docs_url=None` didn't also disable `openapi_url`).
 - Webhook signature verification (`verify_webhook_signature`) existed but was never actually called on incoming WhatsApp payloads.
 - Direct invoice-upload endpoint (`webhook.py:/upload-invoice`) had no authentication or rate limiting despite triggering a paid Gemini OCR call per request.
+- Four `async def` functions made synchronous, blocking Gemini SDK calls (`.generate_content()` / `.embed_content()`) with no `await`/`asyncio.to_thread`, stalling FastAPI's single event loop — and every other concurrent request — for the full multi-second duration of each call: `llm_router.py`'s `_generate_online()` and `extract_invoice()` (the OCR path, the slowest call in the system), and `gemini.py`'s `transcribe_voice_note()` and `embed_text()`. Wrapped each in `asyncio.to_thread(...)`, matching the existing pattern already used for the Resend email send in `webhook.py`/`communications.py`. Added `backend/tests/services/test_gemini_concurrency.py`, which mocks the SDK call with a real (non-`asyncio`) `time.sleep` and asserts two concurrent calls finish in ~1x a single call's duration rather than ~2x.
 
 ### Security
 - Removed three hardcoded, live-looking third-party API keys (`sandbox_api_key`, `sandbox_api_secret`, `gstin_api_key`) from `config.py` source defaults.
