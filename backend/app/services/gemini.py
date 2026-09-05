@@ -261,3 +261,77 @@ Generate your response:
     except Exception as e:
         logger.error(f"Question answering failed: {e}")
         return "⚠️ Main abhi answer nahi kar paa raha. Baad mein try karein."
+
+
+async def run_onboarding_llm(
+    user_message: str,
+    current_step: str,
+    trader: dict,
+    language: str = "hi",
+) -> dict:
+    """
+    Use Gemini to intelligently process an onboarding step response.
+    Returns a dict: {"status": "ok"|"reprompt"|"error", "extracted": ..., "reply": str}
+    
+    - "ok": valid answer extracted, move to next step
+    - "reprompt": user said something irrelevant/invalid, send 'reply' and stay on this step
+    """
+    lang_name = {"hi": "Hindi (Hinglish, Roman script)", "en": "English", "mr": "Marathi (Devanagari script)", "gu": "Gujarati (Gujarati script)"}.get(language, "Hindi")
+
+    step_descriptions = {
+        "awaiting_language": "Ask which language they prefer: Hindi, English, Marathi, or Gujarati. They may respond with a number (1=Hindi, 2=English, 3=Marathi, 4=Gujarati) or the language name.",
+        "awaiting_name": "Ask for their name and business name.",
+        "awaiting_ca_number": "Ask for their CA or accountant's WhatsApp/mobile number (10-digit Indian mobile number starting with 6-9, or with +91 prefix). This is optional — they can say 'skip'.",
+        "awaiting_gstin": "Ask for their GSTIN (15-character GST Identification Number). Format: 2 digits + 5 letters + 4 digits + 1 letter + 1 digit + Z + 1 alphanumeric. Example: 27AABCU9603R1ZM.",
+    }
+
+    extract_descriptions = {
+        "awaiting_language": 'Return "language_code" as one of: "hi", "en", "mr", "gu".',
+        "awaiting_name": 'Return "name" as their personal name (string). If they give a business name too, return "business_name" as well.',
+        "awaiting_ca_number": 'Return "ca_number" as the 10-digit mobile number (strip +91 prefix if present, just return digits). If user says skip/later/no, return "ca_number": "skip".',
+        "awaiting_gstin": 'Return "gstin" as the uppercase GSTIN string. Validate it is 15 chars matching the GST format.',
+    }
+
+    prompt = f"""You are Munim, an intelligent onboarding assistant for an Indian GST compliance app.
+
+You are currently on step: "{current_step}"
+Step description: {step_descriptions.get(current_step, "Unknown step")}
+
+The user just replied with: "{user_message}"
+
+Your job:
+1. Determine if the user's reply is a valid answer for this step.
+2. If valid: extract the relevant information and set status to "ok".
+3. If NOT valid (e.g. they said something irrelevant, or gave a clearly wrong format): set status to "reprompt" and write a helpful, friendly reply to guide them. Do NOT get angry. Be patient.
+4. If they said something off-topic like "please speak in English" or changed language mid-way: HONOR THEIR REQUEST, switch language, and re-ask the question properly in the new language.
+
+{extract_descriptions.get(current_step, "")}
+
+IMPORTANT RULES:
+- If the user types a number 1-4 during awaiting_language step, map it: 1=hi, 2=en, 3=mr, 4=gu
+- Respond in {lang_name} UNLESS the user explicitly asked for a different language, in which case switch.
+- For awaiting_name: single words like "1", "ok", "yes", "hi", "test" are NOT valid names. Ask them again.
+- For awaiting_ca_number: non-numeric strings that are clearly not a phone number AND not "skip" = reprompt.
+- For awaiting_gstin: must be 15 alphanumeric characters in GST format. If wrong format, show the example.
+
+Return ONLY valid JSON (no prose, no markdown, no code fences):
+{{
+  "status": "ok" or "reprompt",
+  "extracted": {{}},  // populated only when status is "ok"
+  "reply": "string",  // friendly message to send ONLY when status is "reprompt", or confirmation on "ok". Always in the appropriate language.
+  "detected_language": "hi|en|mr|gu"  // detected language from user's message (for language switches)
+}}"""
+
+    try:
+        response = await llm_router.generate_text(prompt, {}, LLMTask.DIAGNOSIS, temperature=0.1)
+        response_text = response.strip()
+        # Strip markdown fences if present
+        if response_text.startswith("```"):
+            response_text = response_text.split("\n", 1)[1]
+            if response_text.endswith("```"):
+                response_text = response_text[:-3].strip()
+        return json.loads(response_text)
+    except Exception as e:
+        logger.error(f"Onboarding LLM failed: {e}")
+        # Safe fallback: treat as reprompt
+        return {"status": "reprompt", "extracted": {}, "reply": "Sorry, kuch issue hua. Phir se try karein.", "detected_language": language}
