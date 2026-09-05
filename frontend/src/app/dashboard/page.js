@@ -431,7 +431,7 @@ export default function Home() {
               className="col-span-2 flex flex-col gap-4 min-h-0 overflow-y-auto pr-1"
             >
               {activeTab === "money-meter" && (
-                <MoneyMeter summary={summary} apiBase={API_BASE} isComposition={isComposition} />
+                <MoneyMeter summary={summary} apiBase={API_BASE} isComposition={isComposition} onSwitchTab={setActiveTab} />
               )}
               {activeTab === "suppliers" && (
                 <SupplierHealth traderId={traderId} apiBase={API_BASE} onSwitchTab={setActiveTab} />

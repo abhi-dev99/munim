@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Sidebar from "../../components/Sidebar";
 import {
   User,
   Building2,
@@ -10,9 +11,7 @@ import {
   MapPin,
   CreditCard,
   Save,
-  ArrowLeft,
   Users,
-  TrendingUp,
   AlertTriangle,
   CheckCircle2,
   Edit3,
@@ -122,32 +121,14 @@ export default function ProfilePage() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#f8f9fa]">
-      {/* Minimal sidebar strip */}
-      <aside className="w-64 fixed h-full bg-white border-r border-gray-200 z-10 flex flex-col">
-        <div className="px-6 h-[65px] flex items-center border-b border-gray-200">
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <ArrowLeft size={16} />
-            <span className="font-semibold text-sm">Back to Dashboard</span>
-          </button>
-        </div>
-        <div className="p-6">
-          <div className="flex flex-col items-center text-center">
-            <div className="w-16 h-16 rounded-full bg-[#10b981] text-white flex items-center justify-center text-2xl font-bold mb-3">
-              {profile.name?.charAt(0)?.toUpperCase() || "CA"}
-            </div>
-            <p className="font-bold text-gray-900 text-sm">{profile.name || "Your Name"}</p>
-            <p className="text-xs text-gray-500 mt-0.5">{profile.firm_name || "Your Firm"}</p>
-            {profile.membership_no && (
-              <p className="text-[10px] text-[#10b981] font-mono mt-1 bg-emerald-50 px-2 py-0.5 rounded">
-                ICAI #{profile.membership_no}
-              </p>
-            )}
-          </div>
-        </div>
-      </aside>
+      {/* Real sidebar — navigates back to dashboard on tab change */}
+      <Sidebar
+        activeTab="profile"
+        onTabChange={() => router.push("/dashboard")}
+        actionCount={0}
+        traderId={null}
+        apiBase={API_BASE}
+      />
 
       <main className="flex-1 ml-64 flex flex-col overflow-y-auto">
         {/* Header */}
