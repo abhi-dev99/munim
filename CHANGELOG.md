@@ -7,6 +7,7 @@ All notable changes to Munim.ai are documented here. Format loosely follows [Kee
 ## 2026-09-03
 
 ### Added
+- JWT revocation: tokens now carry a `jti` claim, checked against a Redis-backed revocation list on every request; `POST /api/v1/auth/logout` revokes the caller's current token. Tokens issued before this migration have no `jti` and can't be individually revoked (an accepted limitation, not a bug).
 - First real backend test suite: 48 tests across `itc_engine`, `fraud`, `reconciler`, `gstin`, and a new shared error-handling helper — this repo had zero test infrastructure before today.
 - `safe_http_error()` helper (`backend/app/utils/errors.py`) — logs the real exception server-side with a correlation ID, returns a generic client-safe message. Applied across all 27 previously-leaky call sites.
 - GSTIN check-digit validation (`has_valid_checksum()` in `gstin.py`) — previously only format/length was checked, never the actual checksum algorithm.
@@ -34,6 +35,8 @@ All notable changes to Munim.ai are documented here. Format loosely follows [Kee
 - Full API schema was publicly exposed via `/openapi.json` despite `/docs`/`/redoc` looking disabled (`docs_url=None` didn't also disable `openapi_url`).
 - Webhook signature verification (`verify_webhook_signature`) existed but was never actually called on incoming WhatsApp payloads.
 - Direct invoice-upload endpoint (`webhook.py:/upload-invoice`) had no authentication or rate limiting despite triggering a paid Gemini OCR call per request.
+- `request-otp` returned a different response (404 vs 200) for unregistered vs. registered phone numbers — a direct enumeration oracle. Now returns an identical response either way.
+- Two fast WhatsApp messages from the same number during onboarding could both read stale conversation state before either wrote its transition — added a per-phone processing lock.
 
 ### Security
 - Removed three hardcoded, live-looking third-party API keys (`sandbox_api_key`, `sandbox_api_secret`, `gstin_api_key`) from `config.py` source defaults.
