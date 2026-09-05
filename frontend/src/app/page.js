@@ -1,227 +1,201 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import MoneyMeter from "./components/MoneyMeter";
-import SupplierHealth from "./components/SupplierHealth";
-import ActionQueue from "./components/ActionQueue";
-import Sidebar from "./components/Sidebar";
-import InvoiceFeed from "./components/InvoiceFeed";
-import GSTR2BUpload from "./components/GSTR2BUpload";
-import ReportsPanel from "./components/ReportsPanel";
-import GSTTimeline from "./components/GSTTimeline";
-import { ChevronDown, Users, ToggleLeft, ToggleRight } from "lucide-react";
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Loader2, ShieldCheck, Zap, Smartphone } from "lucide-react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-export default function Home() {
-  const [activeTab, setActiveTab] = useState("money-meter");
-  const [summary, setSummary] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [traderId, setTraderId] = useState(null);
-  const [traders, setTraders] = useState([]);
-  const [traderDropdown, setTraderDropdown] = useState(false);
-  const [activeTraderName, setActiveTraderName] = useState("Loading...");
-  const [actionCount, setActionCount] = useState(0);
-  const [isComposition, setIsComposition] = useState(false);
-  const [traderPhone, setTraderPhone] = useState(null);
+export default function LoginPage() {
+  const router = useRouter();
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [otp, setOtp] = useState("");
+  const [step, setStep] = useState(1); // 1 = mobile, 2 = otp
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    fetchTraders();
-  }, []);
-
-  useEffect(() => {
-    if (traderId) fetchSummary(traderId);
-  }, [traderId]);
-
-  async function fetchTraders() {
-    try {
-      const res = await fetch(`${API_BASE}/api/v1/dashboard/traders`);
-      const data = await res.json();
-      const list = data.traders || [];
-      setTraders(list);
-      if (list.length > 0) {
-        setTraderId(list[0].id);
-        setActiveTraderName(list[0].business_name || list[0].name || "Trader 1");
-        setTraderPhone(list[0].whatsapp_number || null);
-      } else {
-        setTraderId("demo");
-        setActiveTraderName("Demo Trader");
-        setLoading(false);
-      }
-    } catch {
-      setTraderId("demo");
-      setActiveTraderName("Demo Trader");
-      loadDemoSummary();
+  const handleRequestOtp = async (e) => {
+    e.preventDefault();
+    if (!mobileNumber || mobileNumber.length < 10) {
+      setError("Please enter a valid mobile number.");
+      return;
     }
-  }
-
-  async function fetchSummary(tid) {
+    
     setLoading(true);
+    setError("");
+
     try {
-      const res = await fetch(`${API_BASE}/api/v1/dashboard/summary/${tid}`);
-      if (res.ok) {
-        const data = await res.json();
-        setSummary(data);
-      } else {
-        loadDemoSummary();
+      const res = await fetch(`${API_BASE}/api/v1/auth/request-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mobile_number: mobileNumber }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || "Failed to send OTP.");
       }
-    } catch {
-      loadDemoSummary();
+
+      setStep(2);
+    } catch (err) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
-    // Also fetch action count
-    try {
-      const actRes = await fetch(`${API_BASE}/api/v1/dashboard/actions/${tid}`);
-      if (actRes.ok) {
-        const actData = await actRes.json();
-        setActionCount(actData.total || 0);
-      }
-    } catch {
-      // ignore
+  };
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    if (!otp || otp.length < 4) {
+      setError("Please enter a valid OTP.");
+      return;
     }
-  }
 
-  function loadDemoSummary() {
-    // If no trader or backend is empty, return zeroed state, not fake demo data
-    setSummary({
-      trader_id: traderId || "demo",
-      month: new Date().getMonth() + 1,
-      year: new Date().getFullYear(),
-      itc_buckets: { confirmed: 0, fixable_blocked: 0, at_risk: 0, missed: 0, ineligible: 0 },
-      invoices_processed: 0,
-      suppliers_monitored: 0,
-      issues_open: 0,
-      total_recovery_possible: 0,
-    });
-  }
+    setLoading(true);
+    setError("");
 
-  function switchTrader(trader) {
-    setTraderId(trader.id);
-    setActiveTraderName(trader.business_name || trader.name || trader.id.slice(0, 8));
-    setTraderPhone(trader.whatsapp_number || null);
-    setTraderDropdown(false);
-  }
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/auth/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mobile_number: mobileNumber, otp }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || "Invalid OTP.");
+      }
+
+      // Success, route to dashboard
+      router.push("/dashboard");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[var(--bg-primary)]">
-      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} actionCount={actionCount} />
+    <div className="min-h-screen flex w-full">
+      {/* Left Side: Marketing/Value Prop (White) */}
+      <div className="hidden lg:flex w-1/2 bg-white flex-col justify-center px-20">
+        <div className="max-w-xl">
+          <div className="font-bold text-4xl tracking-tight text-black mb-10">
+            Munim.ai
+          </div>
+          <h1 className="text-6xl font-black text-black tracking-tighter leading-none mb-6">
+            The CA in your pocket.
+          </h1>
+          <p className="text-xl text-[var(--text-secondary)] font-medium mb-12 max-w-md">
+            Automate your GST compliance, instantly reconcile ITC, and never miss a filing deadline again.
+          </p>
 
-      <main className="flex-1 ml-64 flex flex-col overflow-hidden">
-        <header className="flex-none px-6 pt-4 pb-3 border-b border-[var(--border-subtle)] bg-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">
-                <span className="gradient-text"></span>
-              </h1>
-              <p className="text-[var(--text-secondary)] mt-1">
-                GST Compliance Dashboard — {new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" })}
-              </p>
+          <div className="space-y-6">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                <Zap size={20} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-black">Lightning Fast Sync</h3>
+                <p className="text-[var(--text-secondary)] font-medium text-sm">Pull your GSTR-2B and invoices directly from the GST Portal in seconds.</p>
+              </div>
             </div>
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-full bg-green-50 text-[var(--green-primary)] flex items-center justify-center flex-shrink-0">
+                <ShieldCheck size={20} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-black">Bulletproof Compliance</h3>
+                <p className="text-[var(--text-secondary)] font-medium text-sm">Smart AI detects HSN rate mismatches and blocked ITC before you file.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-            <div className="flex items-center gap-3">
-              {/* Trader Selector */}
-              <div className="relative">
-                <button
-                  onClick={() => setTraderDropdown((v) => !v)}
-                  className="flex items-center gap-2 glass-card px-4 py-2 hover:bg-[var(--bg-secondary)] transition-colors"
-                >
-                  <Users size={16} className="text-[var(--text-secondary)]" />
-                  <span className="text-sm font-semibold text-black max-w-[150px] truncate">{activeTraderName}</span>
-                  <ChevronDown size={14} className="text-[var(--text-secondary)]" />
-                </button>
+      {/* Right Side: Login Portal (Dark Grey/Black) */}
+      <div className="w-full lg:w-1/2 bg-[#0a0a0a] flex flex-col justify-center px-8 sm:px-20 relative">
+        <div className="max-w-sm mx-auto w-full">
+          <h2 className="text-3xl font-bold text-white mb-2">Welcome back</h2>
+          <p className="text-gray-400 mb-8 font-medium">Log in to your Munim.ai portal.</p>
 
-                {traderDropdown && (
-                  <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-[var(--border-subtle)] rounded-xl shadow-xl z-50 overflow-hidden">
-                    <div className="p-2 border-b border-[var(--border-subtle)]">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2">Switch Trader</p>
+          <div className="bg-[#171717] border border-[#2a2a2a] p-8 rounded-2xl shadow-2xl">
+            {step === 1 ? (
+              <form onSubmit={handleRequestOtp} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-300 mb-2">
+                    Mobile Number
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Smartphone size={18} className="text-gray-500" />
                     </div>
-                    {traders.length === 0 ? (
-                      <div className="px-4 py-3 text-sm text-[var(--text-muted)]">No traders found</div>
-                    ) : (
-                      traders.map((t) => (
-                        <button
-                          key={t.id}
-                          onClick={() => switchTrader(t)}
-                          className={`w-full text-left px-4 py-3 text-sm hover:bg-[var(--bg-primary)] transition-colors flex items-center justify-between ${
-                            t.id === traderId ? "font-bold text-black" : "text-[var(--text-secondary)]"
-                          }`}
-                        >
-                          <span>{t.business_name || t.name || t.id.slice(0, 8)}</span>
-                          <span className="text-[10px] text-[var(--text-muted)] font-mono">{(t.gstin || "").slice(0, 10)}</span>
-                        </button>
-                      ))
-                    )}
+                    <input
+                      type="tel"
+                      value={mobileNumber}
+                      onChange={(e) => setMobileNumber(e.target.value)}
+                      placeholder="Enter WhatsApp number"
+                      className="w-full pl-10 pr-4 py-3 bg-[#0a0a0a] border border-[#2a2a2a] text-white rounded-lg focus:ring-2 focus:ring-[#25D366] focus:border-transparent outline-none transition-all placeholder-gray-600 font-medium"
+                      required
+                    />
                   </div>
-                )}
-              </div>
+                </div>
 
-              <div className="flex items-center gap-2 glass-card px-4 py-2 border-[var(--border-subtle)]">
-                <button 
-                  onClick={() => setIsComposition(!isComposition)}
-                  className="flex items-center gap-2"
+                {error && <p className="text-red-400 text-xs font-bold bg-red-400/10 p-2 rounded">{error}</p>}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3 bg-white text-black font-bold rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  {isComposition ? <ToggleRight size={20} className="text-[var(--green-primary)]" /> : <ToggleLeft size={20} className="text-[var(--text-muted)]" />}
-                  <span className="text-sm font-semibold text-black">Composition Scheme</span>
+                  {loading ? <Loader2 size={18} className="animate-spin" /> : "Send OTP via WhatsApp"}
                 </button>
-              </div>
+              </form>
+            ) : (
+              <form onSubmit={handleVerifyOtp} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-300 mb-2">
+                    Verification Code
+                  </label>
+                  <input
+                    type="text"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                    placeholder="Enter 6-digit OTP"
+                    className="w-full px-4 py-3 bg-[#0a0a0a] border border-[#2a2a2a] text-white rounded-lg focus:ring-2 focus:ring-[#25D366] focus:border-transparent outline-none transition-all placeholder-gray-600 font-mono tracking-widest text-center"
+                    maxLength={6}
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-2 text-center">
+                    Sent to {mobileNumber}
+                  </p>
+                </div>
 
-              <div className="flex items-center gap-2 glass-card px-4 py-2">
-                <div className="pulse-dot pulse-dot-green"></div>
-                <span className="text-sm text-[var(--text-secondary)]">Live</span>
-              </div>
-            </div>
+                {error && <p className="text-red-400 text-xs font-bold bg-red-400/10 p-2 rounded">{error}</p>}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3 bg-[#25D366] text-black font-bold rounded-lg hover:bg-[#20b858] transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {loading ? <Loader2 size={18} className="animate-spin" /> : "Verify & Login"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep(1);
+                    setError("");
+                  }}
+                  className="w-full text-center text-sm font-medium text-gray-400 hover:text-white transition-colors"
+                >
+                  Back to mobile number
+                </button>
+              </form>
+            )}
           </div>
-        </header>
-
-        {loading ? (
-          <div className="flex items-center justify-center flex-1">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
-          </div>
-        ) : (
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="flex-1 grid grid-cols-3 gap-4 p-4 pt-3 overflow-hidden"
-          >
-            {/* Left Column — Content + InvoiceFeed */}
-            <motion.div 
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1, duration: 0.3 }}
-              className="col-span-2 flex flex-col gap-4 min-h-0"
-            >
-              <div className="flex-none max-h-[400px] overflow-y-auto pr-2">
-                {activeTab === "money-meter" && <MoneyMeter summary={summary} apiBase={API_BASE} isComposition={isComposition} />}
-                {activeTab === "suppliers" && <SupplierHealth traderId={traderId} apiBase={API_BASE} />}
-                {activeTab === "actions" && <ActionQueue traderId={traderId} apiBase={API_BASE} traderPhone={traderPhone} />}
-                {activeTab === "reports" && <ReportsPanel traderId={traderId} apiBase={API_BASE} />}
-              </div>
-              <div className="flex-1 min-h-0 overflow-hidden flex flex-col border border-[var(--border-subtle)] bg-white rounded-xl">
-                <InvoiceFeed traderId={traderId} apiBase={API_BASE} />
-              </div>
-            </motion.div>
-            
-            {/* Right Column — Timeline + GSTR-2B */}
-            <motion.div 
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.15, duration: 0.3 }}
-              className="col-span-1 flex flex-col gap-3 min-h-0 overflow-y-auto pr-1"
-            >
-              <GSTTimeline isComposition={isComposition} />
-              <GSTR2BUpload traderId={traderId} apiBase={API_BASE} />
-            </motion.div>
-          </motion.div>
-        )}
-      </main>
-
-      {/* Close dropdown on outside click */}
-      {traderDropdown && (
-        <div className="fixed inset-0 z-40" onClick={() => setTraderDropdown(false)} />
-      )}
+        </div>
+      </div>
     </div>
   );
 }

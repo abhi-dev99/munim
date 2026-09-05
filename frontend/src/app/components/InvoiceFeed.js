@@ -45,6 +45,7 @@ export default function InvoiceFeed({ traderId, apiBase }) {
       case "FIXABLE_BLOCKED": return <AlertTriangle size={16} className="text-[var(--orange-primary)]" />;
       case "AT_RISK": return <AlertTriangle size={16} className="text-[var(--red-primary)]" />;
       case "FRAUD_FLAGGED": return <ShieldAlert size={16} className="text-[var(--red-primary)]" />;
+      case "DUPLICATE": return <Clock size={16} className="text-gray-500" />;
       case "RESOLVED": return <CheckCircle2 size={16} className="text-[var(--text-muted)]" />;
       default: return <Clock size={16} className="text-[var(--text-secondary)]" />;
     }
@@ -56,9 +57,10 @@ export default function InvoiceFeed({ traderId, apiBase }) {
       case "FIXABLE_BLOCKED": return "⚠ Blocked";
       case "AT_RISK": return "↯ At Risk";
       case "FRAUD_FLAGGED": return "✕ Fraud";
+      case "DUPLICATE": return "⧉ Duplicate";
       case "RESOLVED": return "✓ Resolved";
       case "INELIGIBLE": return "— Ineligible";
-      default: return status || "Pending";
+      default: return "Pending";
     }
   };
 

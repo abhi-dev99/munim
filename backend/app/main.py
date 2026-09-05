@@ -152,8 +152,10 @@ app.add_middleware(
 )
 
 from app.api.email_webhook import router as email_webhook_router
+from app.api.auth import router as auth_router
 
 # Mount routers
+app.include_router(auth_router)
 app.include_router(webhook_router)
 app.include_router(email_webhook_router)
 app.include_router(dashboard_router)
