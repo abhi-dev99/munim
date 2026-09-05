@@ -278,7 +278,18 @@ async def list_traders(current_trader_id: str = Depends(get_current_trader_id)):
     """List all registered traders (for frontend trader selection)."""
     try:
         db = get_supabase()
-        response = db.table("traders").select("id, name, business_name, gstin, whatsapp_number").eq("id", current_trader_id).execute()
+        user_res = db.table("traders").select("whatsapp_number").eq("id", current_trader_id).execute()
+        if not user_res.data:
+            return {"traders": []}
+            
+        phone = user_res.data[0].get("whatsapp_number", "")
+        phone_full = phone if phone.startswith("91") else f"91{phone}"
+        phone_10 = phone[-10:] if len(phone) >= 10 else phone
+        
+        response = db.table("traders").select(
+            "id, name, business_name, gstin, whatsapp_number"
+        ).or_(f"id.eq.{current_trader_id},ca_whatsapp_number.eq.{phone_full},ca_whatsapp_number.eq.{phone_10}").execute()
+        
         return {"traders": response.data or []}
     except Exception as e:
         logger.error(f"List traders failed: {e}")
