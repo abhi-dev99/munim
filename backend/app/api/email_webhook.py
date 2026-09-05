@@ -156,11 +156,21 @@ async def receive_email_webhook(request: Request):
             supplier_gstin = inv_json.gstin_supplier
             inv_number = inv_json.invoice_number
             if supplier_gstin:
-                invoice_data["invoice_hash"] = GSTR2BReconciler.compute_hash(
+                inv_hash = GSTR2BReconciler.compute_hash(
                     supplier_gstin,
                     inv_number or str(uuid.uuid4())[:8],
                     str(diagnosis.total_amount or 0),
                 )
+                invoice_data["invoice_hash"] = inv_hash
+
+                from app.services.supabase_client import check_duplicate_invoice
+                is_duplicate = await check_duplicate_invoice(inv_hash)
+                if is_duplicate:
+                    invoice_data["itc_status"] = "DUPLICATE"
+                    invoice_data["status"] = "flagged"
+                    invoice_data["itc_amount_blocked"] = invoice_data.get("itc_amount_eligible", 0)
+                    invoice_data["itc_amount_eligible"] = 0
+                    invoice_data["itc_block_reason"] = "Duplicate invoice detected based on GSTIN, Invoice Number and Amount."
 
         if diagnosis.fraud_result:
             invoice_data["fraud_score"] = diagnosis.fraud_result.total_score
