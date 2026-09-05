@@ -5,6 +5,7 @@ import asyncio
 import os
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel
 from app.services.supabase_client import get_supabase
 from app.config import get_settings
 from app.models.invoice import InvoiceJSON, LineItem
@@ -465,4 +466,47 @@ async def test_recon_pipeline(mode: str = Query("mock", description="'mock' for 
         }
     except Exception as e:
         logger.error(f"Recon pipeline dev test failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class AddKeyRequest(BaseModel):
+    api_key: str
+
+
+@router.get("/gemini-keys")
+async def get_gemini_keys_status():
+    """Get live status and usage statistics of all Gemini API keys in the rotation pool."""
+    try:
+        from app.services.gemini import client as gemini_pool
+        return gemini_pool.get_status()
+    except Exception as e:
+        logger.error(f"Failed to get gemini keys status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/gemini-keys/add")
+async def add_gemini_key(payload: AddKeyRequest):
+    """Add a new Gemini API key to the active rotation pool."""
+    try:
+        from app.services.gemini import client as gemini_pool
+        added = gemini_pool.add_key(payload.api_key)
+        if not added:
+            raise HTTPException(status_code=400, detail="Key already exists or is invalid")
+        return {"status": "success", "message": "Key added to rotation pool", "pool_status": gemini_pool.get_status()}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to add gemini key: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/gemini-keys/reset")
+async def reset_gemini_keys():
+    """Reset rate_limited status on all keys in the pool so they can be tried immediately."""
+    try:
+        from app.services.gemini import client as gemini_pool
+        gemini_pool.reset_limits()
+        return {"status": "success", "message": "All API keys reset to active", "pool_status": gemini_pool.get_status()}
+    except Exception as e:
+        logger.error(f"Failed to reset gemini keys: {e}")
         raise HTTPException(status_code=500, detail=str(e))

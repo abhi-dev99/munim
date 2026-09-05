@@ -1,10 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
+import GeminiKeysModal from "../components/GeminiKeysModal";
 import { 
   Activity, Database, Server, Link as LinkIcon, RefreshCw, 
   MessageSquare, Cpu, HardDrive, ShieldCheck, Play, 
   CheckCircle2, AlertTriangle, XCircle, Clock, FileText,
-  ChevronDown, ChevronUp, Layers, Send
+  ChevronDown, ChevronUp, Layers, Send, Key
 } from "lucide-react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -14,6 +15,8 @@ export default function DevDashboard() {
   const [loading, setLoading] = useState(true);
   const [pingingService, setPingingService] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [showGeminiModal, setShowGeminiModal] = useState(false);
+  const [geminiStatus, setGeminiStatus] = useState(null);
 
   // Reconciliation Engine Sandbox State
   const [testMode, setTestMode] = useState("mock");
@@ -56,6 +59,19 @@ export default function DevDashboard() {
     const interval = setInterval(() => fetchStatus(), 30000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    const fetchGemini = () => {
+      fetch(`${API_BASE}/api/v1/admin/gemini-keys`)
+        .then((r) => r.json())
+        .then((d) => setGeminiStatus(d))
+        .catch(() => {});
+    };
+    fetchGemini();
+    const interval = setInterval(fetchGemini, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
 
   const runReconTest = async (mode = "mock") => {
     setRunningTest(true);
@@ -194,6 +210,64 @@ export default function DevDashboard() {
 
       {/* Main Content Area */}
       <main className="flex-1 p-8 overflow-y-auto space-y-8 max-w-7xl mx-auto w-full">
+          {/* Live Warning Banner if any API Keys hit rate limits */}
+          {geminiStatus && geminiStatus.rate_limited_count > 0 && (
+            <div className={`p-4 rounded-2xl flex items-center justify-between text-xs font-bold shadow-sm ${
+              geminiStatus.all_exhausted 
+                ? "bg-red-500 text-white border border-red-600" 
+                : "bg-amber-500 text-white border border-amber-600"
+            }`}>
+              <div className="flex items-center gap-2.5">
+                <AlertTriangle size={18} className={geminiStatus.all_exhausted ? "animate-pulse" : ""} />
+                <span>
+                  {geminiStatus.all_exhausted
+                    ? "🚨 CRITICAL: All Gemini API keys hit rate limits (429/Quota Exceeded). Pipeline fallback to Groq Llama-3.3 active."
+                    : `⚠️ AI Pipeline Alert: ${geminiStatus.rate_limited_count} of ${geminiStatus.total_keys} Gemini API keys hit rate limits and rotated.`}
+                </span>
+              </div>
+              <button
+                onClick={() => setShowGeminiModal(true)}
+                className="px-4 py-1.5 bg-white/20 hover:bg-white/30 rounded-xl text-white font-extrabold transition-colors"
+              >
+                Manage AI Keys
+              </button>
+            </div>
+          )}
+
+          {/* Gemini API Key Pool Telemetry & Control Card */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 text-[#10b981]">
+                <Key size={24} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-extrabold text-gray-900">
+                    Gemini API Key Rotation Pool & Quota Manager
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-700 font-mono">
+                    {geminiStatus?.model || "gemini-2.5-flash"}
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 uppercase tracking-wider">
+                    Autonomous Rotation
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {geminiStatus?.rate_limited_count > 0
+                    ? `⚠️ ${geminiStatus.rate_limited_count} of ${geminiStatus.total_keys} keys hit rate limits and rotated.`
+                    : `All ${geminiStatus?.total_keys || 2} configured keys are active. Automated 429 failover ready.`}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowGeminiModal(true)}
+              className="px-5 py-2.5 bg-[#10b981] hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-2 shrink-0"
+            >
+              <Key size={14} />
+              <span>Manage API Keys & Quotas</span>
+            </button>
+          </div>
+
           {/* Error State */}
           {status?.error && (
             <div className="bg-red-50 text-red-800 p-4 rounded-2xl border border-red-200 font-mono text-sm flex items-center gap-3">
@@ -415,6 +489,14 @@ export default function DevDashboard() {
             )}
           </div>
         </main>
+
+        {/* Gemini API Keys & Quota Pool Modal */}
+        <GeminiKeysModal
+          isOpen={showGeminiModal}
+          onClose={() => setShowGeminiModal(false)}
+          apiBase={API_BASE}
+        />
       </div>
     );
   }
+
