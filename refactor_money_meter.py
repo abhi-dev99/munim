@@ -1,4 +1,10 @@
-"use client";
+import os
+filepath = 'frontend/src/app/components/MoneyMeter.js'
+with open(filepath, 'r', encoding='utf-8') as f:
+    content = f.read()
+
+# I will rewrite MoneyMeter.js entirely since it's only 143 lines and needs major refactoring.
+new_content = """"use client";
 
 import { ArrowUpRight, IndianRupee, ShieldAlert, CheckCircle2, TrendingUp, FileText, Users, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
@@ -247,3 +253,8 @@ export default function MoneyMeter({ summary, apiBase, isComposition = false, on
     </div>
   );
 }
+"""
+
+with open(filepath, 'w', encoding='utf-8') as f:
+    f.write(new_content)
+print("Refactored MoneyMeter.js")

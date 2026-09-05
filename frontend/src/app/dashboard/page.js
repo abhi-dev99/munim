@@ -4,6 +4,8 @@ import { authFetch } from "@/src/app/utils/api";
 
 import { useState, useEffect, useRef } from "react";
 import MoneyMeter from "../components/MoneyMeter";
+import { driver } from "driver.js";
+import "driver.js/dist/driver.css";
 import SupplierHealth from "../components/SupplierHealth";
 import ActionQueue from "../components/ActionQueue";
 import Sidebar from "../components/Sidebar";
@@ -298,6 +300,36 @@ export default function Home() {
 
   const defaultRightRail = ["supplier_risk", "filing_readiness", "eway_bills", "quick_links"];
   const rightRailOrder = fullPrefs?.dashboard || defaultRightRail;
+
+  
+  const handleMoneyMeterSortTop = async (newOrder) => {
+    const newPrefs = { ...fullPrefs, money_meter_top: newOrder };
+    setFullPrefs(newPrefs);
+    try {
+      await authFetch(`${API_BASE}/api/v1/dashboard/preferences/${traderId}`, { method: "POST", body: JSON.stringify(newPrefs) });
+    } catch(e) { console.error(e); }
+  };
+
+  const handleMoneyMeterSortBottom = async (newOrder) => {
+    const newPrefs = { ...fullPrefs, money_meter_bottom: newOrder };
+    setFullPrefs(newPrefs);
+    try {
+      await authFetch(`${API_BASE}/api/v1/dashboard/preferences/${traderId}`, { method: "POST", body: JSON.stringify(newPrefs) });
+    } catch(e) { console.error(e); }
+  };
+
+  const startTour = () => {
+    const driverObj = driver({
+      showProgress: true,
+      steps: [
+        { popover: { title: 'Welcome to the CA Dashboard', description: 'Let us show you around your new workspace.', side: "bottom", align: 'start' } },
+        { element: '#money-meter-top', popover: { title: 'ITC Metrics', description: 'These are your core ITC metrics. You can drag and drop these cards to reorder them based on what you want to see first!', side: "bottom", align: 'start' } },
+        { element: '#money-meter-bottom', popover: { title: 'Quick Stats', description: 'Track your processed invoices and open issues. These are also fully drag-and-drop enabled.', side: "bottom", align: 'start' } },
+        { popover: { title: 'Right Rail Widgets', description: 'All the widgets on the right side of your dashboard can also be dragged and dropped into any order you prefer.', side: "left", align: 'start' } }
+      ]
+    });
+    driverObj.drive();
+  };
 
   const handleSort = async () => {
     let _rightRailOrder = [...rightRailOrder];
@@ -611,7 +643,7 @@ export default function Home() {
               className="flex flex-col gap-4 min-h-0 overflow-y-auto pr-1"
             >
               {activeTab === "money-meter" && (
-                <MoneyMeter summary={summary} apiBase={API_BASE} isComposition={isComposition} onSwitchTab={setActiveTab} />
+                <MoneyMeter summary={summary} apiBase={API_BASE} isComposition={isComposition} onSwitchTab={setActiveTab} prefs={fullPrefs} onSortTop={handleMoneyMeterSortTop} onSortBottom={handleMoneyMeterSortBottom} />
               )}
               {activeTab === "suppliers" && (
                 <SupplierHealth traderId={traderId} apiBase={API_BASE} onSwitchTab={setActiveTab} />

@@ -3,42 +3,59 @@ filepath = 'frontend/src/app/dashboard/page.js'
 with open(filepath, 'r', encoding='utf-8') as f:
     content = f.read()
 
-prefs_state = """
-  const [layoutPrefs, setLayoutPrefs] = useState(null);
+# 1. Add driver imports
+if 'import { driver }' not in content:
+    content = content.replace('import MoneyMeter from "../components/MoneyMeter";', 'import MoneyMeter from "../components/MoneyMeter";\nimport { driver } from "driver.js";\nimport "driver.js/dist/driver.css";')
 
-  useEffect(() => {
-    if (!traderId) return;
-    authFetch(`${API_BASE}/api/v1/dashboard/preferences/${traderId}`)
-      .then(r => r.json())
-      .then(d => {
-        if (d.dashboard) setLayoutPrefs(d.dashboard);
-      }).catch(console.error);
-  }, [traderId]);
+# 2. Add handlers and tour logic
+logic = """
+  const handleMoneyMeterSortTop = async (newOrder) => {
+    const newPrefs = { ...fullPrefs, money_meter_top: newOrder };
+    setFullPrefs(newPrefs);
+    try {
+      await authFetch(`${API_BASE}/api/v1/dashboard/preferences/${traderId}`, { method: "POST", body: JSON.stringify(newPrefs) });
+    } catch(e) { console.error(e); }
+  };
 
-  const defaultRightRail = ["supplier_risk", "filing_readiness", "eway_bills", "quick_links"];
-  const rightRailOrder = layoutPrefs || defaultRightRail;
+  const handleMoneyMeterSortBottom = async (newOrder) => {
+    const newPrefs = { ...fullPrefs, money_meter_bottom: newOrder };
+    setFullPrefs(newPrefs);
+    try {
+      await authFetch(`${API_BASE}/api/v1/dashboard/preferences/${traderId}`, { method: "POST", body: JSON.stringify(newPrefs) });
+    } catch(e) { console.error(e); }
+  };
 
-  const renderRightRailWidget = (id) => {
-    switch (id) {
-      case "supplier_risk": return <SupplierRiskCard key="supplier_risk" traderId={traderId} onSwitchTab={setActiveTab} />;
-      case "filing_readiness": return <FilingReadinessCard key="filing_readiness" traderId={traderId} summary={summary} onSwitchTab={setActiveTab} />;
-      case "eway_bills": return <EWayBillCard key="eway_bills" />;
-      case "quick_links": return <QuickLinksCard key="quick_links" traderId={traderId} />;
-      default: return null;
-    }
+  const startTour = () => {
+    const driverObj = driver({
+      showProgress: true,
+      steps: [
+        { popover: { title: 'Welcome to the CA Dashboard', description: 'Let us show you around your new workspace.', side: "bottom", align: 'start' } },
+        { element: '#money-meter-top', popover: { title: 'ITC Metrics', description: 'These are your core ITC metrics. You can drag and drop these cards to reorder them based on what you want to see first!', side: "bottom", align: 'start' } },
+        { element: '#money-meter-bottom', popover: { title: 'Quick Stats', description: 'Track your processed invoices and open issues. These are also fully drag-and-drop enabled.', side: "bottom", align: 'start' } },
+        { popover: { title: 'Right Rail Widgets', description: 'All the widgets on the right side of your dashboard can also be dragged and dropped into any order you prefer.', side: "left", align: 'start' } }
+      ]
+    });
+    driverObj.drive();
   };
 """
 
-if 'const [layoutPrefs, setLayoutPrefs] = useState(null);' not in content:
-    content = content.replace('const [actionCount, setActionCount] = useState(0);', 'const [actionCount, setActionCount] = useState(0);\n' + prefs_state)
+if 'const handleMoneyMeterSortTop' not in content:
+    content = content.replace('const handleSort = async () => {', logic + '\n  const handleSort = async () => {')
 
-old_right_rail = """              <SupplierRiskCard traderId={traderId} onSwitchTab={setActiveTab} />
-              <FilingReadinessCard traderId={traderId} summary={summary} onSwitchTab={setActiveTab} />
-              <EWayBillCard />
-              <QuickLinksCard traderId={traderId} />"""
+# 3. Add tour button
+tour_btn = """<div className="flex items-center gap-3">
+              <button onClick={startTour} className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-semibold hover:bg-indigo-100 transition-colors">
+                Take Tour
+              </button>
+              {profile && ("""
+if '{profile && (' in content and 'Take Tour' not in content:
+    content = content.replace('{profile && (', tour_btn)
 
-if old_right_rail in content:
-    content = content.replace(old_right_rail, "              {rightRailOrder.map(renderRightRailWidget)}")
+# 4. Update MoneyMeter props
+old_mm = '<MoneyMeter summary={summary} apiBase={API_BASE} isComposition={isComposition} onSwitchTab={setActiveTab} />'
+new_mm = '<MoneyMeter summary={summary} apiBase={API_BASE} isComposition={isComposition} onSwitchTab={setActiveTab} prefs={fullPrefs} onSortTop={handleMoneyMeterSortTop} onSortBottom={handleMoneyMeterSortBottom} />'
+if old_mm in content:
+    content = content.replace(old_mm, new_mm)
 
 with open(filepath, 'w', encoding='utf-8') as f:
     f.write(content)
