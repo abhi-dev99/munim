@@ -91,9 +91,10 @@ export default function Home() {
               {activeTab === "money-meter" && <MoneyMeter summary={summary} apiBase={API_BASE} />}
               {activeTab === "suppliers" && <SupplierHealth traderId={traderId} apiBase={API_BASE} />}
               {activeTab === "actions" && <ActionQueue traderId={traderId} apiBase={API_BASE} />}
-              {activeTab === "upload" && <GSTR2BUpload traderId={traderId} apiBase={API_BASE} />}
             </div>
-            <div className="lg:col-span-1">
+            {/* Right Column - Upload + Live Feed */}
+            <div className="lg:col-span-1 space-y-6">
+              <GSTR2BUpload traderId={traderId} apiBase={API_BASE} />
               <InvoiceFeed traderId={traderId} apiBase={API_BASE} />
             </div>
           </div>
