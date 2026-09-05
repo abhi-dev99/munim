@@ -4,8 +4,7 @@
 
 ![Status](https://img.shields.io/badge/Status-Active-success)
 ![Stack](https://img.shields.io/badge/Stack-FastAPI%20%7C%20Next.js%20%7C%20Supabase%20%7C%20Gemini-orange)
-![License](https://img.shields.io/badge/License-MIT-green)
-[![1st Runner-Up](https://img.shields.io/badge/KLEOS%204.0-1st%20Runner--Up-gold)](https://www.linkedin.com/posts/kleos4-raitacm-nationallevelhackathon-ugcPost-7475041562972880896-UpfR/)
+![License](https://img.shields.io/badge/License-Proprietary-red)
 
 > *Built for India's 64 million MSMEs. Every rupee of ITC matters.*
 
@@ -256,16 +255,6 @@ In Meta Developer Console → WhatsApp → Configuration:
 - Webhook URL: `https://your-railway-app.up.railway.app/api/v1/webhook`
 - Verify Token: `munim_verify_2026`
 - Subscribe to: `messages`
-
----
-
-## Recognition
-
-**1st Runner-Up — KLEOS 4.0, National Level Hackathon**
-Ramrao Adik Institute of Technology (RAIT ACM), 2026
-2000+ registrations · Top 40 teams on-site · 8 teams on the same problem statement
-
-Judged on business viability, GST compliance depth, technical architecture, and cybersecurity considerations.
 
 ---
 
