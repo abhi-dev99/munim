@@ -13,6 +13,8 @@ export default function TraderApp() {
   const [traderId, setTraderId] = useState(null);
   const [scanState, setScanState] = useState("idle"); // idle | uploading | success | error
   const [scanResult, setScanResult] = useState(null);
+  const [activeTab, setActiveTab] = useState("home"); // home | history
+  const [invoiceHistory, setInvoiceHistory] = useState([]);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -24,10 +26,16 @@ export default function TraderApp() {
         const activeTrader = tradersData.traders?.[0]?.id || "demo";
 
         const res = await fetch(`${API_BASE}/api/v1/dashboard/summary/${activeTrader}`);
-        if (res.ok) {
+      if (res.ok) {
           const data = await res.json();
           setSummary(data);
           setTraderId(data.trader_id);
+          // Fetch invoice history
+          const invRes = await fetch(`${API_BASE}/api/v1/dashboard/invoices/${data.trader_id}`);
+          if (invRes.ok) {
+            const invData = await invRes.json();
+            setInvoiceHistory((invData.invoices || []).slice(0, 20));
+          }
         }
       } catch (err) {
         console.warn("Using demo data (backend unavailable)", err);
@@ -173,31 +181,59 @@ export default function TraderApp() {
           <div className="flex items-center justify-center h-40">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
           </div>
-        ) : (
+        ) : activeTab === "home" ? (
           <>
             <div className="mb-2">
               <h2 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Financial Snapshot</h2>
               <MoneyMeter summary={summary} apiBase={API_BASE} />
             </div>
-
             <div>
               <h2 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Required Actions</h2>
               <ActionQueue traderId={traderId} apiBase={API_BASE} />
             </div>
           </>
+        ) : (
+          <div>
+            <h2 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-3">Invoice History</h2>
+            {invoiceHistory.length === 0 ? (
+              <div className="text-center py-12 text-[var(--text-muted)] text-sm">No invoices processed yet. Scan your first invoice!</div>
+            ) : (
+              <div className="space-y-2">
+                {invoiceHistory.map((inv) => (
+                  <div key={inv.id} className="bg-white border border-[var(--border-subtle)] rounded-xl p-4 flex items-center justify-between">
+                    <div>
+                      <p className="font-bold text-black text-sm">{inv.supplier_name || inv.gstin_supplier || "Unknown Supplier"}</p>
+                      <p className="text-xs text-[var(--text-muted)]">{inv.invoice_number} · {inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString("en-IN") : ""}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-black text-sm">₹{Number(inv.total_amount || 0).toLocaleString("en-IN")}</p>
+                      <span className={`text-[10px] font-bold uppercase ${
+                        inv.itc_status === "CONFIRMED" ? "text-black" :
+                        inv.itc_status === "FIXABLE_BLOCKED" ? "text-orange-500" :
+                        "text-red-500"
+                      }`}>{inv.itc_status || "PENDING"}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </main>
 
       {/* Fixed Bottom Action Bar */}
       <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-[var(--border-subtle)] p-4 flex gap-4">
-        <button className="flex-1 flex flex-col items-center justify-center gap-1 p-2 text-[var(--text-secondary)] hover:text-black transition-colors">
+        <button
+          onClick={() => setActiveTab(activeTab === "history" ? "home" : "history")}
+          className={`flex-1 flex flex-col items-center justify-center gap-1 p-2 transition-colors ${activeTab === "history" ? "text-black" : "text-[var(--text-secondary)] hover:text-black"}`}
+        >
           <FileText size={20} />
-          <span className="text-[10px] font-bold">Reports</span>
+          <span className="text-[10px] font-bold">History</span>
         </button>
         
         {/* Massive Scan Button */}
         <button
-          onClick={triggerScan}
+          onClick={() => { setActiveTab("home"); triggerScan(); }}
           disabled={scanState === "uploading"}
           className="flex-2 flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-black text-white shadow-xl hover:bg-gray-900 transition-all transform hover:scale-105 w-full disabled:opacity-60 disabled:scale-100"
         >
