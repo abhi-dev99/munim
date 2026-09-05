@@ -71,7 +71,7 @@ class GeminiKeyPool:
                     continue
                 raise
         # All keys exhausted
-        raise RuntimeError("GeminiKeyPool: all API keys rate-limited")
+        raise RuntimeError("GeminiKeyPool: all API keys rate-limited (QUOTA_EXCEEDED)")
 
 
 client = GeminiKeyPool(keys=[

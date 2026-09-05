@@ -58,6 +58,13 @@ class GSTR2BReconciler:
         self.date_window_days = date_window_days
         self.strict_date_window_days = strict_date_window_days
 
+    @staticmethod
+    def compute_hash(supplier_gstin: str, invoice_number: str, total_amount: str) -> str:
+        """Compute a deterministic hash for duplicate detection."""
+        import hashlib
+        raw = f"{supplier_gstin}_{invoice_number}_{total_amount}".strip().lower()
+        return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
     def _amount_within_tolerance(
         self, amount_a: float, amount_b: float, tolerance: float
     ) -> bool:

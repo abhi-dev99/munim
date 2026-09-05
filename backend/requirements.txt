@@ -36,3 +36,4 @@ gtts
 groq==1.6.0
 mcp>=1.0.0
 PyJWT
+resend==2.2.0
