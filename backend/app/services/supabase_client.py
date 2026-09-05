@@ -340,7 +340,7 @@ async def upload_file(bucket: str, path: str, file_bytes: bytes, content_type: s
     try:
         db = get_supabase()
         db.storage.from_(bucket).upload(
-            path, file_bytes, {"content-type": content_type}
+            path, file_bytes, {"content-type": content_type, "upsert": "true"}
         )
         url = db.storage.from_(bucket).get_public_url(path)
         return url
