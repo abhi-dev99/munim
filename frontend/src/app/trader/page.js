@@ -1,6 +1,7 @@
 "use client";
 import { authFetch } from "@/src/app/utils/api";
 import { assessPhotoQuality } from "@/src/app/utils/imageQuality";
+import { vibrateAlert, vibrateSuccess, vibrateWarning } from "@/src/app/utils/haptics";
 
 
 import { useState, useEffect, useRef } from "react";
@@ -121,6 +122,13 @@ export default function TraderApp() {
     }
     fetchDashboardData();
   }, []);
+
+  useEffect(() => {
+    if (scanState !== "success" || !scanResult) return;
+    if (scanResult.status === "FRAUD_FLAGGED") vibrateAlert();
+    else if (scanResult.status === "AT_RISK" || scanResult.status === "FIXABLE_BLOCKED") vibrateWarning();
+    else if (scanResult.status === "CONFIRMED") vibrateSuccess();
+  }, [scanState, scanResult]);
 
   async function handleInvoiceUpload(file) {
     if (!file || !traderId || traderId === "demo") {
