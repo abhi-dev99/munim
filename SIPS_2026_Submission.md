@@ -102,8 +102,8 @@ Vendors can email invoices directly to the trader's dedicated Cloudmailin addres
 An interactive simulation of the GST portal's IMS (Invoice Management System) populated with the actual trader's real invoice data. Demonstrates how Munim's output maps directly to the government filing interface, and how GSTR-3B values are auto-calculated from accepted/rejected credits.
 
 ### Live Demo
-- CA Dashboard: `https://munim-ai.vercel.app/dashboard`
-- Trader PWA: `https://munim-ai.vercel.app/trader`
+- CA Dashboard: *(deployment in progress)*
+- Trader PWA: *(deployment in progress)*
 - GitHub: `https://github.com/abhi-dev99/munim-ai`
 
 ---
