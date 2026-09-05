@@ -494,3 +494,71 @@ body {
     color: #28a745;
     font-weight: bold;
 }
+
+/* IMS Action Buttons Custom Styles */
+.btn-ims-action {
+    background: none;
+    border-radius: 3px;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+    flex: none;
+    transition: all 0.2s ease;
+}
+
+.btn-ims-action.btn-accept {
+    color: #00a65a;
+    border: 1px solid #00a65a;
+}
+
+.btn-ims-action.btn-accept.active {
+    background-color: #00a65a !important;
+    color: white !important;
+}
+
+.btn-ims-action.btn-accept:hover:not(.active) {
+    background-color: rgba(0, 166, 90, 0.05);
+}
+
+.btn-ims-action.btn-reject {
+    color: #d9534f;
+    border: 1px solid #d9534f;
+}
+
+.btn-ims-action.btn-reject.active {
+    background-color: #d9534f !important;
+    color: white !important;
+}
+
+.btn-ims-action.btn-reject:hover:not(.active) {
+    background-color: rgba(217, 83, 79, 0.05);
+}
+
+.btn-ims-action.btn-pending {
+    color: #f59f00;
+    border: 1px solid #f59f00;
+}
+
+.btn-ims-action.btn-pending.active {
+    background-color: #fff9db !important;
+    color: #f59f00 !important;
+}
+
+.btn-ims-action.btn-pending:hover:not(.active) {
+    background-color: rgba(245, 159, 0, 0.05);
+}
+
+.ims-status-text {
+    font-weight: bold;
+}
+.ims-status-text.status-pending {
+    color: #f59f00;
+}
+.ims-status-text.status-accepted {
+    color: #00a65a;
+}
+.ims-status-text.status-rejected {
+    color: #d9534f;
+}
+
