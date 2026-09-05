@@ -55,3 +55,70 @@ npm run dev
 ```
 
 Visit `http://localhost:3000` to view the pristine CA dashboard!
+Visit `http://localhost:3000/trader` for the mobile Trader PWA.
+
+---
+
+## Production Deployment
+
+### Backend → Railway
+1. Push to GitHub (already done)
+2. Go to [railway.app](https://railway.app) → New Project → Deploy from GitHub → Select `munim-ai` → Set **Root Directory** to `backend/`
+3. Add a Redis service in Railway dashboard
+4. Copy Railway's auto-generated Redis URL and set `UPSTASH_REDIS_URL` in your Railway env vars
+5. Set all other env vars (Gemini key, Supabase, Meta tokens) in Railway → Variables
+6. Railway auto-deploys on every push to `main`
+
+**Your backend URL** will be: `https://your-app.up.railway.app`
+
+### Frontend → Vercel
+1. Go to [vercel.com](https://vercel.com) → New Project → Import `munim-ai` → Set **Root Directory** to `frontend/`
+2. Add env var: `NEXT_PUBLIC_API_URL=https://your-app.up.railway.app`
+3. Deploy — done in 2 minutes
+
+### WhatsApp Webhook Setup
+1. In Meta Developer Console → Your App → WhatsApp → Configuration
+2. Set Webhook URL: `https://your-app.up.railway.app/api/v1/webhook`
+3. Set Verify Token: `munim_verify_2026`
+4. Subscribe to: `messages` field
+
+---
+
+## Architecture
+
+```
+Trader (WhatsApp) → Meta Cloud API
+                          ↓
+                    FastAPI Backend (Railway)
+                          ↓
+                    LangGraph Pipeline
+                    ├── Gemini Vision → InvoiceJSON
+                    ├── GSTIN Validator (deepvue.tech)
+                    ├── HSN Validator (pgvector + Supabase)
+                    ├── GSTR-2B Reconciler (3-pass fuzzy)
+                    ├── ITC Rules Engine (GST Act 16/17(5))
+                    └── Fraud Scorer (6 signals)
+                          ↓
+                    Supabase DB → CA Dashboard (Next.js/Vercel)
+                    Redis (Upstash) → Session state + caching
+```
+
+---
+
+## API Reference
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/webhook` | GET/POST | Meta WhatsApp webhook |
+| `/api/v1/webhook/upload-invoice` | POST | Direct invoice upload (Trader PWA) |
+| `/api/v1/dashboard/summary/{trader_id}` | GET | ITC summary |
+| `/api/v1/dashboard/actions/{trader_id}` | GET | Prioritized action queue |
+| `/api/v1/dashboard/actions/{id}/resolve` | PATCH | Mark issue resolved |
+| `/api/v1/dashboard/suppliers/{trader_id}` | GET | Supplier health list |
+| `/api/v1/dashboard/itc-timeline/{trader_id}` | GET | 6-month ITC chart data |
+| `/api/v1/dashboard/reports/generate/{trader_id}` | POST | Generate PDF report |
+| `/api/v1/gstr2b/upload-file/{trader_id}` | POST | Upload GSTR-2B JSON |
+
+---
+
+*Built for India's 64 million MSMEs. Every rupee of ITC matters.*
