@@ -262,8 +262,8 @@ async def generate_munim_report(
 
         pdf.set_font('Helvetica', '', 7)
         pdf.set_text_color(20, 20, 20)
-        pdf.cell(65, 5, (sup.get("legal_name", "Unknown"))[:38], border=1)
-        pdf.cell(45, 5, sup.get("gstin", ""), border=1)
+        pdf.cell(65, 5, (sup.get("legal_name") or "Unknown")[:38], border=1)
+        pdf.cell(45, 5, sup.get("gstin") or "", border=1)
         pdf.set_text_color(r, g, b)
         pdf.set_font('Helvetica', 'B', 7)
         pdf.cell(25, 5, f"{health}/100", border=1)
