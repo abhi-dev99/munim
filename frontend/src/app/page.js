@@ -5,9 +5,8 @@ import MoneyMeter from "./components/MoneyMeter";
 import SupplierHealth from "./components/SupplierHealth";
 import ActionQueue from "./components/ActionQueue";
 import Sidebar from "./components/Sidebar";
+import InvoiceFeed from "./components/InvoiceFeed";
 
-// Demo trader ID — replace with dynamic after auth
-const DEMO_TRADER_ID = null; // Will be fetched
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function Home() {
@@ -22,7 +21,6 @@ export default function Home() {
 
   async function fetchDashboardData() {
     try {
-      // First, get the trader (dynamically fetch first trader from DB)
       const tradersRes = await fetch(`${API_BASE}/api/v1/dashboard/traders`);
       if (!tradersRes.ok) throw new Error("Failed to fetch traders");
       const tradersData = await tradersRes.json();
@@ -36,7 +34,6 @@ export default function Home() {
       }
     } catch (err) {
       console.error("Failed to fetch dashboard:", err);
-      // Use demo data
       setSummary({
         trader_id: "demo",
         month: new Date().getMonth() + 1,
@@ -53,6 +50,7 @@ export default function Home() {
         issues_open: 8,
         total_recovery_possible: 24200,
       });
+      setTraderId("demo");
     } finally {
       setLoading(false);
     }
@@ -60,12 +58,9 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen bg-[var(--bg-primary)]">
-      {/* Sidebar */}
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {/* Main Content */}
       <main className="flex-1 ml-64 p-8">
-        {/* Header */}
         <header className="mb-8">
           <div className="flex items-center justify-between">
             <div>
@@ -90,11 +85,16 @@ export default function Home() {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--blue-primary)]"></div>
           </div>
         ) : (
-          <>
-            {activeTab === "money-meter" && <MoneyMeter summary={summary} apiBase={API_BASE} />}
-            {activeTab === "suppliers" && <SupplierHealth traderId={summary?.trader_id} apiBase={API_BASE} />}
-            {activeTab === "actions" && <ActionQueue traderId={summary?.trader_id} apiBase={API_BASE} />}
-          </>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              {activeTab === "money-meter" && <MoneyMeter summary={summary} apiBase={API_BASE} />}
+              {activeTab === "suppliers" && <SupplierHealth traderId={traderId} apiBase={API_BASE} />}
+              {activeTab === "actions" && <ActionQueue traderId={traderId} apiBase={API_BASE} />}
+            </div>
+            <div className="lg:col-span-1">
+              <InvoiceFeed traderId={traderId} apiBase={API_BASE} />
+            </div>
+          </div>
         )}
       </main>
     </div>
