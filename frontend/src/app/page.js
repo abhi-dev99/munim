@@ -70,6 +70,9 @@ export default function LoginPage() {
       if (data.trader) {
         localStorage.setItem("munim_auth_trader", JSON.stringify(data.trader));
       }
+      if (data.token) {
+        localStorage.setItem("munim_auth_token", data.token);
+      }
 
       // Success, route to dashboard
       router.push("/dashboard");
