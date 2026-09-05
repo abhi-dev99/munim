@@ -22,7 +22,7 @@ export default function ReportsPanel({ traderId, apiBase }) {
 
   async function fetchReports() {
     try {
-      const res = await fetch(`${apiBase}/api/v1/dashboard/reports/${traderId}`);
+      const res = await fetch(`${apiBase}/api/v1/reports/list/${traderId}`);
       const data = await res.json();
       setReports(data.reports || []);
     } catch {
@@ -41,7 +41,7 @@ export default function ReportsPanel({ traderId, apiBase }) {
     try {
       const now = new Date();
       const res = await fetch(
-        `${apiBase}/api/v1/dashboard/reports/generate/${traderId}?month=${now.getMonth() + 1}&year=${now.getFullYear()}`,
+        `${apiBase}/api/v1/reports/generate/${traderId}?month=${now.getMonth() + 1}&year=${now.getFullYear()}&send_whatsapp=false`,
         { method: "POST" }
       );
       const data = await res.json();
