@@ -1,0 +1,449 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Open Sans', Arial, sans-serif;
+    background-color: #eaedf2;
+    color: #333;
+    font-size: 14px;
+}
+
+/* Header Styles */
+.main-header {
+    background-color: #0f2254;
+    color: white;
+}
+
+.header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+}
+
+.logo-area {
+    display: flex;
+    align-items: center;
+}
+
+.emblem-placeholder {
+    width: 40px;
+    height: 55px;
+    background: url('images/1.png') no-repeat;
+    background-size: 400px;
+    background-position: -40px -40px;
+    margin-right: 15px;
+}
+
+.title-area h1 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.title-area p {
+    font-size: 12px;
+    color: #ccc;
+}
+
+.user-info {
+    text-align: right;
+    font-size: 12px;
+}
+
+.gstin {
+    font-weight: bold;
+}
+
+.main-nav {
+    background-color: #1a3c74;
+    border-top: 1px solid #2b5299;
+}
+
+.main-nav ul {
+    list-style: none;
+    display: flex;
+    margin: 0;
+    padding: 0 10px;
+}
+
+.main-nav li a {
+    color: white;
+    text-decoration: none;
+    padding: 10px 15px;
+    display: block;
+    font-size: 13px;
+}
+
+.main-nav li:hover, .main-nav li.active {
+    background-color: #f1f1f1;
+}
+.main-nav li:hover a, .main-nav li.active a {
+    color: #333;
+}
+
+.sub-nav {
+    background-color: #f1f1f1;
+    color: #333;
+    padding: 8px 20px;
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid #ddd;
+}
+
+.breadcrumb a {
+    color: #0066cc;
+    text-decoration: none;
+}
+
+/* App Container */
+#app-container {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 0 15px;
+}
+
+.view-section {
+    display: none;
+}
+
+.view-section.active {
+    display: block;
+}
+
+/* Dashboard View */
+.card {
+    background: white;
+    border: 1px solid #ddd;
+    margin-bottom: 20px;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    padding: 12px 15px;
+    font-size: 16px;
+    font-weight: 600;
+    border-bottom: 1px solid #ddd;
+}
+
+.card-body {
+    padding: 15px;
+}
+
+.info-text-red {
+    color: #d9534f;
+    font-size: 12px;
+    text-align: right;
+    margin-bottom: 10px;
+}
+
+.form-row {
+    display: flex;
+    gap: 20px;
+    align-items: flex-end;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    font-size: 12px;
+    margin-bottom: 5px;
+}
+
+.mandatory {
+    color: red;
+}
+
+.form-group select {
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 2px;
+    width: 200px;
+    font-size: 13px;
+}
+
+.btn-primary {
+    background-color: #2b5299;
+    color: white;
+    border: none;
+    padding: 8px 25px;
+    cursor: pointer;
+    border-radius: 2px;
+    font-size: 13px;
+    height: 31px;
+}
+.btn-primary:hover {
+    background-color: #1a3c74;
+}
+
+.info-box-blue {
+    background-color: #d9edf7;
+    color: #31708f;
+    padding: 10px 15px;
+    border: 1px solid #bce8f1;
+    border-radius: 3px;
+    margin-bottom: 20px;
+    font-size: 13px;
+}
+
+.tiles-container {
+    display: flex;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.tile {
+    flex: 1;
+    background: white;
+    border: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+}
+
+.tile-header {
+    background-color: #0f2254;
+    color: white;
+    padding: 15px;
+    text-align: center;
+    min-height: 100px;
+}
+
+.tile-header h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.tile-header p {
+    font-size: 12px;
+}
+
+.tile-body {
+    padding: 15px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.status-filed {
+    color: #00a65a;
+    font-weight: bold;
+}
+
+.tile-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.tile-actions.center {
+    justify-content: center;
+}
+
+.btn-tile {
+    background-color: #2b5299;
+    color: white;
+    border: none;
+    padding: 6px 15px;
+    cursor: pointer;
+    font-size: 12px;
+    border-radius: 2px;
+    flex: 1;
+}
+
+.btn-tile:hover {
+    background-color: #1a3c74;
+}
+
+
+/* GSTR-2B View */
+.gstr2b-banner {
+    background-color: #1cb5a3;
+    color: white;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.gstr2b-banner h2 {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.info-grid {
+    background: white;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    padding: 15px 20px;
+    border: 1px solid #ddd;
+    border-top: none;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: #333;
+}
+
+.info-grid p {
+    margin-bottom: 5px;
+}
+
+.tabs-container {
+    background: white;
+    border: 1px solid #ddd;
+    padding: 15px;
+}
+
+.main-tabs {
+    display: flex;
+    border-bottom: 1px solid #ddd;
+    margin-bottom: 15px;
+    position: relative;
+}
+
+.main-tabs .tab {
+    background: none;
+    border: none;
+    padding: 10px 20px;
+    font-size: 13px;
+    color: #666;
+    cursor: pointer;
+    border: 1px solid transparent;
+    border-bottom: none;
+}
+
+.main-tabs .tab.active {
+    color: #333;
+    border-color: #ddd;
+    border-top: 2px solid #2b5299;
+    background: white;
+    margin-bottom: -1px;
+}
+
+.view-advisory {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    color: #2b5299;
+    font-size: 13px;
+    text-decoration: none;
+}
+
+.sub-tabs-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #ddd;
+}
+
+.sub-tabs {
+    display: flex;
+}
+
+.sub-tab {
+    background: none;
+    border: 1px solid transparent;
+    padding: 8px 15px;
+    font-size: 13px;
+    color: #666;
+    cursor: pointer;
+    border-bottom: none;
+}
+
+.sub-tab.active {
+    color: white;
+    background-color: #3cbbb1;
+    border-radius: 3px 3px 0 0;
+    margin-bottom: -1px;
+}
+
+.btn-help {
+    background-color: #4b80a6;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 2px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.gstr2b-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    border: 1px solid #ddd;
+}
+
+.gstr2b-table th, .gstr2b-table td {
+    border: 1px solid #ddd;
+    padding: 8px 10px;
+}
+
+.gstr2b-table th {
+    background-color: #e4f4ed;
+    color: #333;
+    font-weight: 600;
+    text-align: center;
+}
+
+.gstr2b-table td.amount {
+    text-align: right;
+}
+
+.gstr2b-table td.center {
+    text-align: center;
+}
+
+.section-header td {
+    background-color: #f9f9f9;
+    font-weight: 600;
+}
+
+.expand-all {
+    color: #2b5299;
+    text-decoration: none;
+    font-size: 12px;
+}
+
+.ims-tag {
+    color: #666;
+}
+
+.bottom-actions {
+    margin-top: 20px;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.btn-outline {
+    background: white;
+    border: 1px solid #333;
+    color: #333;
+    padding: 8px 15px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.btn-primary-action {
+    background-color: #2b5299;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.mt-2 {
+    margin-top: 10px;
+}
