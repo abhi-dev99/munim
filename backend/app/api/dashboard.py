@@ -556,3 +556,45 @@ async def get_ims_invoices(trader_id: str = Depends(verify_trader_access), month
         logger.error(f"IMS data failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+
+import json
+import os
+from pydantic import BaseModel
+
+class PreferencesModel(BaseModel):
+    dashboard: list[str]
+    sidebar: list[str]
+
+PREF_FILE = "preferences.json"
+
+def _load_prefs():
+    if os.path.exists(PREF_FILE):
+        with open(PREF_FILE, "r") as f:
+            return json.load(f)
+    return {}
+
+def _save_prefs(prefs):
+    with open(PREF_FILE, "w") as f:
+        json.dump(prefs, f)
+
+@router.get("/preferences/{trader_id}")
+async def get_preferences(trader_id: str = Depends(verify_trader_access)):
+    prefs = _load_prefs()
+    if trader_id in prefs:
+        return prefs[trader_id]
+    return {
+        "dashboard": ["quick_links", "supplier_risk", "filing_readiness", "eway_bills"],
+        "sidebar": ["money-meter", "suppliers", "actions", "reports"]
+    }
+
+@router.post("/preferences/{trader_id}")
+async def save_preferences(payload: PreferencesModel, trader_id: str = Depends(verify_trader_access)):
+    prefs = _load_prefs()
+    prefs[trader_id] = {
+        "dashboard": payload.dashboard,
+        "sidebar": payload.sidebar
+    }
+    _save_prefs(prefs)
+    return {"message": "Preferences saved successfully"}
+

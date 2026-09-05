@@ -68,7 +68,7 @@ export default function InvoiceDetailModal({ invoice, onClose, onNext, onPrev, h
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-2 md:p-8 backdrop-blur-md transition-all duration-300 ease-in-out">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/70 p-2 md:p-8 transition-all duration-300 ease-in-out">
       {/* Outside Navigation - Close */}
       <button onClick={onClose} className="absolute top-4 right-4 md:top-8 md:right-8 z-[60] p-4 text-white/70 hover:text-white transition-all duration-300 ease-in-out">
         <X size={32} />
@@ -76,25 +76,25 @@ export default function InvoiceDetailModal({ invoice, onClose, onNext, onPrev, h
 
       {/* Outside Navigation - Prev */}
       {hasPrev && (
-        <button onClick={onPrev} className="hidden md:flex absolute left-8 z-[60] p-4 text-white/70 hover:text-white transition-all duration-300 ease-in-out">
+        <button onClick={onPrev} className="hidden md:flex absolute left-8 z-[60] p-4 text-white/70 hover:text-white transition-all duration-300 ease-in-out hover:scale-110">
           <ChevronLeft size={36} />
         </button>
       )}
 
       {/* Outside Navigation - Next */}
       {hasNext && (
-        <button onClick={onNext} className="hidden md:flex absolute right-8 z-[60] p-4 text-white/70 hover:text-white transition-all duration-300 ease-in-out">
+        <button onClick={onNext} className="hidden md:flex absolute right-8 z-[60] p-4 text-white/70 hover:text-white transition-all duration-300 ease-in-out hover:scale-110">
           <ChevronRight size={36} />
         </button>
       )}
 
-      {/* Main Card (Sharp Corners) */}
-      <div className="bg-white rounded-none w-full max-w-5xl max-h-[95vh] overflow-hidden flex flex-col md:flex-row relative border border-[#E0E0E0]">
+      {/* Main Card */}
+      <div className="bg-white rounded-2xl w-full max-w-5xl max-h-[95vh] overflow-hidden flex flex-col md:flex-row relative shadow-2xl border border-gray-200">
         
         {/* Mobile Navigation inside card if needed (kept minimal) */}
-        <div className="md:hidden absolute bottom-4 right-4 z-20 flex gap-2">
+        <div className="md:hidden absolute bottom-4 right-4 z-20 flex gap-2 shadow-lg">
           {hasPrev && (
-            <button onClick={onPrev} className="p-2 bg-black text-white rounded-none">
+            <button onClick={onPrev} className="p-2 bg-gray-900 text-white rounded-full">
               <ChevronLeft size={20} />
             </button>
           )}

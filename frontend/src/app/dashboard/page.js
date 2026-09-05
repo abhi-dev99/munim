@@ -282,6 +282,31 @@ export default function Home() {
   const [activeTraderName, setActiveTraderName] = useState("Loading...");
   const [activeBusinessName, setActiveBusinessName] = useState("");
   const [actionCount, setActionCount] = useState(0);
+
+  const [layoutPrefs, setLayoutPrefs] = useState(null);
+
+  useEffect(() => {
+    if (!traderId) return;
+    authFetch(`${API_BASE}/api/v1/dashboard/preferences/${traderId}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.dashboard) setLayoutPrefs(d.dashboard);
+      }).catch(console.error);
+  }, [traderId]);
+
+  const defaultRightRail = ["supplier_risk", "filing_readiness", "eway_bills", "quick_links"];
+  const rightRailOrder = layoutPrefs || defaultRightRail;
+
+  const renderRightRailWidget = (id) => {
+    switch (id) {
+      case "supplier_risk": return <SupplierRiskCard key="supplier_risk" traderId={traderId} onSwitchTab={setActiveTab} />;
+      case "filing_readiness": return <FilingReadinessCard key="filing_readiness" traderId={traderId} summary={summary} onSwitchTab={setActiveTab} />;
+      case "eway_bills": return <EWayBillCard key="eway_bills" />;
+      case "quick_links": return <QuickLinksCard key="quick_links" traderId={traderId} />;
+      default: return null;
+    }
+  };
+
   const [isComposition, setIsComposition] = useState(false);
   const [traderPhone, setTraderPhone] = useState(null);
 
@@ -569,10 +594,7 @@ export default function Home() {
               transition={{ delay: 0.12, duration: 0.3 }}
               className="flex flex-col gap-3 min-h-0 overflow-y-auto pr-1"
             >
-              <SupplierRiskCard traderId={traderId} onSwitchTab={setActiveTab} />
-              <FilingReadinessCard traderId={traderId} summary={summary} onSwitchTab={setActiveTab} />
-              <EWayBillCard />
-              <QuickLinksCard traderId={traderId} />
+              {rightRailOrder.map(renderRightRailWidget)}
             </motion.div>
           </motion.div>
         )}
