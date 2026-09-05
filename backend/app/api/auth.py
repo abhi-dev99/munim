@@ -67,37 +67,44 @@ async def request_otp(data: OTPRequest):
     if not check_rate_limit(f"otp-req:{phone}", max_requests=3, window_seconds=300):
         raise HTTPException(status_code=429, detail="Too many OTP requests. Please wait a few minutes and try again.")
 
+    # Response is identical whether or not this number is registered --
+    # returning 404 only for unregistered numbers is a direct oracle for
+    # enumerating which phone numbers are onboarded traders/CAs. An OTP is
+    # only actually generated and sent when the number IS registered; the
+    # caller can't tell the difference from the response alone.
+    GENERIC_RESPONSE = {"message": "If this number is registered, an OTP has been sent via WhatsApp."}
+
     try:
         db = get_supabase()
         res_trader = db.table("traders").select("id, language_pref").eq("whatsapp_number", phone).execute()
         res_ca = db.table("traders").select("id, language_pref").eq("ca_whatsapp_number", phone).execute()
     except Exception as e:
         logger.error(f"DB Error: {e}")
-        raise HTTPException(status_code=404, detail="Mobile number not registered or DB offline.")
+        return GENERIC_RESPONSE
 
     if not res_trader.data and not res_ca.data:
-        raise HTTPException(status_code=404, detail="Mobile number not registered.")
+        return GENERIC_RESPONSE
 
     # Generate OTP
     otp = str(random.randint(100000, 999999))
-    
+
     # In development, print the OTP to the terminal since WhatsApp won't deliver it
     from app.config import get_settings
     if get_settings().debug:
         logger.info("=" * 40)
         logger.info(f"DEMO OTP FOR {phone}: {otp}")
         logger.info("=" * 40)
-    
+
     # Store OTP with 5 min expiry via Redis/Memory
     set_otp(phone, otp)
-    
+
     # Fetch user language preference
     lang = "en"
     if res_trader.data:
         lang = res_trader.data[0].get("language_pref") or "en"
     elif res_ca.data:
         lang = res_ca.data[0].get("language_pref") or "en"
-        
+
     if lang == "hi":
         msg = f"Aapka Munim.ai verification code hai: *{otp}*. Ise kisi ke saath share na karein."
     elif lang == "mr":
@@ -109,8 +116,8 @@ async def request_otp(data: OTPRequest):
 
     # Send via WhatsApp
     await whatsapp.send_text_message(phone, msg)
-    
-    return {"message": "OTP sent successfully via WhatsApp."}
+
+    return GENERIC_RESPONSE
 
 @router.post("/verify-otp")
 async def verify_otp(data: OTPVerify):
