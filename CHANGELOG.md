@@ -7,6 +7,7 @@ All notable changes to Munim.ai are documented here. Format loosely follows [Kee
 ## 2026-09-03
 
 ### Added
+- The trader app is now a real, installable PWA (`frontend/public/manifest.json`, app icons, a minimal app-shell service worker) — previously it was only styled to *look* like a mobile app (a hardcoded fake iOS status bar) with no manifest, no service worker, and nothing for a browser's installability check to find.
 - First real backend test suite: 48 tests across `itc_engine`, `fraud`, `reconciler`, `gstin`, and a new shared error-handling helper — this repo had zero test infrastructure before today.
 - `safe_http_error()` helper (`backend/app/utils/errors.py`) — logs the real exception server-side with a correlation ID, returns a generic client-safe message. Applied across all 27 previously-leaky call sites.
 - GSTIN check-digit validation (`has_valid_checksum()` in `gstin.py`) — previously only format/length was checked, never the actual checksum algorithm.
