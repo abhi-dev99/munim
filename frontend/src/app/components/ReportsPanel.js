@@ -81,41 +81,143 @@ export default function ReportsPanel({ traderId, apiBase }) {
     }
   }
 
+  const [reportsSortField, setReportsSortField] = useState('yearMonth');
+  const [reportsSortDirection, setReportsSortDirection] = useState('desc');
+  const [reportsSearch, setReportsSearch] = useState('');
+
+  const handleReportsSort = (field) => {
+    if (reportsSortField === field) {
+      setReportsSortDirection(reportsSortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setReportsSortField(field);
+      setReportsSortDirection("desc");
+    }
+  };
+
+  const filteredAndSortedReports = reports
+    .filter(r => reportsSearch === "" || `${months[r.month]} ${r.year}`.toLowerCase().includes(reportsSearch.toLowerCase()))
+    .sort((a, b) => {
+      let aValue = a[reportsSortField];
+      let bValue = b[reportsSortField];
+      if (reportsSortField === 'yearMonth') {
+        aValue = `${a.year}${String(a.month).padStart(2, '0')}`;
+        bValue = `${b.year}${String(b.month).padStart(2, '0')}`;
+      } else if (reportsSortField === 'total_itc_confirmed') {
+        aValue = Number(a.total_itc_confirmed || 0);
+        bValue = Number(b.total_itc_confirmed || 0);
+      } else if (reportsSortField === 'total_invoices_processed') {
+        aValue = Number(a.total_invoices_processed || 0);
+        bValue = Number(b.total_invoices_processed || 0);
+      } else if (reportsSortField === 'total_issues_count') {
+        aValue = Number(a.total_issues_count || 0);
+        bValue = Number(b.total_issues_count || 0);
+      }
+      
+      if (aValue < bValue) return reportsSortDirection === "asc" ? -1 : 1;
+      if (aValue > bValue) return reportsSortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+
+  const [gstr2bSortField, setGstr2bSortField] = useState('invoice_date');
+  const [gstr2bSortDirection, setGstr2bSortDirection] = useState('desc');
+  const [gstr2bSearch, setGstr2bSearch] = useState('');
+  const [gstr2bFilterItc, setGstr2bFilterItc] = useState('ALL'); // ALL, AVAILABLE, BLOCKED
+  const [expandedGstr2bGroups, setExpandedGstr2bGroups] = useState({});
+
+  const toggleGstr2bGroup = (key) => {
+    setExpandedGstr2bGroups(prev => ({
+      ...prev,
+      [key]: prev[key] === undefined ? false : !prev[key]
+    }));
+  };
+
+  const handleGstr2bSort = (field) => {
+    if (gstr2bSortField === field) {
+      setGstr2bSortDirection(gstr2bSortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setGstr2bSortField(field);
+      setGstr2bSortDirection("desc");
+    }
+  };
+
+  const generateReportForPeriod = async (month, year) => {
+    if (!traderId || traderId === "demo") return;
+    setGenerating(true);
+    setGenError(null);
+    setGenSuccess(null);
+
+    // Show toast "Generating PDF..."
+    const toastId = setTimeout(() => {}, 10); // dummy timeout to trigger render if needed
+    
+    try {
+      const res = await fetch(
+        `${apiBase}/api/v1/reports/generate/${traderId}?month=${month}&year=${year}&send_whatsapp=false`,
+        { method: "POST" }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        setGenError(data.detail || "Report generation failed");
+      } else {
+        setGenSuccess(data.pdf_url);
+        fetchReports(); // Refresh list
+        // Trigger download
+        window.open(data.pdf_url, '_blank');
+      }
+    } catch (err) {
+      setGenError("Network error — check backend connection");
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-black">Monthly Reports</h2>
           <p className="text-[var(--text-secondary)] mt-1">Munim Report — full ITC, supplier health & CA handoff</p>
         </div>
-        <button
-          onClick={generateReport}
-          disabled={generating || !traderId || traderId === "demo"}
-          className="flex items-center gap-2 px-5 py-2.5 bg-black text-white font-bold text-sm rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
-        >
-          {generating ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
-          <span>{generating ? "Generating..." : "Generate This Month"}</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <input 
+            type="text" 
+            placeholder="Search period..." 
+            value={reportsSearch}
+            onChange={(e) => setReportsSearch(e.target.value)}
+            className="px-3 py-2 border border-[var(--border-subtle)] rounded-lg text-sm focus:outline-none focus:border-black"
+          />
+        </div>
       </div>
 
-      {genSuccess && (
-        <div className="p-4 glass-card border border-[var(--border-subtle)] flex items-center gap-3">
-          <FileText size={20} className="text-black" />
+      {generating && (
+        <div className="p-4 bg-black text-white rounded-lg flex items-center gap-3 shadow-lg fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5">
+          <Loader2 size={20} className="animate-spin" />
           <div className="flex-1">
-            <p className="font-bold text-black text-sm">Report generated!</p>
-            <p className="text-xs text-[var(--text-secondary)]">PDF ready. Click to download.</p>
+            <p className="font-bold text-sm">Generating PDF...</p>
+            <p className="text-xs text-gray-300">This might take a few seconds.</p>
           </div>
-          <a href={genSuccess} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-2 px-4 py-1.5 bg-black text-white text-sm font-bold rounded hover:bg-gray-800">
-            <Download size={14} /> Download
-          </a>
+        </div>
+      )}
+
+      {genSuccess && !generating && (
+        <div className="p-4 bg-[var(--green-primary)] text-white rounded-lg flex items-center gap-3 shadow-lg fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5">
+          <CheckCircle2 size={20} />
+          <div className="flex-1">
+            <p className="font-bold text-sm">Download Initiated!</p>
+            <p className="text-xs text-green-100">Your PDF report is ready.</p>
+          </div>
+          <button onClick={() => setGenSuccess(null)} className="ml-2 hover:bg-white/20 p-1 rounded">
+            <XCircle size={16} />
+          </button>
         </div>
       )}
 
       {genError && (
-        <div className="p-4 glass-card border border-[var(--border-subtle)] flex items-center gap-3">
-          <AlertCircle size={20} className="text-[var(--red-primary)]" />
-          <p className="text-sm text-[var(--text-secondary)]">{genError}</p>
+        <div className="p-4 bg-[var(--red-primary)] text-white rounded-lg flex items-center gap-3 shadow-lg fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5">
+          <AlertCircle size={20} />
+          <p className="text-sm">{genError}</p>
+          <button onClick={() => setGenError(null)} className="ml-2 hover:bg-white/20 p-1 rounded">
+            <XCircle size={16} />
+          </button>
         </div>
       )}
 
@@ -124,20 +226,28 @@ export default function ReportsPanel({ traderId, apiBase }) {
         <table className="w-full">
           <thead>
             <tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-primary)]">
-              <th className="text-left px-6 py-3 text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Period</th>
-              <th className="text-left px-6 py-3 text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">ITC Confirmed</th>
-              <th className="text-left px-6 py-3 text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Invoices</th>
-              <th className="text-left px-6 py-3 text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">Issues</th>
+              <th onClick={() => handleReportsSort('yearMonth')} className="text-left px-6 py-3 text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] cursor-pointer hover:bg-gray-100 transition-colors">
+                Period {reportsSortField === 'yearMonth' && (reportsSortDirection === 'asc' ? '↑' : '↓')}
+              </th>
+              <th onClick={() => handleReportsSort('total_itc_confirmed')} className="text-left px-6 py-3 text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] cursor-pointer hover:bg-gray-100 transition-colors">
+                ITC Confirmed {reportsSortField === 'total_itc_confirmed' && (reportsSortDirection === 'asc' ? '↑' : '↓')}
+              </th>
+              <th onClick={() => handleReportsSort('total_invoices_processed')} className="text-left px-6 py-3 text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] cursor-pointer hover:bg-gray-100 transition-colors">
+                Invoices {reportsSortField === 'total_invoices_processed' && (reportsSortDirection === 'asc' ? '↑' : '↓')}
+              </th>
+              <th onClick={() => handleReportsSort('total_issues_count')} className="text-left px-6 py-3 text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] cursor-pointer hover:bg-gray-100 transition-colors">
+                Issues {reportsSortField === 'total_issues_count' && (reportsSortDirection === 'asc' ? '↑' : '↓')}
+              </th>
               <th className="text-right px-6 py-3 text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">PDF</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr><td colSpan={5} className="px-6 py-12 text-center text-[var(--text-muted)] text-sm">Loading reports...</td></tr>
-            ) : reports.length === 0 ? (
-              <tr><td colSpan={5} className="px-6 py-12 text-center text-[var(--text-muted)] text-sm">No reports generated yet. Click "Generate This Month" above.</td></tr>
+            ) : filteredAndSortedReports.length === 0 ? (
+              <tr><td colSpan={5} className="px-6 py-12 text-center text-[var(--text-muted)] text-sm">No reports match your criteria.</td></tr>
             ) : (
-              reports.map((report) => (
+              filteredAndSortedReports.map((report) => (
                 <tr key={`${report.year}-${report.month}`} className="border-b border-[var(--border-subtle)] hover:bg-[var(--bg-primary)] transition-colors">
                   <td className="px-6 py-4 font-bold text-black text-sm">{months[report.month]} {report.year}</td>
                   <td className="px-6 py-4 text-sm text-[var(--text-secondary)]">₹{Number(report.total_itc_confirmed || 0).toLocaleString('en-IN')}</td>
@@ -150,7 +260,13 @@ export default function ReportsPanel({ traderId, apiBase }) {
                         <Download size={12} /> PDF
                       </a>
                     ) : (
-                      <span className="text-xs text-[var(--text-muted)]">—</span>
+                      <button 
+                        onClick={() => generateReportForPeriod(report.month, report.year)}
+                        disabled={generating}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-black text-white text-xs font-bold rounded hover:bg-gray-800 disabled:opacity-50"
+                      >
+                        <FileText size={12} /> Generate
+                      </button>
                     )}
                   </td>
                 </tr>
@@ -162,10 +278,28 @@ export default function ReportsPanel({ traderId, apiBase }) {
 
       {/* ── GSTR-2B Records ─────────────────────────── */}
       <div className="mt-8">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-3 gap-4">
           <div>
             <h3 className="text-lg font-bold text-black">GSTR-2B Reports</h3>
             <p className="text-xs text-[var(--text-secondary)] mt-0.5">Auto-drafted ITC records uploaded from GST portal</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <input 
+              type="text" 
+              placeholder="Search GSTIN or Invoice..." 
+              value={gstr2bSearch}
+              onChange={(e) => setGstr2bSearch(e.target.value)}
+              className="px-3 py-2 border border-[var(--border-subtle)] rounded-lg text-xs focus:outline-none focus:border-black"
+            />
+            <select 
+              value={gstr2bFilterItc} 
+              onChange={(e) => setGstr2bFilterItc(e.target.value)}
+              className="px-3 py-2 border border-[var(--border-subtle)] rounded-lg text-xs bg-white focus:outline-none"
+            >
+              <option value="ALL">All ITC</option>
+              <option value="AVAILABLE">Available</option>
+              <option value="BLOCKED">Blocked</option>
+            </select>
           </div>
         </div>
 
@@ -177,26 +311,77 @@ export default function ReportsPanel({ traderId, apiBase }) {
           </div>
         ) : (
           <div className="space-y-4">
-            {gstr2bRecords.map(group => (
-              <div key={`${group.year}-${group.month}`} className="glass-card overflow-hidden">
+            {gstr2bRecords.map(group => {
+              const filteredAndSortedRecords = group.records
+                .filter(r => gstr2bFilterItc === "ALL" || (gstr2bFilterItc === "AVAILABLE" ? r.itc_eligible : !r.itc_eligible))
+                .filter(r => 
+                  gstr2bSearch === "" || 
+                  (r.supplier_gstin && r.supplier_gstin.toLowerCase().includes(gstr2bSearch.toLowerCase())) ||
+                  (r.invoice_number && r.invoice_number.toLowerCase().includes(gstr2bSearch.toLowerCase()))
+                )
+                .sort((a, b) => {
+                  let aValue = a[gstr2bSortField];
+                  let bValue = b[gstr2bSortField];
+                  
+                  if (gstr2bSortField === 'tax_amount') {
+                    aValue = (a.igst || 0) + (a.cgst || 0) + (a.sgst || 0);
+                    bValue = (b.igst || 0) + (b.cgst || 0) + (b.sgst || 0);
+                  }
+                  
+                  if (typeof aValue === 'string') aValue = aValue.toLowerCase();
+                  if (typeof bValue === 'string') bValue = bValue.toLowerCase();
+                  
+                  if (aValue < bValue) return gstr2bSortDirection === "asc" ? -1 : 1;
+                  if (aValue > bValue) return gstr2bSortDirection === "asc" ? 1 : -1;
+                  return 0;
+                });
+
+              if (filteredAndSortedRecords.length === 0) return null;
+
+              const groupKey = `${group.year}-${group.month}`;
+              const isCollapsed = expandedGstr2bGroups[groupKey] === false;
+
+              return (
+              <div key={groupKey} className="glass-card overflow-hidden">
                 {/* Period header */}
-                <div className="flex items-center justify-between px-5 py-3 bg-[var(--bg-primary)] border-b border-[var(--border-subtle)]">
-                  <span className="font-bold text-black text-sm">{months[group.month]} {group.year}</span>
-                  <span className="text-xs text-[var(--text-secondary)]">{group.records.length} invoice{group.records.length !== 1 ? "s" : ""}</span>
+                <div 
+                  onClick={() => toggleGstr2bGroup(groupKey)}
+                  className="flex items-center justify-between px-5 py-3 bg-[var(--bg-primary)] border-b border-[var(--border-subtle)] cursor-pointer hover:bg-gray-100 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-black text-sm">{months[group.month]} {group.year}</span>
+                    <span className="text-xs text-[var(--text-secondary)]">({filteredAndSortedRecords.length} invoice{filteredAndSortedRecords.length !== 1 ? "s" : ""})</span>
+                  </div>
+                  <div className="text-[var(--text-secondary)]">
+                    {isCollapsed ? "▼" : "▲"}
+                  </div>
                 </div>
+                {!isCollapsed && (
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-[var(--border-subtle)]">
-                      <th className="text-left px-5 py-2 text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Supplier GSTIN</th>
-                      <th className="text-left px-5 py-2 text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Invoice #</th>
-                      <th className="text-left px-5 py-2 text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Date</th>
-                      <th className="text-right px-5 py-2 text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Taxable</th>
-                      <th className="text-right px-5 py-2 text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Tax (I+C+S)</th>
-                      <th className="text-center px-5 py-2 text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">ITC</th>
+                      <th onClick={() => handleGstr2bSort('supplier_gstin')} className="text-left px-5 py-2 text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)] cursor-pointer hover:bg-gray-100 transition-colors">
+                        Supplier GSTIN {gstr2bSortField === 'supplier_gstin' && (gstr2bSortDirection === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th onClick={() => handleGstr2bSort('invoice_number')} className="text-left px-5 py-2 text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)] cursor-pointer hover:bg-gray-100 transition-colors">
+                        Invoice # {gstr2bSortField === 'invoice_number' && (gstr2bSortDirection === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th onClick={() => handleGstr2bSort('invoice_date')} className="text-left px-5 py-2 text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)] cursor-pointer hover:bg-gray-100 transition-colors">
+                        Date {gstr2bSortField === 'invoice_date' && (gstr2bSortDirection === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th onClick={() => handleGstr2bSort('taxable_value')} className="text-right px-5 py-2 text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)] cursor-pointer hover:bg-gray-100 transition-colors">
+                        Taxable {gstr2bSortField === 'taxable_value' && (gstr2bSortDirection === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th onClick={() => handleGstr2bSort('tax_amount')} className="text-right px-5 py-2 text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)] cursor-pointer hover:bg-gray-100 transition-colors">
+                        Tax (I+C+S) {gstr2bSortField === 'tax_amount' && (gstr2bSortDirection === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th onClick={() => handleGstr2bSort('itc_eligible')} className="text-center px-5 py-2 text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)] cursor-pointer hover:bg-gray-100 transition-colors">
+                        ITC {gstr2bSortField === 'itc_eligible' && (gstr2bSortDirection === 'asc' ? '↑' : '↓')}
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {group.records.map(r => {
+                    {filteredAndSortedRecords.map(r => {
                       const tax = (r.igst || 0) + (r.cgst || 0) + (r.sgst || 0);
                       return (
                         <tr key={r.id} className="border-b border-[var(--border-subtle)] hover:bg-[var(--bg-primary)] transition-colors">
@@ -217,8 +402,10 @@ export default function ReportsPanel({ traderId, apiBase }) {
                     })}
                   </tbody>
                 </table>
+                )}
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

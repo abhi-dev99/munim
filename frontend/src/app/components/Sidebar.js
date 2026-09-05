@@ -5,7 +5,7 @@ import { LayoutDashboard, Users, AlertCircle, FileText, Settings, LogOut } from 
 export default function Sidebar({ activeTab, onTabChange, actionCount = 0 }) {
   const navItems = [
     { id: "money-meter", label: "Money Meter", icon: LayoutDashboard },
-    { id: "suppliers", label: "Supplier Health", icon: Users },
+    { id: "suppliers", label: "Supplier Trust", icon: Users },
     { id: "actions", label: "Action Queue", icon: AlertCircle, badge: actionCount },
     { id: "reports", label: "Monthly Reports", icon: FileText },
   ];
@@ -14,10 +14,7 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0 }) {
     <aside className="w-64 fixed h-full bg-[var(--bg-primary)] border-r border-[var(--border-subtle)] z-10 flex flex-col">
       <div className="p-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded bg-black text-white flex items-center justify-center font-bold text-xl">
-            M
-          </div>
-          <span className="font-bold text-xl tracking-tight text-black">Munim.ai</span>
+          <span className="font-bold text-xl tracking-tight text-black">Dashboard</span>
         </div>
       </div>
 

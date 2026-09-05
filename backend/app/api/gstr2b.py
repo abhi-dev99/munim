@@ -93,28 +93,39 @@ async def upload_gstr2b_file(
     file: UploadFile = File(...),
 ):
     """
-    Upload GSTR-2B as a raw JSON file (downloaded from GST portal).
-    Handles the standard GST portal GSTR-2B JSON format.
+    Upload GSTR-2B as a raw JSON file or Excel file (downloaded from GST portal).
+    Handles the standard GST portal GSTR-2B formats.
     """
-    if file.content_type not in ("application/json", "text/plain", "application/octet-stream"):
+    is_excel = file.filename.endswith(('.xlsx', '.xls')) or "spreadsheet" in file.content_type or "excel" in file.content_type
+    if not is_excel and file.content_type not in ("application/json", "text/plain", "application/octet-stream"):
         raise HTTPException(
             status_code=400,
-            detail="Only JSON files accepted. Download GSTR-2B from GST portal and upload here."
+            detail="Only JSON or Excel files accepted. Download GSTR-2B from GST portal and upload here."
         )
 
     content = await file.read()
-    try:
-        data = json.loads(content)
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid JSON file")
+    
+    if is_excel:
+        records = _parse_gst_portal_excel(content)
+        if not records:
+            raise HTTPException(
+                status_code=400,
+                detail="Could not parse GSTR-2B records from this Excel file. "
+                       "Ensure it is the standard GST portal GSTR-2B format."
+            )
+    else:
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="Invalid JSON file")
 
-    records = _parse_gst_portal_json(data)
-    if not records:
-        raise HTTPException(
-            status_code=400,
-            detail="Could not parse GSTR-2B records from this file. "
-                   "Expected GST portal GSTR-2B JSON format."
-        )
+        records = _parse_gst_portal_json(data)
+        if not records:
+            raise HTTPException(
+                status_code=400,
+                detail="Could not parse GSTR-2B records from this JSON file. "
+                       "Expected GST portal GSTR-2B JSON format."
+            )
 
     db = get_supabase()
     inserted = 0
@@ -142,6 +153,87 @@ async def upload_gstr2b_file(
         "filename": file.filename,
     }
 
+def _parse_gst_portal_excel(content: bytes) -> list[dict]:
+    import io
+    import pandas as pd
+    records = []
+    
+    try:
+        xls = pd.ExcelFile(io.BytesIO(content))
+        sheet_name = "B2B" if "B2B" in xls.sheet_names else xls.sheet_names[0]
+        df = pd.read_excel(xls, sheet_name=sheet_name)
+        
+        # GST portal Excel often has headers at row 5. Let's find the header row by looking for "GSTIN"
+        header_row_idx = -1
+        for i, row in df.iterrows():
+            if any(isinstance(val, str) and "GSTIN" in str(val).upper() for val in row.values):
+                header_row_idx = i
+                break
+                
+        if header_row_idx != -1:
+            df.columns = df.iloc[header_row_idx]
+            df = df.iloc[header_row_idx + 1:]
+            
+        # Clean column names
+        df.columns = [str(c).strip().lower() for c in df.columns]
+        
+        # Expected columns (fuzzy match)
+        gstin_col = next((c for c in df.columns if "gstin" in c and "supplier" in c), None) or next((c for c in df.columns if "gstin" in c), None)
+        inv_col = next((c for c in df.columns if "invoice no" in c or "invoice number" in c), None)
+        date_col = next((c for c in df.columns if "invoice date" in c), None)
+        taxval_col = next((c for c in df.columns if "taxable value" in c), None)
+        igst_col = next((c for c in df.columns if "integrated tax" in c or "igst" in c), None)
+        cgst_col = next((c for c in df.columns if "central tax" in c or "cgst" in c), None)
+        sgst_col = next((c for c in df.columns if "state" in c and "tax" in c or "sgst" in c), None)
+        
+        if gstin_col and inv_col and date_col:
+            for _, row in df.iterrows():
+                gstin = str(row[gstin_col]).strip()
+                inv_no = str(row[inv_col]).strip()
+                if not gstin or gstin.lower() == "nan" or not inv_no or inv_no.lower() == "nan":
+                    continue
+                    
+                date_val = str(row[date_col]).strip()
+                date_val = date_val.split(" ")[0] # in case of datetime
+                # normalize date format
+                if "-" in date_val:
+                    parts = date_val.split("-")
+                    if len(parts) == 3:
+                        if len(parts[2]) == 4: # DD-MM-YYYY
+                            date_val = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
+                        elif len(parts[0]) == 4: # YYYY-MM-DD
+                            date_val = f"{parts[0]}-{parts[1].zfill(2)}-{parts[2].zfill(2)}"
+                
+                try:
+                    tv = float(row[taxval_col]) if taxval_col and not pd.isna(row[taxval_col]) else 0.0
+                except: tv = 0.0
+                
+                try:
+                    ig = float(row[igst_col]) if igst_col and not pd.isna(row[igst_col]) else 0.0
+                except: ig = 0.0
+                
+                try:
+                    cg = float(row[cgst_col]) if cgst_col and not pd.isna(row[cgst_col]) else 0.0
+                except: cg = 0.0
+                
+                try:
+                    sg = float(row[sgst_col]) if sgst_col and not pd.isna(row[sgst_col]) else 0.0
+                except: sg = 0.0
+                
+                records.append({
+                    "supplier_gstin": gstin.upper(),
+                    "invoice_number": inv_no,
+                    "invoice_date": date_val,
+                    "taxable_value": tv,
+                    "igst": ig,
+                    "cgst": cg,
+                    "sgst": sg,
+                    "itc_eligible": True
+                })
+    except Exception as e:
+        logger.error(f"GSTR-2B Excel parse error: {e}")
+        
+    return records
 
 @router.get("/records/{trader_id}")
 async def get_gstr2b_records(trader_id: str, month: int = None, year: int = None):
