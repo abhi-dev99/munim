@@ -205,6 +205,9 @@ export default function ReportsPanel({ traderId, apiBase }) {
             <p className="font-bold text-sm">Download Initiated!</p>
             <p className="text-xs text-green-100">Your PDF report is ready.</p>
           </div>
+          <a href={genSuccess} target="_blank" rel="noopener noreferrer" className="px-3 py-1 bg-white text-[var(--green-primary)] rounded font-bold text-xs hover:bg-green-50 transition-colors">
+            Download PDF
+          </a>
           <button onClick={() => setGenSuccess(null)} className="ml-2 hover:bg-white/20 p-1 rounded">
             <XCircle size={16} />
           </button>

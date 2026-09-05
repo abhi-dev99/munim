@@ -66,6 +66,11 @@ export default function LoginPage() {
         throw new Error(data.detail || "Invalid OTP.");
       }
 
+      // Store auth state for dashboard protection
+      if (data.trader) {
+        localStorage.setItem("munim_auth_trader", JSON.stringify(data.trader));
+      }
+
       // Success, route to dashboard
       router.push("/dashboard");
     } catch (err) {

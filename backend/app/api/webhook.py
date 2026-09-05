@@ -260,19 +260,50 @@ async def handle_text_message(phone: str, text: str):
 
 async def handle_voice_message(phone: str, msg: dict):
     """Handle incoming voice messages."""
-    # For now, just reply with a generated voice note
-    from app.services.tts import generate_and_upload_tts
-    
-    await whatsapp.send_text_message(phone, "Voice note sun liya. Reply kar raha hun...")
-    
-    # Generate a voice response
-    reply_text = "Namaste! Aapka voice message mujhe mil gaya hai. Main abhi audio messages samajh nahi pata, par jaldi hi seekh jaunga. Kripya mujhe type karke bataiye."
-    audio_url = await generate_and_upload_tts(reply_text, lang="hi")
-    
-    if audio_url:
-        await whatsapp.send_audio_message(phone, audio_url)
+    from app.services.whatsapp import download_media
+    from app.config import get_settings
+    from groq import AsyncGroq
+    import io
+
+    settings = get_settings()
+
+    await whatsapp.send_text_message(phone, "🎤 Sun raha hun... ek minute.")
+
+    media_id = msg.get("media_id")
+    if not media_id:
+        await whatsapp.send_text_message(phone, "Voice message load nahi ho paya.")
+        return
+
+    # 1. Download audio bytes from Meta
+    audio_bytes, mime = await download_media(media_id)
+    if not audio_bytes:
+        await whatsapp.send_text_message(phone, "Voice message download karne me samasya aayi.")
+        return
+
+    # 2. Transcribe via Groq Whisper
+    try:
+        client = AsyncGroq(api_key=settings.groq_api_key)
+        transcription = await client.audio.transcriptions.create(
+            file=("audio.ogg", audio_bytes),
+            model="whisper-large-v3"
+        )
+        transcribed_text = transcription.text.strip()
+        logger.info(f"Voice Transcribed: {transcribed_text}")
+    except Exception as e:
+        logger.error(f"Groq Transcription Error: {e}")
+        await whatsapp.send_text_message(phone, "Transcription me error aaya. Kripya type karein.")
+        return
+
+    if not transcribed_text:
+        await whatsapp.send_text_message(phone, "Aapki aawaz samajh nahi aayi.")
+        return
+
+    # 3. Send transcribed text to general query handler
+    trader = await get_trader_by_phone(phone)
+    if trader:
+        await _answer_general_query(phone, transcribed_text, trader)
     else:
-        await whatsapp.send_text_message(phone, reply_text)
+        await whatsapp.send_text_message(phone, "Pehle register karo! 'Hi' likh ke bhejo.")
 
 
 async def handle_invoice_message(phone: str, msg: dict):

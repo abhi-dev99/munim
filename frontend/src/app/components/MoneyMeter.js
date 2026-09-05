@@ -77,12 +77,12 @@ export default function MoneyMeter({ summary, apiBase, isComposition = false }) 
                 <h3 className="font-semibold text-sm uppercase tracking-wider text-[var(--text-secondary)]">CMP-08 Status</h3>
               </div>
               <div className="flex items-baseline gap-2 relative z-10 mt-2">
-                <span className="text-3xl font-bold tracking-tight text-black">
-                  PENDING
+                <span className={`text-3xl font-bold tracking-tight ${new Date().getDate() > 18 ? 'text-red-600' : 'text-black'}`}>
+                  {new Date().getDate() > 18 ? 'OVERDUE' : 'DUE SOON'}
                 </span>
               </div>
               <div className="mt-4 flex items-center gap-2 text-sm text-[var(--text-secondary)] font-medium">
-                <span>Due by 18th of next month</span>
+                <span className={new Date().getDate() > 18 ? 'text-red-500 font-bold' : ''}>Due by 18th of next month</span>
               </div>
             </motion.div>
           </>
