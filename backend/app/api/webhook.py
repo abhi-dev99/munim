@@ -18,6 +18,8 @@ from app.services.redis_cache import (
     set_conversation_state,
     check_rate_limit,
     mark_message_processed,
+    acquire_phone_lock,
+    release_phone_lock,
 )
 from app.services.supabase_client import (
     get_supabase,
@@ -202,6 +204,23 @@ async def receive_webhook(request: Request):
 
 async def handle_text_message(phone: str, text: str):
     """Handle text messages — registration flow, status queries, etc."""
+    # Two fast messages from the same number (e.g. a quick double-tap during
+    # onboarding) are dispatched as independent asyncio.create_task calls
+    # and can both read stale conversation state before either writes its
+    # transition. This per-phone lock serializes processing for one number
+    # at a time; the TTL is a backstop against a crashed handler, not the
+    # normal release path (see the finally block below).
+    if not acquire_phone_lock(phone):
+        logger.info(f"Dropping message from {phone}: another message from this number is already being processed")
+        return
+
+    try:
+        await _handle_text_message_locked(phone, text)
+    finally:
+        release_phone_lock(phone)
+
+
+async def _handle_text_message_locked(phone: str, text: str):
     text_lower = text.strip().lower()
 
     # Check if trader exists
