@@ -42,7 +42,7 @@ export default function InvoiceDetailModal({ invoice, onClose, onNext, onPrev, h
     }
   };
 
-  const isPDF = invoice.image_url && invoice.image_url.toLowerCase().endsWith('.pdf');
+  const isPDF = invoice.image_url && invoice.image_url.toLowerCase().includes('.pdf');
 
   // Format Date to e.g., "20 May, 2025"
   const formattedDate = invoice.invoice_date 
