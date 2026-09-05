@@ -279,9 +279,10 @@ export default function SupplierHealth({ traderId, apiBase, onSwitchTab }) {
   };
 
     return (
-      <div className="flex flex-col h-[calc(100vh-120px)] w-full overflow-hidden">
-        <div className="z-10 bg-[#f8fafc] pt-2 pb-4 space-y-4 flex-none">
-          {/* Summary stat cards */}
+      <>
+        <div className="flex flex-col h-[calc(100vh-120px)] w-full overflow-hidden">
+          <div className="z-10 bg-[#f8fafc] pt-2 pb-4 space-y-4 flex-none">
+            {/* Summary stat cards */}
         <div className="grid grid-cols-4 gap-3">
           {cardOrder.map((f, idx) => (
             <button
