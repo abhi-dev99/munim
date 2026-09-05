@@ -26,11 +26,11 @@ class Settings(BaseSettings):
     gemini_api_key_6: str = ""
     gemini_api_key_7: str = ""
     gemini_model: str = "gemini-2.5-flash"
-    gemini_embedding_model: str = "models/gemini-embedding-001"
+    gemini_embedding_model: str = "gemini-embedding-001"
 
     # --- Groq ---
     groq_api_key: str = ""
-    groq_model: str = "llama3-8b-8192"
+    groq_model: str = "llama-3.1-8b-instant"
 
     # --- Meta WhatsApp ---
     meta_whatsapp_token: str = ""

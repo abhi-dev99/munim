@@ -200,20 +200,18 @@ async def generate_hindi_diagnosis(
         lang_str = "Hindi (in Hinglish/Roman script. No Devanagari)"
         
     prompt = f"""Generate a SHORT WhatsApp invoice diagnosis in {lang_str}.
+Use the exact numbers and supplier name from the provided context data. Do NOT output placeholder strings like PARTY_1, Bill #???, ₹X, or ₹HIGH.
 
-STRICT FORMAT (exactly like this, no extra lines):
+STRICT FORMAT (exactly 5 to 6 lines total, no extra lines):
 ✅ or ⚠️ or 🚨 Invoice process ho gayi! / Invoice issue hai!
-
-*<supplier_name>* — Bill #<invoice_number>
-Taxable: ₹X | Total: ₹Y
-
-💰 *ITC <STATUS>: ₹Z*
-<one line: GSTR-2B status | GSTIN status | fraud status>
-
-<ONE short action sentence if needed, else skip>
+*Actual Supplier Name* — Bill #ActualBillNo
+Taxable: ₹ActualTaxable | Total: ₹ActualTotal
+💰 *ITC ActualStatus: ₹ActualAmount*
+<One short line on GSTIN/GSTR-2B status or action needed in {lang_str}>
 
 Rules:
-- Max 6-7 lines total
+- Max 6 lines total
+- Use ONLY actual values from Context Data, never literal placeholders
 - No bullet points, no headers, no horizontal lines
 - Hinglish is fine (mix Hindi + English naturally)
 - No URLs

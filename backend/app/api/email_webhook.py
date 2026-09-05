@@ -257,7 +257,7 @@ async def receive_email_webhook(request: Request):
                         }
                     ]
                 }
-                resend.Emails.send(params)
+                await asyncio.to_thread(resend.Emails.send, params)
                 logger.info(f"Sent email to CA at {ca_email}")
             except Exception as e:
                 logger.error(f"Failed to send email via Resend: {e}")
