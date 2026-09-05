@@ -27,10 +27,12 @@ async def request_otp(data: OTPRequest):
     
     # Optional: ensure number exists in DB
     db = get_supabase()
-    res = db.table("traders").select("id").eq("whatsapp_number", phone).execute()
-    if not res.data:
-        # We can either reject, or for demo purposes, accept any number. 
-        # But the user said "dont mock anything", so let's reject if it's not a registered trader.
+    
+    # Check if number belongs to a trader OR is listed as a CA for a trader
+    res_trader = db.table("traders").select("id").eq("whatsapp_number", phone).execute()
+    res_ca = db.table("traders").select("id").eq("ca_whatsapp_number", phone).execute()
+    
+    if not res_trader.data and not res_ca.data:
         raise HTTPException(status_code=404, detail="Mobile number not registered.")
 
     # Generate OTP
@@ -69,8 +71,13 @@ async def verify_otp(data: OTPVerify):
     
     # Fetch user data to return
     db = get_supabase()
-    res = db.table("traders").select("*").eq("whatsapp_number", phone).execute()
-    trader = res.data[0] if res.data else None
+    res_trader = db.table("traders").select("*").eq("whatsapp_number", phone).execute()
+    
+    if res_trader.data:
+        trader = res_trader.data[0]
+    else:
+        res_ca = db.table("traders").select("*").eq("ca_whatsapp_number", phone).execute()
+        trader = res_ca.data[0] if res_ca.data else None
     
     return {
         "message": "Login successful.",
