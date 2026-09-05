@@ -50,7 +50,7 @@ function MiniSparkline({ data = [] }) {
   );
 }
 
-export default function Sidebar({ activeTab, onTabChange, actionCount = 0, traderId, apiBase }) {
+export default function Sidebar({ activeTab, onTabChange, actionCount = 0, traderId, apiBase, onTourClick }) {
   const router = useRouter();
   const pathname = usePathname();
   const { t } = useLanguage();
