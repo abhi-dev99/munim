@@ -24,6 +24,7 @@ from app.services.redis_cache import (
 from app.services.supabase_client import (
     get_supabase,
     get_trader_by_phone,
+    get_trader_by_short_code,
     create_trader,
     update_trader,
     upload_file,
@@ -43,6 +44,9 @@ router = APIRouter(prefix="/api/v1", tags=["webhook"])
 
 # GSTIN regex: 2 digits + 5 alpha + 4 digits + 1 alpha + 1 alphanumeric + Z + 1 alphanumeric
 GSTIN_REGEX = re.compile(r"^\d{2}[A-Z]{5}\d{4}[A-Z]\d[Z][A-Z\d]$")
+
+# First message from a QR scan of a CA's onboarding link (wa.me/...?text=JOIN-<short_code>)
+JOIN_CODE_REGEX = re.compile(r"^JOIN-([A-Za-z0-9]+)$", re.IGNORECASE)
 
 
 @router.post("/webhook/upload-invoice")
@@ -611,16 +615,34 @@ Please review and confirm receipt."""
 # --- Registration Flow ---
 
 async def _handle_registration(phone: str, text: str):
-    """Handle new user registration."""
+    """Handle new user registration. A first message matching JOIN-<code> came
+    from scanning a CA's onboarding QR code -- link the CA up front and skip
+    the manual CA-number step later. Anything else falls back to the normal
+    manual flow unchanged."""
+    linked_ca = None
+    join_match = JOIN_CODE_REGEX.match(text.strip())
+    if join_match:
+        linked_ca = await get_trader_by_short_code(join_match.group(1).upper())
+
     trader = await create_trader(phone)
-    if trader:
+    if not trader:
+        return
+
+    greeting = (
+        "Namaste! 🙏 Main Munim hun — aapka AI GST compliance agent.\n\n"
+        "Kaunsi bhasha mein baat karein?\n\n"
+        "1️⃣ Hindi\n2️⃣ English\n3️⃣ Marathi\n4️⃣ Gujarati"
+    )
+
+    if linked_ca:
+        await update_trader(trader["id"], {"ca_whatsapp_number": linked_ca["whatsapp_number"]})
+        ca_name = linked_ca.get("business_name") or linked_ca.get("name") or "your CA"
+        set_conversation_state(phone, "awaiting_language", context={"linked_ca_name": ca_name})
+        greeting = f"✅ Linked to {ca_name}.\n\n" + greeting
+    else:
         set_conversation_state(phone, "awaiting_language")
-        await whatsapp.send_text_message(
-            phone,
-            "Namaste! 🙏 Main Munim hun — aapka AI GST compliance agent.\n\n"
-            "Kaunsi bhasha mein baat karein?\n\n"
-            "1️⃣ Hindi\n2️⃣ English\n3️⃣ Marathi\n4️⃣ Gujarati"
-        )
+
+    await whatsapp.send_text_message(phone, greeting)
 
 async def _process_registration_step(phone: str, text: str, trader: dict, state: str):
     """Handle the multi-step onboarding flow — powered by Gemini for context awareness."""
@@ -667,14 +689,25 @@ async def _process_registration_step(phone: str, text: str, trader: dict, state:
         await update_trader(trader["id"], {"name": name, "business_name": business_name})
         # Update local dict so next message gets correct language
         trader["language_pref"] = current_lang
-        set_conversation_state(phone, "awaiting_ca_number")
 
-        next_questions = {
-            "en": f"Nice to meet you, {name}! 👋\n\nWhat's your CA or accountant's WhatsApp number?\n(So I can send them monthly reports. Type 'skip' if you don't have one yet.)",
-            "mr": f"भेटून आनंद झाला, {name}! 👋\n\nतुमच्या CA किंवा अकाउंटंटचा WhatsApp नंबर काय आहे?\n('skip' टाइप करा जर आत्ता नाही.)",
-            "gu": f"મળીને આનંદ થયો, {name}! 👋\n\nતમારા CA અથવા એકાઉન્ટન્ટનો WhatsApp નંબર શું છે?\n(જો અત્યારે નથી તો 'skip' ટાઇપ કરો.)",
-            "hi": f"Mil ke khushi hui, {name}! 👋\n\nAapke CA ya accountant ka WhatsApp number kya hai?\n(Toh main unhe monthly reports bhej saku. Agar abhi nahi hai toh 'skip' likho.)",
-        }
+        if trader.get("ca_whatsapp_number"):
+            # Already linked via a JOIN-<code> QR scan -- skip the manual
+            # CA-number step and go straight to GSTIN.
+            set_conversation_state(phone, "awaiting_gstin")
+            next_questions = {
+                "en": f"Nice to meet you, {name}! 👋\n\nAlmost done! 🎉\n\nWhat is your GSTIN number?\n(Example: 27AABCU9603R1ZM — 15 characters)",
+                "mr": f"भेटून आनंद झाला, {name}! 👋\n\nजवळजवळ झाले! 🎉\n\nतुमचा GSTIN नंबर काय आहे?\n(उदाहरण: 27AABCU9603R1ZM — 15 अक्षरे)",
+                "gu": f"મળીને આનંદ થયો, {name}! 👋\n\nલગભગ થઈ ગયું! 🎉\n\nતમારો GSTIN નંબર શું છે?\n(ઉદાહરણ: 27AABCU9603R1ZM — 15 અક્ષરો)",
+                "hi": f"Mil ke khushi hui, {name}! 👋\n\nBas thoda aur! 🎉\n\nAapka GSTIN number kya hai?\n(Example: 27AABCU9603R1ZM — 15 characters)",
+            }
+        else:
+            set_conversation_state(phone, "awaiting_ca_number")
+            next_questions = {
+                "en": f"Nice to meet you, {name}! 👋\n\nWhat's your CA or accountant's WhatsApp number?\n(So I can send them monthly reports. Type 'skip' if you don't have one yet.)",
+                "mr": f"भेटून आनंद झाला, {name}! 👋\n\nतुमच्या CA किंवा अकाउंटंटचा WhatsApp नंबर काय आहे?\n('skip' टाइप करा जर आत्ता नाही.)",
+                "gu": f"મળીને આનંદ થયો, {name}! 👋\n\nતમારા CA અથવા એકાઉન્ટન્ટનો WhatsApp નંબર શું છે?\n(જો અત્યારે નથી તો 'skip' ટાઇપ કરો.)",
+                "hi": f"Mil ke khushi hui, {name}! 👋\n\nAapke CA ya accountant ka WhatsApp number kya hai?\n(Toh main unhe monthly reports bhej saku. Agar abhi nahi hai toh 'skip' likho.)",
+            }
         await whatsapp.send_text_message(phone, next_questions.get(current_lang, next_questions["hi"]))
 
     elif state == "awaiting_ca_number":
