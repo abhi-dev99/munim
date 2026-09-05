@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     gstin_api_key: str = ""
     gstin_api_base_url: str = "https://api.deepvue.tech/v1"
 
+    # --- Resend API ---
+    resend_api_key: str = ""
+
     # --- Cache TTLs ---
     gstin_cache_ttl_seconds: int = 86400  # 24 hours
     session_ttl_seconds: int = 3600  # 1 hour

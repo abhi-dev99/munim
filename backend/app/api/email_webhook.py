@@ -1,6 +1,8 @@
 import logging
 import uuid
 import asyncio
+import os
+import resend
 
 from fastapi import APIRouter, Request, Response, HTTPException, UploadFile, File, Form
 from app.services.supabase_client import (
@@ -13,6 +15,7 @@ from app.models.invoice import ITCStatus
 from app.services import whatsapp
 from app.services.llm_router import llm_router, LLMTask
 from app.domain.reconciler import GSTR2BReconciler
+from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -191,7 +194,8 @@ async def receive_email_webhook(request: Request):
             )
 
         # 2. CA (Formal Document with Caption)
-        if trader.get("ca_whatsapp_number") and image_url:
+        ca_msg = None
+        if trader.get("ca_whatsapp_number") or trader.get("ca_email"):
             trader_name = trader.get("business_name") or trader.get("name") or "Unknown Trader"
             inv_no = invoice_data.get("invoice_number", "Unknown")
             inv_date = invoice_data.get("invoice_date", "Unknown Date")
@@ -200,13 +204,41 @@ async def receive_email_webhook(request: Request):
             ca_msg = await generate_formal_notification(
                 trader_name, supplier_name, inv_no, str(inv_date), total_amount, itc_status
             )
+        
+        if trader.get("ca_whatsapp_number") and image_url and ca_msg:
             # Await the document send
             await whatsapp.send_document(
                 to=trader["ca_whatsapp_number"],
                 document_url=image_url,
                 caption=ca_msg,
-                filename=f"Invoice_{inv_no}.pdf"
+                filename=f"Invoice_{inv_no}.{file_ext}"
             )
+
+        # 3. CA Email via Resend
+        settings = get_settings()
+        ca_email = trader.get("ca_email")
+        resend_key = settings.resend_api_key
+        logger.info(f"Checking CA Email: ca_email={ca_email}, RESEND_KEY={'SET' if resend_key else 'MISSING'}, ca_msg={'SET' if ca_msg else 'MISSING'}")
+        if ca_email and resend_key and ca_msg:
+            resend.api_key = resend_key
+            try:
+                html_msg = ca_msg.replace("\n", "<br>")
+                params = {
+                    "from": "Munim AI <onboarding@resend.dev>",
+                    "to": [ca_email],
+                    "subject": f"Invoice Alert: {trader_name} - {inv_no}",
+                    "html": f"<p>{html_msg}</p>",
+                    "attachments": [
+                        {
+                            "filename": f"Invoice_{inv_no}.{file_ext}",
+                            "content": list(file_bytes)
+                        }
+                    ]
+                }
+                resend.Emails.send(params)
+                logger.info(f"Sent email to CA at {ca_email}")
+            except Exception as e:
+                logger.error(f"Failed to send email via Resend: {e}")
 
         return Response(status_code=200)
 
