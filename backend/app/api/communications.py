@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from app.api.deps import verify_trader_access, get_current_trader_id, HTTPException
 import logging
+import asyncio
 from datetime import datetime, timedelta, timezone
 from app.services.supabase_client import get_supabase
 import resend
@@ -111,7 +112,18 @@ async def email_vendor_warning(invoice_id: str, current_trader_id: str = Depends
             "subject": subject,
             "html": html_content
         }
-        await asyncio.to_thread(resend.Emails.send, params)
+        
+        # Retry logic for intermittent DNS/Network issues
+        for attempt in range(3):
+            try:
+                await asyncio.to_thread(resend.Emails.send, params)
+                break
+            except Exception as e:
+                if attempt == 2:
+                    raise
+                logger.warning(f"Failed to send email (attempt {attempt+1}): {e}. Retrying...")
+                await asyncio.sleep(1)
+                
         logger.info(f"Warning email sent to vendor {supplier_email} for invoice {invoice_id}")
         _stamp_notified(db, invoice_id)
         return {"status": "success", "message": "Email sent to vendor"}

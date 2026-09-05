@@ -173,6 +173,7 @@ async def receive_email_webhook(request: Request):
                     invoice_data["itc_amount_blocked"] = invoice_data.get("itc_amount_eligible", 0)
                     invoice_data["itc_amount_eligible"] = 0
                     invoice_data["itc_block_reason"] = "Duplicate invoice detected based on GSTIN, Invoice Number and Amount."
+                    del invoice_data["invoice_hash"]
 
         if diagnosis.fraud_result:
             invoice_data["fraud_score"] = diagnosis.fraud_result.total_score
