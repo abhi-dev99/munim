@@ -306,17 +306,46 @@ async def handle_voice_message(phone: str, msg: dict):
         return
 
     transcript = await transcribe_voice_note(audio_bytes, mime_type or "audio/ogg")
-    if transcript:
-        await whatsapp.send_text_message(
-            phone,
-            f"🎤 Aapne kaha: \"{transcript}\""
-        )
-        # Route the intent through the text handler
-        await handle_text_message(phone, transcript)
-    else:
+    if not transcript:
         await whatsapp.send_text_message(
             phone, "⚠️ Audio samajh nahi aaya. Text mein likh ke bhejo."
         )
+        return
+
+    await whatsapp.send_text_message(
+        phone, f"🎤 Aapne kaha: \"{transcript}\"\n\n⚙️ Intent process kar raha hoon..."
+    )
+
+    from app.services.gemini import understand_intent
+    parsed = await understand_intent(transcript)
+    intent = parsed.get("intent", "unknown")
+
+    if intent == "itc_status":
+        await _send_itc_status(phone, trader)
+    elif intent == "supplier_check":
+        supplier_name = parsed.get("entities", {}).get("supplier_name", "")
+        if supplier_name:
+            await whatsapp.send_text_message(
+                phone, f"🔍 Supplier '{supplier_name}' ka status check kar raha hoon..."
+            )
+            # Future: implement supplier search by name/GSTIN
+            await whatsapp.send_text_message(
+                phone, f"Supplier check API connected for {supplier_name}!"
+            )
+        else:
+            await whatsapp.send_text_message(phone, "Supplier ka naam samajh nahi aaya. Phir se bolo.")
+    elif intent == "report_request":
+        from app.agents.report_agent import generate_monthly_report
+        from datetime import date
+        now = date.today()
+        await whatsapp.send_text_message(phone, "📄 Report generate kar raha hoon. 10 second lagte hain.")
+        pdf_bytes = await generate_monthly_report(trader["id"], now.month, now.year)
+        if pdf_bytes:
+            media_id = await upload_file("reports", f"reports/{trader['id']}_{now.month}_{now.year}.pdf", pdf_bytes, "application/pdf")
+            await whatsapp.send_text_message(phone, "Yeh rahi aapki report! (File sending disabled in mock)")
+    else:
+        # Fallback to text handler keywords
+        await handle_text_message(phone, transcript)
 
 
 # --- Registration Flow ---
