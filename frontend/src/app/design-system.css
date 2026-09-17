@@ -1,91 +1,112 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-  /* Color System — Uber-inspired Minimalist Light Theme */
-  --bg-primary: #F9F9F9;
-  --bg-secondary: #F3F3F3;
-  --bg-card: #FFFFFF;
-  --bg-card-hover: #F9F9F9;
+  /* Color System — Premium High-Contrast Light Theme with Glassmorphism */
+  --bg-primary: #FAFAFB;
+  --bg-secondary: #F3F4F6;
+  --bg-card: rgba(255, 255, 255, 0.7);
+  --bg-card-hover: rgba(255, 255, 255, 0.9);
 
-  /* Accent colors - Semantic but stark */
-  --green-primary: #059669; /* Emerald 600 */
-  --green-glow: #ECFDF5;    /* Emerald 50 */
-  --orange-primary: #D97706; /* Amber 600 */
-  --orange-glow: #FFFBEB;    /* Amber 50 */
-  --red-primary: #DC2626;   /* Red 600 */
-  --red-glow: #FEF2F2;      /* Red 50 */
-  --blue-primary: #2563EB;  /* Blue 600 */
-  --blue-glow: #EFF6FF;     /* Blue 50 */
+  /* Accent colors - Vibrant and sophisticated */
+  --green-primary: #10B981; /* Emerald 500 */
+  --green-glow: rgba(16, 185, 129, 0.1);
+  --orange-primary: #F59E0B; /* Amber 500 */
+  --orange-glow: rgba(245, 158, 11, 0.1);
+  --red-primary: #EF4444;   /* Red 500 */
+  --red-glow: rgba(239, 68, 68, 0.1);
+  --blue-primary: #3B82F6;  /* Blue 500 */
+  --blue-glow: rgba(59, 130, 246, 0.1);
 
-  /* Pure Black & White Contrast */
-  --uber-black: #000000;
+  /* Deep Contrast */
+  --uber-black: #0F172A; /* Slate 900 */
   --uber-white: #FFFFFF;
 
   /* Text */
-  --text-primary: #000000;
+  --text-primary: #111827; /* Gray 900 */
   --text-secondary: #4B5563; /* Gray 600 */
   --text-muted: #9CA3AF;     /* Gray 400 */
 
-  /* Borders */
-  --border-subtle: #E5E7EB;  /* Gray 200 */
-  --border-accent: #000000;
+  /* Borders & Blurs */
+  --border-subtle: rgba(229, 231, 235, 0.6);  
+  --border-accent: rgba(15, 23, 42, 0.1);
 
-  /* Shadows - Crisp, not blurry */
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
-  --shadow-glow-blue: none; /* Removed for flat design */
-  --shadow-glow-green: none;
+  /* Shadows - Layered, soft, and premium */
+  --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  --shadow-card-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+  --shadow-glow-blue: 0 0 20px rgba(59, 130, 246, 0.15);
+  --shadow-glow-green: 0 0 20px rgba(16, 185, 129, 0.15);
 
   /* Transitions */
-  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-medium: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-medium: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 /* Global Styles */
 body {
   font-family: 'Inter', sans-serif;
   background: var(--bg-primary);
+  /* Subtle animated mesh gradient background */
+  background-image: 
+    radial-gradient(at 40% 20%, rgba(59, 130, 246, 0.04) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, rgba(16, 185, 129, 0.03) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, rgba(245, 158, 11, 0.02) 0px, transparent 50%);
+  background-attachment: fixed;
   color: var(--text-primary);
   min-height: 100vh;
 }
 
-/* Solid Card - Replaces Glass Card */
-.glass-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px; /* Slightly sharper radius */
-  box-shadow: var(--shadow-card);
-  transition: all var(--transition-fast);
-}
-.glass-card:hover {
-  border-color: var(--text-muted);
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: -0.02em;
 }
 
-/* Status Badges */
+/* Premium Glassmorphism Card */
+.glass-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
+  transition: all var(--transition-medium);
+  overflow: hidden;
+}
+.glass-card:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-accent);
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-2px);
+}
+
+/* Status Badges - Pill shaped with soft glows */
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: 4px; /* Sharper */
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 9999px;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.05em;
+  font-family: 'Outfit', sans-serif;
+  transition: all var(--transition-fast);
 }
 .badge-confirmed {
   background: var(--green-glow);
   color: var(--green-primary);
-  border: 1px solid var(--green-glow);
+  border: 1px solid rgba(16, 185, 129, 0.2);
 }
 .badge-blocked {
   background: var(--orange-glow);
   color: var(--orange-primary);
-  border: 1px solid var(--orange-glow);
+  border: 1px solid rgba(245, 158, 11, 0.2);
 }
 .badge-risk {
   background: var(--red-glow);
   color: var(--red-primary);
-  border: 1px solid var(--red-glow);
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 /* Health Score Indicators */
@@ -95,24 +116,39 @@ body {
 
 /* Animated Number */
 @keyframes countUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(10px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 .animate-count {
-  animation: countUp 0.6s ease-out forwards;
+  animation: countUp 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
-/* Scrollbar */
+/* Scrollbar - Sleek and hidden until needed */
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--bg-primary);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border-subtle);
-  border-radius: 3px;
+  background: rgba(15, 23, 42, 0.1);
+  border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
+  background: rgba(15, 23, 42, 0.2);
+}
+
+/* Gradient Text Utilities */
+.text-gradient {
+  background: linear-gradient(135deg, var(--uber-black) 0%, var(--text-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.text-gradient-primary {
+  background: linear-gradient(135deg, var(--blue-primary) 0%, #8B5CF6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
