@@ -29,10 +29,31 @@ export default function GSTR2BUpload({ traderId, apiBase, onUploadComplete }) {
     setResult(null);
     setError(null);
 
+    let m = month;
+    let y = year;
+
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      let rtnprd = parsed?.data?.docdata?.rtnprd || parsed?.rtnprd;
+      if (rtnprd && typeof rtnprd === "string" && rtnprd.length === 6) {
+        const parsedM = parseInt(rtnprd.substring(0, 2), 10);
+        const parsedY = parseInt(rtnprd.substring(2), 10);
+        if (!isNaN(parsedM) && !isNaN(parsedY) && parsedM >= 1 && parsedM <= 12) {
+          m = parsedM;
+          y = parsedY;
+          setMonth(m);
+          setYear(y);
+        }
+      }
+    } catch (e) {
+      console.warn("Could not pre-parse JSON for date", e);
+    }
+
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("month", month);
-    formData.append("year", year);
+    formData.append("month", m);
+    formData.append("year", y);
 
     try {
       const res = await fetch(`${apiBase}/api/v1/gstr2b/upload-file/${traderId}`, {
@@ -45,7 +66,7 @@ export default function GSTR2BUpload({ traderId, apiBase, onUploadComplete }) {
       if (!res.ok) {
         setError(data.detail || "Upload failed");
       } else {
-        setResult(data);
+        setResult({ ...data, month: m, year: y });
         if (onUploadComplete) onUploadComplete();
       }
     } catch (err) {
@@ -75,24 +96,6 @@ export default function GSTR2BUpload({ traderId, apiBase, onUploadComplete }) {
           <h3 className="font-bold text-black text-sm uppercase tracking-wider">Upload GSTR-2B</h3>
           <p className="text-xs text-[var(--text-secondary)]">JSON export from GST Portal</p>
         </div>
-      </div>
-
-      {/* Period selector */}
-      <div className="flex gap-2 mb-4">
-        <select
-          value={month}
-          onChange={(e) => setMonth(Number(e.target.value))}
-          className="flex-1 text-sm border border-[var(--border-subtle)] rounded px-3 py-1.5 bg-white text-black font-medium focus:outline-none focus:ring-1 focus:ring-black"
-        >
-          {months.map((m) => <option key={m.v} value={m.v}>{m.l}</option>)}
-        </select>
-        <select
-          value={year}
-          onChange={(e) => setYear(Number(e.target.value))}
-          className="flex-1 text-sm border border-[var(--border-subtle)] rounded px-3 py-1.5 bg-white text-black font-medium focus:outline-none focus:ring-1 focus:ring-black"
-        >
-          {[2024, 2025, 2026].map((y) => <option key={y} value={y}>{y}</option>)}
-        </select>
       </div>
 
       {/* Drop zone */}
