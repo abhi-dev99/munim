@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { ArrowUpRight, IndianRupee, ShieldAlert, CheckCircle2, TrendingUp } from "lucide-react";
+import { motion } from "framer-motion";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -64,36 +65,50 @@ export default function MoneyMeter({ summary, apiBase }) {
   return (
     <div className="space-y-6">
       {/* Top row metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <motion.div 
+        initial="hidden"
+        animate="show"
+        variants={{
+          hidden: { opacity: 0 },
+          show: {
+            opacity: 1,
+            transition: { staggerChildren: 0.1 }
+          }
+        }}
+        className="grid grid-cols-1 md:grid-cols-3 gap-6"
+      >
         
         {/* Main Recovered Card */}
-        <div className="glass-card p-6 border-[var(--border-subtle)] relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-4 opacity-[0.03]">
-            <TrendingUp size={100} color="#000" />
+        <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }} className="glass-card p-6 border-[var(--border-subtle)] relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:scale-110 group-hover:opacity-[0.08] transition-all duration-500">
+            <TrendingUp size={100} color="var(--green-primary)" />
           </div>
+          <div className="absolute -top-24 -left-24 w-48 h-48 bg-[var(--green-primary)] rounded-full blur-[80px] opacity-10"></div>
+          
           <div className="flex items-center gap-2 mb-4">
-            <CheckCircle2 className="text-black" size={24} />
+            <CheckCircle2 className="text-[var(--green-primary)]" size={24} />
             <h3 className="font-semibold text-sm uppercase tracking-wider text-[var(--text-secondary)]">Confirmed ITC</h3>
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-4xl font-bold text-black tracking-tight animate-count">
+          <div className="flex items-baseline gap-2 relative z-10">
+            <span className="text-4xl font-bold tracking-tight animate-count text-gradient">
               ₹{(itc_buckets?.confirmed || 0).toLocaleString('en-IN')}
             </span>
           </div>
-          <div className="mt-4 flex items-center gap-2 text-sm text-black font-medium">
+          <div className="mt-4 flex items-center gap-2 text-sm text-[var(--green-primary)] font-medium">
             <ArrowUpRight size={16} />
             <span>This month (live)</span>
           </div>
-        </div>
+        </motion.div>
 
         {/* At Risk Card */}
-        <div className="glass-card p-6 border-[var(--border-subtle)]">
+        <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }} className="glass-card p-6 border-[var(--border-subtle)] relative overflow-hidden group">
+          <div className="absolute -top-24 -right-24 w-48 h-48 bg-[var(--red-primary)] rounded-full blur-[80px] opacity-10 group-hover:opacity-20 transition-opacity"></div>
           <div className="flex items-center gap-2 mb-4">
             <ShieldAlert className="text-[var(--red-primary)]" size={24} />
             <h3 className="font-semibold text-sm uppercase tracking-wider text-[var(--text-secondary)]">At Risk / Blocked</h3>
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-4xl font-bold text-black tracking-tight animate-count">
+          <div className="flex items-baseline gap-2 relative z-10">
+            <span className="text-4xl font-bold tracking-tight animate-count text-gradient">
               ₹{((itc_buckets?.fixable_blocked || 0) + (itc_buckets?.at_risk || 0)).toLocaleString('en-IN')}
             </span>
           </div>
@@ -101,25 +116,26 @@ export default function MoneyMeter({ summary, apiBase }) {
             <ArrowUpRight size={16} />
             <span>Requires action by 18th</span>
           </div>
-        </div>
+        </motion.div>
 
         {/* Potential Recovery Card */}
-        <div className="glass-card p-6 border-[var(--border-subtle)]">
+        <motion.div variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }} className="glass-card p-6 border-[var(--border-subtle)] relative overflow-hidden group">
+          <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-[var(--blue-primary)] rounded-full blur-[80px] opacity-10 group-hover:opacity-20 transition-opacity"></div>
           <div className="flex items-center gap-2 mb-4">
-            <IndianRupee className="text-[var(--green-primary)]" size={24} />
+            <IndianRupee className="text-[var(--blue-primary)]" size={24} />
             <h3 className="font-semibold text-sm uppercase tracking-wider text-[var(--text-secondary)]">Potential Recovery</h3>
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-4xl font-bold text-black tracking-tight animate-count">
+          <div className="flex items-baseline gap-2 relative z-10">
+            <span className="text-4xl font-bold tracking-tight animate-count text-gradient-primary">
               ₹{(total_recovery_possible || 0).toLocaleString('en-IN')}
             </span>
           </div>
           <div className="mt-4 flex items-center gap-2 text-sm text-[var(--text-secondary)] font-medium">
             <span>Fix supplier issues to unlock</span>
           </div>
-        </div>
+        </motion.div>
 
-      </div>
+      </motion.div>
 
       {/* Chart Row */}
       <div className="glass-card p-6">
@@ -148,16 +164,27 @@ export default function MoneyMeter({ summary, apiBase }) {
           ) : (
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorRecovered" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--blue-primary)" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="var(--blue-primary)" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorBlocked" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--red-primary)" stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor="var(--red-primary)" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
                 <XAxis dataKey="name" stroke="var(--text-muted)" axisLine={false} tickLine={false} dy={10} fontSize={12} fontWeight={600} />
                 <YAxis stroke="var(--text-muted)" axisLine={false} tickLine={false} tickFormatter={(val) => `₹${val/1000}k`} dx={-10} fontSize={12} fontWeight={600} />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: '4px', color: '#000', fontWeight: '600' }}
-                  itemStyle={{ color: '#000' }}
+                  contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(8px)', border: '1px solid var(--border-subtle)', borderRadius: '12px', color: '#000', fontWeight: '600', boxShadow: 'var(--shadow-card-hover)' }}
+                  itemStyle={{ color: '#000', padding: '4px 0' }}
+                  labelStyle={{ color: 'var(--text-muted)', marginBottom: '4px' }}
                   formatter={(val) => [`₹${Number(val).toLocaleString('en-IN')}`, undefined]}
                 />
-                <Area type="monotone" dataKey="recovered" stroke="#000000" strokeWidth={3} fillOpacity={0.05} fill="#000000" />
-                <Area type="monotone" dataKey="blocked" stroke="var(--text-muted)" strokeWidth={2} fillOpacity={0.05} fill="var(--text-muted)" />
+                <Area type="monotone" dataKey="recovered" stroke="var(--blue-primary)" strokeWidth={3} fillOpacity={1} fill="url(#colorRecovered)" />
+                <Area type="monotone" dataKey="blocked" stroke="var(--red-primary)" strokeWidth={2} fillOpacity={1} fill="url(#colorBlocked)" strokeDasharray="5 5" />
               </AreaChart>
             </ResponsiveContainer>
           )}
