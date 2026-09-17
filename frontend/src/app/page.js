@@ -20,6 +20,7 @@ export default function Home() {
   const [traders, setTraders] = useState([]);
   const [traderDropdown, setTraderDropdown] = useState(false);
   const [activeTraderName, setActiveTraderName] = useState("Loading...");
+  const [actionCount, setActionCount] = useState(0);
 
   useEffect(() => {
     fetchTraders();
@@ -65,6 +66,16 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
+    // Also fetch action count
+    try {
+      const actRes = await fetch(`${API_BASE}/api/v1/dashboard/actions/${tid}`);
+      if (actRes.ok) {
+        const actData = await actRes.json();
+        setActionCount(actData.total || 0);
+      }
+    } catch {
+      // ignore
+    }
   }
 
   function loadDemoSummary() {
@@ -88,7 +99,7 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen bg-[var(--bg-primary)]">
-      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} actionCount={actionCount} />
 
       <main className="flex-1 ml-64 p-8">
         <header className="mb-8">

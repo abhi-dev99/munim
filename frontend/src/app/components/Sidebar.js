@@ -2,12 +2,11 @@
 
 import { LayoutDashboard, Users, AlertCircle, FileText, Settings, LogOut } from "lucide-react";
 
-export default function Sidebar({ activeTab, onTabChange }) {
+export default function Sidebar({ activeTab, onTabChange, actionCount = 0 }) {
   const navItems = [
     { id: "money-meter", label: "Money Meter", icon: LayoutDashboard },
     { id: "suppliers", label: "Supplier Health", icon: Users },
-    { id: "actions", label: "Action Queue", icon: AlertCircle },
-    { id: "upload", label: "GSTR-2B Upload", icon: FileText },
+    { id: "actions", label: "Action Queue", icon: AlertCircle, badge: actionCount },
     { id: "reports", label: "Monthly Reports", icon: FileText },
   ];
 
@@ -40,11 +39,11 @@ export default function Sidebar({ activeTab, onTabChange }) {
               <Icon size={20} className={isActive ? "text-white" : ""} />
               <span className="font-semibold text-sm">{item.label}</span>
               
-              {item.id === "actions" && (
+              {item.badge > 0 && (
                 <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded ${
                   isActive ? "bg-white text-black" : "bg-black text-white"
                 }`}>
-                  3
+                  {item.badge}
                 </span>
               )}
             </button>
