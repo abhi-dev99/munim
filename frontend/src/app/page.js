@@ -113,7 +113,7 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold">
-                <span className="gradient-text">Munim.ai</span>
+                <span className="gradient-text"></span>
               </h1>
               <p className="text-[var(--text-secondary)] mt-1">
                 GST Compliance Dashboard — {new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" })}
@@ -186,27 +186,33 @@ export default function Home() {
             transition={{ duration: 0.3 }}
             className="flex-1 grid grid-cols-3 gap-4 p-4 pt-3 overflow-hidden"
           >
+            {/* Left Column — Content + InvoiceFeed */}
             <motion.div 
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1, duration: 0.3 }}
-              className="col-span-2 flex flex-col gap-4 min-h-0 overflow-y-auto"
+              className="col-span-2 flex flex-col gap-4 min-h-0"
             >
-              {activeTab === "money-meter" && <MoneyMeter summary={summary} apiBase={API_BASE} isComposition={isComposition} />}
-              {activeTab === "suppliers" && <SupplierHealth traderId={traderId} apiBase={API_BASE} />}
-              {activeTab === "actions" && <ActionQueue traderId={traderId} apiBase={API_BASE} traderPhone={traderPhone} />}
-              {activeTab === "reports" && <ReportsPanel traderId={traderId} apiBase={API_BASE} />}
+              <div className="flex-none max-h-[400px] overflow-y-auto pr-2">
+                {activeTab === "money-meter" && <MoneyMeter summary={summary} apiBase={API_BASE} isComposition={isComposition} />}
+                {activeTab === "suppliers" && <SupplierHealth traderId={traderId} apiBase={API_BASE} />}
+                {activeTab === "actions" && <ActionQueue traderId={traderId} apiBase={API_BASE} traderPhone={traderPhone} />}
+                {activeTab === "reports" && <ReportsPanel traderId={traderId} apiBase={API_BASE} />}
+              </div>
+              <div className="flex-1 min-h-0 overflow-hidden flex flex-col border border-[var(--border-subtle)] bg-white rounded-xl">
+                <InvoiceFeed traderId={traderId} apiBase={API_BASE} />
+              </div>
             </motion.div>
-            {/* Right Column — Timeline + GSTR-2B + Invoice Feed */}
+            
+            {/* Right Column — Timeline + GSTR-2B */}
             <motion.div 
               initial={{ opacity: 0, x: 10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.15, duration: 0.3 }}
-              className="col-span-1 flex flex-col gap-3 min-h-0 overflow-hidden"
+              className="col-span-1 flex flex-col gap-3 min-h-0 overflow-y-auto pr-1"
             >
               <GSTTimeline isComposition={isComposition} />
               <GSTR2BUpload traderId={traderId} apiBase={API_BASE} />
-              <InvoiceFeed traderId={traderId} apiBase={API_BASE} />
             </motion.div>
           </motion.div>
         )}
