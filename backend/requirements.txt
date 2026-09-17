@@ -22,7 +22,7 @@ redis==5.3.0
 Pillow==11.2.1
 
 # === PDF Generation ===
-weasyprint==63.1
+fpdf2==2.8.7
 
 # === Scheduling ===
 APScheduler==3.11.0
