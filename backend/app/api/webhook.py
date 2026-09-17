@@ -380,23 +380,21 @@ async def handle_voice_message(phone: str, msg: dict):
         supplier_name = parsed.get("entities", {}).get("supplier_name", "")
         if supplier_name:
             await whatsapp.send_text_message(
-                phone, f"🔍 Supplier '{supplier_name}' ka status check kar raha hoon..."
+                phone, f"🔍 '{supplier_name}' ka status check kar raha hoon..."
             )
-            # Future: implement supplier search by name/GSTIN
-            await whatsapp.send_text_message(
-                phone, f"Supplier check API connected for {supplier_name}!"
-            )
+            await _send_supplier_check(phone, trader, supplier_name)
         else:
             await whatsapp.send_text_message(phone, "Supplier ka naam samajh nahi aaya. Phir se bolo.")
     elif intent == "report_request":
-        from app.agents.report_agent import generate_monthly_report
+        from app.agents.report_agent import generate_munim_report, send_report_to_trader
         from datetime import date
         now = date.today()
-        await whatsapp.send_text_message(phone, "📄 Report generate kar raha hoon. 10 second lagte hain.")
-        pdf_bytes = await generate_monthly_report(trader["id"], now.month, now.year)
-        if pdf_bytes:
-            media_id = await upload_file("reports", f"reports/{trader['id']}_{now.month}_{now.year}.pdf", pdf_bytes, "application/pdf")
-            await whatsapp.send_text_message(phone, "Yeh rahi aapki report! (File sending disabled in mock)")
+        await whatsapp.send_text_message(phone, "📄 Munim Report bana raha hoon. 15 second lagte hain...")
+        pdf_url = await generate_munim_report(trader["id"], now.month, now.year)
+        if pdf_url:
+            await send_report_to_trader(trader["id"], pdf_url)
+        else:
+            await whatsapp.send_text_message(phone, "Report generate karne mein dikkat aayi. CA se contact karo.")
     else:
         # Fallback to text handler keywords
         await handle_text_message(phone, transcript)
@@ -499,3 +497,72 @@ async def _send_help(phone: str):
         "🎤 Voice note → Main sun lunga\n\n"
         "Bas itna hi! Invoice bhejte raho, main sab track karunga."
     )
+
+
+async def _send_supplier_check(phone: str, trader: dict, supplier_name: str):
+    """Look up a supplier by name and send health status to trader."""
+    db = get_supabase()
+
+    try:
+        # Search suppliers linked to this trader by name (case-insensitive)
+        links = db.table("supplier_trader_links").select(
+            "supplier_id, suppliers(id, legal_name, gstin, health_score, taxpayer_type, last_verified_at)"
+        ).eq("trader_id", trader["id"]).execute()
+
+        if not links.data:
+            await whatsapp.send_text_message(
+                phone,
+                f"❌ '{supplier_name}' aapki supplier list mein nahi mila.\n"
+                "Pehle unka invoice process karo, phir woh automatically track hoga."
+            )
+            return
+
+        # Find best match by supplier name (case-insensitive partial match)
+        supplier_name_lower = supplier_name.lower()
+        matched = None
+        for link in links.data:
+            sup = link.get("suppliers", {})
+            if not sup:
+                continue
+            if supplier_name_lower in (sup.get("legal_name") or "").lower():
+                matched = sup
+                break
+
+        if not matched:
+            # List all supplier names as hint
+            names = [link["suppliers"]["legal_name"] for link in links.data if link.get("suppliers")]
+            await whatsapp.send_text_message(
+                phone,
+                f"❌ '{supplier_name}' nahi mila.\n\n"
+                f"Aapke suppliers: {', '.join(names[:5])}\n"
+                "Sahi naam bolo."
+            )
+            return
+
+        # Get active flags
+        flags_resp = db.table("supplier_flags").select("flag_type, detail").eq(
+            "supplier_id", matched["id"]
+        ).eq("is_active", True).execute()
+        flags = flags_resp.data or []
+
+        health = matched.get("health_score", 100)
+        health_emoji = "✅" if health >= 70 else ("⚠️" if health >= 40 else "🚨")
+
+        msg = (
+            f"{health_emoji} *{matched.get('legal_name', supplier_name)}*\n\n"
+            f"GSTIN: {matched.get('gstin', 'Unknown')}\n"
+            f"Type: {matched.get('taxpayer_type', 'Regular')}\n"
+            f"Health Score: {health}/100\n"
+        )
+
+        if flags:
+            flag_text = "\n".join(f"• {f['flag_type']}: {f.get('detail', '')}" for f in flags)
+            msg += f"\n⚠️ Issues found:\n{flag_text}\n\nIn supplier ke saath payment se pehle CA se consult karo."
+        else:
+            msg += "\n✅ Koi active issues nahi hain. Safe hai!"
+
+        await whatsapp.send_text_message(phone, msg)
+
+    except Exception as e:
+        logger.error(f"Supplier check failed: {e}")
+        await whatsapp.send_text_message(phone, "Supplier check mein dikkat aayi. Dobara try karo.")
