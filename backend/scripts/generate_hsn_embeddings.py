@@ -29,7 +29,7 @@ GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
 genai.configure(api_key=GEMINI_API_KEY)
 db = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-EMBEDDING_MODEL = "models/embedding-001"
+EMBEDDING_MODEL = "models/gemini-embedding-001"
 BATCH_SIZE = 20        # Gemini batch embed limit
 REQUESTS_PER_MINUTE = 1500  # Free tier: 1500 RPM
 SLEEP_BETWEEN_BATCHES = 60 / (REQUESTS_PER_MINUTE / BATCH_SIZE)  # ~0.8s per batch
