@@ -36,11 +36,11 @@ class ITCRulesEngine:
         "2106": "Food preparations",
         "3304": "Beauty/skin care products",
         "3305": "Hair care products",
-        "9963": "Health/fitness services",
+        "9963": "Health/fitness services (gyms, clubs, spa)",
+        "9964": "Accommodation services (hotels, personal stay)",
         "9971": "Insurance services (non-employee)",
         "9972": "Real estate services",
         "9996": "Club/membership services",
-        "9963": "Accommodation services (personal)",
     }
 
     # Section 17(5) — Blocked categories by description keywords
