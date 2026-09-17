@@ -1,0 +1,161 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  /* Color System — Rich dark theme */
+  --bg-primary: #0a0a1a;
+  --bg-secondary: #111128;
+  --bg-card: #1a1a3e;
+  --bg-card-hover: #222252;
+  --bg-glass: rgba(26, 26, 62, 0.7);
+
+  /* Accent colors */
+  --green-primary: #00e676;
+  --green-glow: rgba(0, 230, 118, 0.15);
+  --orange-primary: #ff9100;
+  --orange-glow: rgba(255, 145, 0, 0.15);
+  --red-primary: #ff1744;
+  --red-glow: rgba(255, 23, 68, 0.15);
+  --blue-primary: #2979ff;
+  --blue-glow: rgba(41, 121, 255, 0.15);
+  --purple-primary: #d500f9;
+  --purple-glow: rgba(213, 0, 249, 0.15);
+
+  /* Text */
+  --text-primary: #e8e8f0;
+  --text-secondary: #9090b0;
+  --text-muted: #606080;
+
+  /* Borders */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-accent: rgba(41, 121, 255, 0.3);
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #2979ff 0%, #d500f9 100%);
+  --gradient-success: linear-gradient(135deg, #00e676 0%, #00bcd4 100%);
+  --gradient-danger: linear-gradient(135deg, #ff1744 0%, #ff6d00 100%);
+  --gradient-card: linear-gradient(145deg, #1a1a3e 0%, #111128 100%);
+
+  /* Shadows */
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --shadow-glow-blue: 0 0 30px rgba(41, 121, 255, 0.2);
+  --shadow-glow-green: 0 0 30px rgba(0, 230, 118, 0.2);
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-medium: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Global Styles */
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+/* Glass Card */
+.glass-card {
+  background: var(--bg-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
+  transition: all var(--transition-medium);
+}
+.glass-card:hover {
+  border-color: var(--border-accent);
+  box-shadow: var(--shadow-card), var(--shadow-glow-blue);
+  transform: translateY(-2px);
+}
+
+/* Status Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.badge-confirmed {
+  background: var(--green-glow);
+  color: var(--green-primary);
+  border: 1px solid rgba(0, 230, 118, 0.3);
+}
+.badge-blocked {
+  background: var(--orange-glow);
+  color: var(--orange-primary);
+  border: 1px solid rgba(255, 145, 0, 0.3);
+}
+.badge-risk {
+  background: var(--red-glow);
+  color: var(--red-primary);
+  border: 1px solid rgba(255, 23, 68, 0.3);
+}
+.badge-missed {
+  background: var(--blue-glow);
+  color: var(--blue-primary);
+  border: 1px solid rgba(41, 121, 255, 0.3);
+}
+.badge-fraud {
+  background: var(--purple-glow);
+  color: var(--purple-primary);
+  border: 1px solid rgba(213, 0, 249, 0.3);
+}
+
+/* Health Score Indicators */
+.health-good { color: var(--green-primary); }
+.health-warn { color: var(--orange-primary); }
+.health-bad { color: var(--red-primary); }
+
+/* Animated Number */
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-count {
+  animation: countUp 0.6s ease-out forwards;
+}
+
+/* Pulse Indicator */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+.pulse-dot-green { background: var(--green-primary); }
+.pulse-dot-orange { background: var(--orange-primary); }
+.pulse-dot-red { background: var(--red-primary); }
+
+/* Gradient Text */
+.gradient-text {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--text-muted);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
