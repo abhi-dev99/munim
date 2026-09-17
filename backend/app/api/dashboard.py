@@ -134,7 +134,7 @@ async def resolve_action_item(invoice_id: str):
         db = get_supabase()
         response = db.table("invoices").update({
             "itc_status": "RESOLVED",
-            "resolved_at": "now()",
+            "status": "validated",
         }).eq("id", invoice_id).execute()
 
         if not response.data:
