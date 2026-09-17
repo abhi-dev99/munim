@@ -160,49 +160,49 @@ export default function InvoiceDetailModal({ invoice, onClose, onNext, onPrev, h
             </div>
           ) : null}
 
-          <div className="p-6 flex-1 flex flex-col">
+          <div className="p-4 flex-1 flex flex-col">
             
             {/* Main Identifier */}
-            <div className="mb-8 pt-4">
-              <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-2 block">
+            <div className="mb-4 pt-2">
+              <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1 block">
                 {isAnalysisFailed ? "Scan Failed" : "Supplier"}
               </span>
-              <h2 className="text-4xl md:text-5xl font-black text-black tracking-tighter uppercase leading-none break-all">
+              <h2 className="text-3xl md:text-4xl font-black text-black tracking-tighter uppercase leading-none break-words">
                 {invoice.supplier_name || invoice.gstin_supplier || "UNKNOWN SUPPLIER"}
               </h2>
-              <div className="mt-2 text-sm font-bold text-[var(--text-secondary)] uppercase tracking-widest">
+              <div className="mt-1 text-sm font-bold text-[var(--text-secondary)] uppercase tracking-widest">
                 GSTIN: {invoice.gstin_supplier || "NO GSTIN FOUND"}
               </div>
               {isAnalysisFailed && (
-                <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 bg-red-100 text-red-800 text-xs font-bold uppercase tracking-wider rounded-none">
+                <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-red-100 text-red-800 text-xs font-bold uppercase tracking-wider rounded-none">
                   <AlertTriangle size={14} /> Analysis Failed
                 </div>
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="bg-gray-50 p-4 border border-[var(--border-subtle)] rounded-none">
-                <p className="text-[10px] uppercase font-bold text-[var(--text-secondary)] tracking-widest mb-1">Invoice Number</p>
-                <p className="text-base font-bold text-black">{invoice.invoice_number || "N/A"}</p>
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <div className="bg-gray-50 p-3 border border-[var(--border-subtle)] rounded-none">
+                <p className="text-[10px] uppercase font-bold text-[var(--text-secondary)] tracking-widest mb-0.5">Invoice Number</p>
+                <p className="text-sm font-bold text-black">{invoice.invoice_number || "N/A"}</p>
               </div>
-              <div className="bg-gray-50 p-4 border border-[var(--border-subtle)] rounded-none">
-                <p className="text-[10px] uppercase font-bold text-[var(--text-secondary)] tracking-widest mb-1">Invoice Date</p>
-                <p className="text-base font-bold text-black">{formattedDate}</p>
+              <div className="bg-gray-50 p-3 border border-[var(--border-subtle)] rounded-none">
+                <p className="text-[10px] uppercase font-bold text-[var(--text-secondary)] tracking-widest mb-0.5">Invoice Date</p>
+                <p className="text-sm font-bold text-black">{formattedDate}</p>
               </div>
             </div>
 
             {/* Amounts - Sleek, no borders */}
-            <h3 className="text-[10px] uppercase font-bold text-[var(--text-secondary)] tracking-widest mb-3 border-b border-[var(--border-subtle)] pb-2">Financial Details</h3>
-            <div className="mb-6">
-              <div className="flex justify-between py-2 border-b border-[var(--border-subtle)]">
+            <h3 className="text-[10px] uppercase font-bold text-[var(--text-secondary)] tracking-widest mb-2 border-b border-[var(--border-subtle)] pb-1">Financial Details</h3>
+            <div className="mb-4">
+              <div className="flex justify-between py-1 border-b border-[var(--border-subtle)]">
                 <span className="text-sm font-bold text-[var(--text-secondary)]">Total Amount</span>
                 <span className="text-base font-black text-black">₹{Number(invoice.total_amount || 0).toLocaleString('en-IN')}</span>
               </div>
-              <div className="flex justify-between py-2 border-b border-[var(--border-subtle)]">
+              <div className="flex justify-between py-1 border-b border-[var(--border-subtle)]">
                 <span className="text-sm font-medium text-[var(--text-secondary)]">Taxable Value</span>
                 <span className="text-sm font-bold text-black">₹{Number(invoice.taxable_amount || 0).toLocaleString('en-IN')}</span>
               </div>
-              <div className="flex justify-between py-2">
+              <div className="flex justify-between py-1">
                 <span className={`text-sm font-bold flex items-center gap-1 ${isEligibleZero ? 'text-[var(--text-secondary)]' : 'text-[var(--green-primary)]'}`}>
                   ITC Eligible
                 </span>
@@ -211,35 +211,35 @@ export default function InvoiceDetailModal({ invoice, onClose, onNext, onPrev, h
             </div>
 
             {/* ITC Status & Block Reason */}
-            <h3 className="text-[10px] uppercase font-bold text-[var(--text-secondary)] tracking-widest mb-3 border-b border-[var(--border-subtle)] pb-2">Compliance Verdict</h3>
+            <h3 className="text-[10px] uppercase font-bold text-[var(--text-secondary)] tracking-widest mb-2 border-b border-[var(--border-subtle)] pb-1">Compliance Verdict</h3>
             
-            <div className="flex items-start gap-3 mb-4 p-4 bg-gray-50 border border-gray-100 rounded-none">
+            <div className="flex items-start gap-2 mb-3 p-3 bg-gray-50 border border-gray-100 rounded-none">
               <div className="mt-0.5">
                 {getStatusIcon(invoice.itc_status)}
               </div>
               <div>
                 <p className="text-sm font-black text-black">{getStatusLabel(invoice.itc_status)}</p>
                 {invoice.itc_block_reason && !isAnalysisFailed && (
-                  <p className="text-xs font-medium text-[var(--text-secondary)] mt-1">{invoice.itc_block_reason}</p>
+                  <p className="text-xs font-medium text-[var(--text-secondary)] mt-0.5">{invoice.itc_block_reason}</p>
                 )}
               </div>
             </div>
 
             {invoice.fraud_score > 0 && !isAnalysisFailed && (
-              <div className={`mt-2 p-4 border rounded-none ${isHardFraud ? 'bg-red-50 border-red-200' : 'bg-orange-50 border-orange-200'}`}>
-                <p className={`text-xs font-bold uppercase tracking-wide mb-2 flex items-center gap-1 ${isHardFraud ? 'text-red-700' : 'text-orange-700'}`}>
-                  <ShieldAlert size={14} /> {isHardFraud ? 'FRAUD SIGNALS DETECTED' : 'ANOMALY DETECTED'} (Score: {invoice.fraud_score}/100)
+              <div className={`mt-1 p-3 border rounded-none ${isHardFraud ? 'bg-red-50 border-red-200' : 'bg-orange-50 border-orange-200'}`}>
+                <p className={`text-[10px] font-bold uppercase tracking-wide mb-1 flex items-center gap-1 ${isHardFraud ? 'text-red-700' : 'text-orange-700'}`}>
+                  <ShieldAlert size={12} /> {isHardFraud ? 'FRAUD SIGNALS DETECTED' : 'ANOMALY DETECTED'} (Score: {invoice.fraud_score}/100)
                 </p>
                 {triggeredSignals.length > 0 ? (
-                  <ul className="space-y-1">
+                  <ul className="space-y-0.5">
                     {triggeredSignals.map((signal, idx) => (
-                      <li key={idx} className={`text-xs ${isHardFraud ? 'text-red-900 font-medium' : 'text-orange-900'}`}>
+                      <li key={idx} className={`text-[10px] ${isHardFraud ? 'text-red-900 font-medium' : 'text-orange-900'}`}>
                         <span className="font-bold">{signal.name.replace(/_/g, ' ')}:</span> {signal.detail}
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className={`text-sm ${isHardFraud ? 'text-red-900 font-medium' : 'text-orange-900'}`}>
+                  <p className={`text-[10px] ${isHardFraud ? 'text-red-900 font-medium' : 'text-orange-900'}`}>
                     {isHardFraud ? 'Please manually review this invoice immediately.' : 'Some irregular patterns detected. Verify if needed.'}
                   </p>
                 )}
@@ -247,18 +247,18 @@ export default function InvoiceDetailModal({ invoice, onClose, onNext, onPrev, h
             )}
 
             {/* CA Actions */}
-            <div className="mt-auto pt-6">
-              <div className="flex gap-3">
+            <div className="mt-auto pt-4">
+              <div className="flex gap-2">
                 <button 
                   onClick={() => {/* Integration for mark resolved could go here */ onClose()}}
-                  className="flex-1 bg-black text-white py-3 rounded-none font-bold text-sm hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 bg-black text-white py-2.5 rounded-none font-bold text-xs hover:bg-gray-800 transition-colors flex items-center justify-center gap-1.5"
                 >
-                  <Check size={16} /> Mark as Resolved
+                  <Check size={14} /> Mark as Resolved
                 </button>
                 <button 
-                  className="flex-1 bg-white text-black border border-gray-300 py-3 rounded-none font-bold text-sm hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 bg-white text-black border border-gray-300 py-2.5 rounded-none font-bold text-xs hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5"
                 >
-                  <AlertTriangle size={16} /> Flag for Review
+                  <AlertTriangle size={14} /> Flag for Review
                 </button>
               </div>
             </div>

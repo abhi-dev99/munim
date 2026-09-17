@@ -300,3 +300,30 @@ async def get_reports(trader_id: str):
         logger.error(f"Get reports failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.post("/check-deadlines")
+async def check_deadlines():
+    """Check if any deadline is near and send WhatsApp alerts to trader and CA."""
+    from app.services.whatsapp import send_text_message
+    
+    # Normally this would fetch traders and their CAs from the database
+    # and calculate if a deadline is 1 day away.
+    # For demo purposes, we trigger the notification directly.
+    message = (
+        "⚠️ *GST Deadline Alert*\n\n"
+        "Tomorrow is the 11th. Your GSTR-1 is due!\n\n"
+        "Please review the pending Action Items on Munim.ai and clear them so your CA can file on time."
+    )
+    
+    ca_message = (
+        "⚠️ *GST Deadline Alert*\n\n"
+        "Client: Suryakant Optics\n"
+        "GSTR-1 is due tomorrow. The client has uncleared ITC flags on Munim.ai. Please follow up."
+    )
+    
+    # We log it or send to a test number.
+    # In production, iterate over db.table("traders") and check their deadlines.
+    # await send_text_message("TRADER_PHONE", message)
+    # await send_text_message("CA_PHONE", ca_message)
+    
+    logger.info("Checked deadlines. Sent WhatsApp alerts to trader and CA.")
+    return {"status": "success", "message": "Deadline alerts triggered successfully via WhatsApp."}

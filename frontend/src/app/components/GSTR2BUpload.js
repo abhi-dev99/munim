@@ -91,17 +91,12 @@ export default function GSTR2BUpload({ traderId, apiBase, onUploadComplete }) {
 
   return (
     <div className="flex-none bg-white border border-[var(--border-subtle)]">
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--bg-secondary)] transition-colors"
-      >
-        <FileText size={14} className="text-black flex-none" />
+      <div className="px-4 py-2.5 border-b border-[var(--border-subtle)] flex items-center gap-2">
+        <FileText size={14} className="text-[var(--text-muted)]" />
         <span className="font-bold text-xs uppercase tracking-wider text-black flex-1 text-left">Upload GSTR-2B</span>
-        <span className="text-[10px] text-[var(--text-muted)]">JSON from GST Portal</span>
-        <ChevronDown size={14} className={`text-[var(--text-muted)] transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
-      </button>
-      {expanded && (
-        <div className="border-t border-[var(--border-subtle)] p-4">
+        <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest">JSON / Excel from GST Portal</span>
+      </div>
+      <div className="p-4">
       {/* Drop zone */}
       <div
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -127,14 +122,14 @@ export default function GSTR2BUpload({ traderId, apiBase, onUploadComplete }) {
           <input
             id="gstr2b-file-input"
             type="file"
-            accept=".json,application/json"
+            accept=".json,application/json,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
             className="hidden"
             onChange={handleFileChange}
           />
           {uploading ? (
             <div className="flex flex-col items-center gap-3 relative z-10">
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[var(--blue-primary)]" />
-              <p className="text-sm font-semibold text-black">Uploading & parsing JSON...</p>
+              <p className="text-sm font-semibold text-black">Uploading & parsing file...</p>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-3 relative z-10">
@@ -145,7 +140,7 @@ export default function GSTR2BUpload({ traderId, apiBase, onUploadComplete }) {
                 <Upload size={32} />
               </motion.div>
               <div>
-                <p className="text-[15px] font-bold text-black mb-1">Drop GSTR-2B JSON here</p>
+                <p className="text-[15px] font-bold text-black mb-1">Drop GSTR-2B JSON/Excel here</p>
                 <p className="text-xs text-[var(--text-muted)] font-medium">Or click to browse files</p>
               </div>
             </div>
@@ -235,8 +230,7 @@ export default function GSTR2BUpload({ traderId, apiBase, onUploadComplete }) {
           </motion.div>
         )}
       </AnimatePresence>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

@@ -52,6 +52,39 @@ export default function SupplierHealth({ traderId, apiBase }) {
     fetchSuppliers();
   }, [traderId, apiBase]);
 
+  const [sortField, setSortField] = useState("health");
+  const [sortDirection, setSortDirection] = useState("desc");
+  const [filterStatus, setFilterStatus] = useState("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("desc");
+    }
+  };
+
+  const filteredAndSortedSuppliers = suppliers
+    .filter(s => filterStatus === "ALL" || s.status === filterStatus)
+    .filter(s => 
+      searchQuery === "" || 
+      s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      s.gstin.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => {
+      let aValue = a[sortField];
+      let bValue = b[sortField];
+      
+      if (typeof aValue === 'string') aValue = aValue.toLowerCase();
+      if (typeof bValue === 'string') bValue = bValue.toLowerCase();
+      
+      if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+
   if (loading) {
     return <div className="animate-pulse flex flex-col gap-4">
       {[1, 2, 3].map(i => <div key={i} className="h-24 bg-[var(--bg-card)] rounded-xl opacity-50 border border-[var(--border-subtle)]"></div>)}
@@ -60,10 +93,29 @@ export default function SupplierHealth({ traderId, apiBase }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
         <div>
           <h2 className="text-2xl font-bold text-black">Supplier Health Monitor</h2>
           <p className="text-[var(--text-secondary)] mt-1">Real-time compliance tracking for your vendors</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <input 
+            type="text" 
+            placeholder="Search Supplier or GSTIN..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="px-3 py-2 border border-[var(--border-subtle)] rounded-lg text-sm focus:outline-none focus:border-black"
+          />
+          <select 
+            value={filterStatus} 
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="px-3 py-2 border border-[var(--border-subtle)] rounded-lg text-sm bg-white focus:outline-none"
+          >
+            <option value="ALL">All Status</option>
+            <option value="GOOD">Compliant</option>
+            <option value="RISK">Warning</option>
+            <option value="CRITICAL">High Risk</option>
+          </select>
         </div>
       </div>
 
@@ -71,11 +123,21 @@ export default function SupplierHealth({ traderId, apiBase }) {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-secondary)]">
-              <th className="p-4 text-sm font-semibold text-black uppercase tracking-wider">Supplier</th>
-              <th className="p-4 text-sm font-semibold text-black uppercase tracking-wider">Health Score</th>
-              <th className="p-4 text-sm font-semibold text-black uppercase tracking-wider">Status</th>
-              <th className="p-4 text-sm font-semibold text-black uppercase tracking-wider">Flags</th>
-              <th className="p-4 text-sm font-semibold text-black uppercase tracking-wider text-right">Invoices</th>
+              <th onClick={() => handleSort('name')} className="p-4 text-sm font-semibold text-black uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors">
+                Supplier {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </th>
+              <th onClick={() => handleSort('health')} className="p-4 text-sm font-semibold text-black uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors">
+                Health Score {sortField === 'health' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </th>
+              <th onClick={() => handleSort('status')} className="p-4 text-sm font-semibold text-black uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors">
+                Status {sortField === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </th>
+              <th onClick={() => handleSort('recentIssues')} className="p-4 text-sm font-semibold text-black uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors">
+                Flags {sortField === 'recentIssues' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </th>
+              <th onClick={() => handleSort('total_amount')} className="p-4 text-sm font-semibold text-black uppercase tracking-wider text-right cursor-pointer hover:bg-gray-100 transition-colors">
+                Invoices {sortField === 'total_amount' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </th>
             </tr>
           </thead>
           <motion.tbody 
@@ -88,7 +150,7 @@ export default function SupplierHealth({ traderId, apiBase }) {
             className="divide-y divide-[var(--border-subtle)]"
           >
             <AnimatePresence>
-              {suppliers.map(sup => (
+              {filteredAndSortedSuppliers.map(sup => (
                 <motion.tr 
                   key={sup.id} 
                   layout
@@ -141,10 +203,10 @@ export default function SupplierHealth({ traderId, apiBase }) {
                 </motion.tr>
               ))}
             </AnimatePresence>
-            {suppliers.length === 0 && (
+            {filteredAndSortedSuppliers.length === 0 && (
               <tr>
                 <td colSpan="5" className="p-8 text-center text-[var(--text-secondary)]">
-                  No suppliers found for this trader.
+                  No suppliers match your criteria.
                 </td>
               </tr>
             )}
