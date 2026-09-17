@@ -432,46 +432,52 @@ async def handle_voice_message(phone: str, msg: dict):
 
 async def _handle_registration(phone: str, text: str):
     """Handle new user registration."""
-    text_upper = text.strip().upper()
-
-async def _handle_registration(phone: str, text: str):
     trader = await create_trader(phone)
     if trader:
-        set_conversation_state(phone, "awaiting_name")
+        set_conversation_state(phone, "awaiting_language")
         await whatsapp.send_text_message(
             phone,
             "Namaste! 🙏 Main Munim hun — aapka AI GST compliance agent.\n\n"
-            "Shuru karte hain — aapka naam aur business ka naam kya hai?"
+            "Aap kis bhasha mein baat karna pasand karenge? (Hindi / English)"
         )
 
 async def _process_registration_step(phone: str, text: str, trader: dict, state: str):
     """Handle the multi-step onboarding flow."""
     text_clean = text.strip()
     
-    if state == "awaiting_name":
+    if state == "awaiting_language":
+        lang = "en" if "english" in text_clean.lower() else "hi"
+        await update_trader(trader["id"], {"language_pref": lang})
+        set_conversation_state(phone, "awaiting_name")
+        msg = "Awesome! What is your name and business name?" if lang == "en" else "Bahut badhiya! Aapka naam aur business ka naam kya hai?"
+        await whatsapp.send_text_message(phone, msg)
+
+    elif state == "awaiting_name":
         await update_trader(trader["id"], {"name": text_clean, "business_name": text_clean})
         set_conversation_state(phone, "awaiting_ca_number")
-        await whatsapp.send_text_message(phone, "Aapke CA ya accountant ka mobile number kya hai? (Toh main reports unhe bhej saku)")
+        lang = trader.get("language_pref", "hi")
+        msg = "What is your CA or accountant's mobile number? (So I can send them reports)" if lang == "en" else "Aapke CA ya accountant ka mobile number kya hai? (Toh main reports unhe bhej saku)"
+        await whatsapp.send_text_message(phone, msg)
     
     elif state == "awaiting_ca_number":
         await update_trader(trader["id"], {"ca_whatsapp_number": text_clean})
-        set_conversation_state(phone, "awaiting_language")
-        await whatsapp.send_text_message(phone, "Aap kis bhasha mein baat karna pasand karenge? (Hindi / English)")
-        
-    elif state == "awaiting_language":
-        lang = "en" if "english" in text_clean.lower() else "hi"
-        await update_trader(trader["id"], {"language_pref": lang})
         set_conversation_state(phone, "awaiting_gstin")
-        await whatsapp.send_text_message(phone, "Aapka GSTIN number kya hai?")
+        lang = trader.get("language_pref", "hi")
+        msg = "What is your GSTIN number?" if lang == "en" else "Aapka GSTIN number kya hai?"
+        await whatsapp.send_text_message(phone, msg)
         
     elif state == "awaiting_gstin":
         gstin = text_clean.upper()
         if not is_valid_gstin_format(gstin):
-            await whatsapp.send_text_message(phone, "⚠️ Yeh sahi GSTIN nahi lag raha. Example: 27AABCU9603R1ZM\n\nDubara bhejo:")
+            lang = trader.get("language_pref", "hi")
+            msg = "⚠️ Invalid GSTIN. Example: 27AABCU9603R1ZM\n\nSend again:" if lang == "en" else "⚠️ Yeh sahi GSTIN nahi lag raha. Example: 27AABCU9603R1ZM\n\nDubara bhejo:"
+            await whatsapp.send_text_message(phone, msg)
             return
         await update_trader(trader["id"], {"gstin": gstin})
         set_conversation_state(phone, "idle")
-        await whatsapp.send_text_message(phone, f"✅ GSTIN {gstin} save ho gaya!\n\nAb bas karo: jab bhi koi invoice aaye — yahan WhatsApp pe photo bhej do. Main baaki sab handle karunga.\n\nAaj ke invoices bhejne shuru karo! 📸")
+        lang = trader.get("language_pref", "hi")
+        msg = f"✅ GSTIN {gstin} saved!\n\nJust send photos of your invoices here and I'll handle the rest.\n\nSend your first invoice! 📸" if lang == "en" else f"✅ GSTIN {gstin} save ho gaya!\n\nAb bas karo: jab bhi koi invoice aaye — yahan WhatsApp pe photo bhej do. Main baaki sab handle karunga.\n\nAaj ke invoices bhejne shuru karo! 📸"
+        await whatsapp.send_text_message(phone, msg)
 
 async def _answer_general_query(phone: str, text: str, trader: dict):
     from app.services.supabase_client import get_itc_summary, get_recent_invoices
