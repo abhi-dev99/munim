@@ -139,10 +139,8 @@ IMPORTANT rules:
             gemini_response = gemini_client.models.generate_content(
                 model=gemini_settings.gemini_model,
                 contents=[
-                    types.Content(parts=[
-                        types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
-                        types.Part.from_text(text=EXTRACTION_PROMPT),
-                    ])
+                    types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+                    types.Part.from_text(text=EXTRACTION_PROMPT),
                 ],
                 config=types.GenerateContentConfig(
                     temperature=0.0,
@@ -150,6 +148,7 @@ IMPORTANT rules:
                 )
             )
             raw = gemini_response.text.strip() if gemini_response.text else ""
+            logger.info(f"Gemini raw extraction response (first 200): {raw[:200]}")
             # Strip markdown code fences if Gemini wraps output
             if raw.startswith("```"):
                 lines = raw.split("\n")
@@ -160,10 +159,11 @@ IMPORTANT rules:
             logger.info(f"Invoice extracted: supplier={result.get('supplier_name')}, confidence={result.get('confidence')}, items={len(result.get('line_items', []))}")
             return result
         except json.JSONDecodeError as e:
-            logger.error(f"Gemini extraction JSON parse failed: {e} | raw: {raw[:200] if 'raw' in dir() else 'N/A'}")
+            logger.error(f"Gemini extraction JSON parse failed: {e} | raw: {raw[:300] if 'raw' in locals() else 'N/A'}")
             return None
         except Exception as e:
             err_str = str(e)
+            logger.error(f"Gemini extraction exception (full): {err_str}")
             if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
                 logger.error("Gemini API quota exceeded — invoice extraction unavailable")
                 return {"__quota_exceeded__": True}
