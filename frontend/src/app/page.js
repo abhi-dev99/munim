@@ -8,7 +8,8 @@ import Sidebar from "./components/Sidebar";
 import InvoiceFeed from "./components/InvoiceFeed";
 import GSTR2BUpload from "./components/GSTR2BUpload";
 import ReportsPanel from "./components/ReportsPanel";
-import { ChevronDown, Users } from "lucide-react";
+import GSTTimeline from "./components/GSTTimeline";
+import { ChevronDown, Users, ToggleLeft, ToggleRight } from "lucide-react";
 import { motion } from "framer-motion";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -22,6 +23,7 @@ export default function Home() {
   const [traderDropdown, setTraderDropdown] = useState(false);
   const [activeTraderName, setActiveTraderName] = useState("Loading...");
   const [actionCount, setActionCount] = useState(0);
+  const [isComposition, setIsComposition] = useState(false);
 
   useEffect(() => {
     fetchTraders();
@@ -152,6 +154,16 @@ export default function Home() {
                 )}
               </div>
 
+              <div className="flex items-center gap-2 glass-card px-4 py-2 border-[var(--border-subtle)]">
+                <button 
+                  onClick={() => setIsComposition(!isComposition)}
+                  className="flex items-center gap-2"
+                >
+                  {isComposition ? <ToggleRight size={20} className="text-[var(--green-primary)]" /> : <ToggleLeft size={20} className="text-[var(--text-muted)]" />}
+                  <span className="text-sm font-semibold text-black">Composition Scheme</span>
+                </button>
+              </div>
+
               <div className="flex items-center gap-2 glass-card px-4 py-2">
                 <div className="pulse-dot pulse-dot-green"></div>
                 <span className="text-sm text-[var(--text-secondary)]">Live</span>
@@ -177,7 +189,7 @@ export default function Home() {
               transition={{ delay: 0.1, duration: 0.5 }}
               className="lg:col-span-2 space-y-6"
             >
-              {activeTab === "money-meter" && <MoneyMeter summary={summary} apiBase={API_BASE} />}
+              {activeTab === "money-meter" && <MoneyMeter summary={summary} apiBase={API_BASE} isComposition={isComposition} />}
               {activeTab === "suppliers" && <SupplierHealth traderId={traderId} apiBase={API_BASE} />}
               {activeTab === "actions" && <ActionQueue traderId={traderId} apiBase={API_BASE} />}
               {activeTab === "reports" && <ReportsPanel traderId={traderId} apiBase={API_BASE} />}
@@ -189,6 +201,7 @@ export default function Home() {
               transition={{ delay: 0.2, duration: 0.5 }}
               className="lg:col-span-1 space-y-6"
             >
+              <GSTTimeline isComposition={isComposition} />
               <GSTR2BUpload traderId={traderId} apiBase={API_BASE} />
               <InvoiceFeed traderId={traderId} apiBase={API_BASE} />
             </motion.div>
