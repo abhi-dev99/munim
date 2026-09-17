@@ -8,9 +8,7 @@ from app.config import get_settings
 from app.services.ollama_client import ollama_client
 from app.services.privacy_layer import privacy_layer
 
-# Only import gemini client logic if we need it to fallback
-from app.services.gemini import client as gemini_client, settings as gemini_settings
-from google.genai import types
+# Gemini imports moved to function level to avoid circular dependency
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -34,6 +32,9 @@ class LLMRouter:
         logger.info(f"LLMRouter init: available Ollama models: {self.available_ollama_models}")
 
     async def _generate_online(self, prompt: str, context: Dict[str, Any], task: LLMTask, temperature: float) -> str:
+        from app.services.gemini import client as gemini_client, settings as gemini_settings
+        from google.genai import types
+
         if not self.online_enabled:
             logger.warning("Online LLM disabled, failing back to None.")
             return ""
@@ -106,6 +107,9 @@ class LLMRouter:
         # Fallback to Gemini
         if not self.online_enabled:
             return None
+
+        from app.services.gemini import client as gemini_client, settings as gemini_settings
+        from google.genai import types
 
         # For vision extraction, we don't have context to anonymize YET, we're extracting it.
         # So we just send the image directly to Gemini. This is an accepted privacy tradeoff for extraction.
