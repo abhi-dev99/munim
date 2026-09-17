@@ -12,6 +12,7 @@ import random
 import hashlib
 from datetime import date, timedelta
 from uuid import uuid4
+import pandas as pd
 
 # Add parent directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -61,45 +62,36 @@ SUPPLIERS = [
      "flags": ["NEW_GSTIN_RISK", "ITC_GHOST"]},
 ]
 
-# Sample HSN codes with rates
-HSN_DATA = [
-    ("1511", "Cooking Oil — Palm Oil", 5.0, "Edible Oils"),
-    ("1001", "Wheat", 0.0, "Cereals"),
-    ("1006", "Rice", 5.0, "Cereals"),
-    ("1701", "Sugar — Cane", 5.0, "Sugar"),
-    ("0402", "Milk Powder", 5.0, "Dairy"),
-    ("0902", "Tea", 5.0, "Tea & Coffee"),
-    ("0901", "Coffee", 5.0, "Tea & Coffee"),
-    ("2106", "Food Preparations", 18.0, "Prepared Foods"),
-    ("3401", "Soap — Washing", 18.0, "Cleaning"),
-    ("3402", "Detergent", 18.0, "Cleaning"),
-    ("4819", "Packaging Boxes — Carton", 18.0, "Packaging"),
-    ("2201", "Water — Mineral", 18.0, "Beverages"),
-    ("2202", "Beverages — Aerated", 28.0, "Beverages"),
-    ("0713", "Pulses — Dried", 0.0, "Pulses"),
-    ("0904", "Spices — Pepper", 5.0, "Spices"),
-    ("3407", "Dental/Shaving Cream", 18.0, "Personal Care"),  # For demo error
-    ("7202", "Iron & Steel — Ferro-alloys", 18.0, "Iron & Steel"),
-    ("5208", "Cotton Fabric", 5.0, "Textiles"),
-    ("6802", "Building Stone", 28.0, "Construction"),
-    ("8703", "Motor Vehicles", 28.0, "Vehicles"),  # Section 17(5) blocked
-]
-
-
 def seed_hsn_codes():
-    """Seed basic HSN codes (without embeddings — those come from the batch script)."""
-    print("📦 Seeding HSN codes...")
-    for hsn_code, description, rate, category in HSN_DATA:
-        try:
-            db.table("hsn_codes").upsert({
-                "hsn_code": hsn_code,
-                "description": description,
-                "gst_rate": rate,
-                "category": category,
-            }, on_conflict="hsn_code").execute()
-        except Exception as e:
-            print(f"  ⚠️ HSN {hsn_code}: {e}")
-    print(f"  ✅ {len(HSN_DATA)} HSN codes seeded")
+    """Seed HSN codes from official HSN_SAC.xlsx."""
+    print("📦 Seeding official HSN codes from HSN_SAC.xlsx...")
+    try:
+        df = pd.read_excel('HSN_SAC.xlsx')
+        df = df.dropna(subset=['HSN_CD', 'HSN_Description'])
+        hsn_codes = []
+        for _, row in df.iterrows():
+            code = str(row['HSN_CD']).strip().replace('.0', '')
+            desc = str(row['HSN_Description']).strip()
+            if not code or not desc:
+                continue
+            hsn_codes.append({
+                "hsn_code": code[:10],
+                "description": desc,
+                "gst_rate": 18.0,  # Default fallback rate
+                "category": "General",
+            })
+        
+        batch_size = 500
+        total_seeded = 0
+        for i in range(0, len(hsn_codes), batch_size):
+            batch = hsn_codes[i:i + batch_size]
+            db.table("hsn_codes").upsert(batch, on_conflict="hsn_code").execute()
+            total_seeded += len(batch)
+            print(f"  Inserted {total_seeded} / {len(hsn_codes)} HSN codes...")
+            
+        print(f"  ✅ {total_seeded} real-world HSN codes seeded successfully")
+    except Exception as e:
+        print(f"  ❌ Error seeding HSN codes: {e}")
 
 
 def seed_trader():
