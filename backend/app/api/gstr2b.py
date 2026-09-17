@@ -249,3 +249,63 @@ def _normalize_date(date_str: str) -> Optional[str]:
         return None
     except Exception:
         return None
+
+
+@router.post("/reconcile/{trader_id}")
+async def trigger_reconciliation(trader_id: str, month: int = None, year: int = None):
+    """
+    Re-run GSTR-2B reconciliation against all unmatched invoices for a trader.
+    Useful after uploading new GSTR-2B data.
+    """
+    try:
+        from app.domain.reconciler import GSTR2BReconciler
+        from app.services.supabase_client import get_gstr2b_records, get_invoices_for_trader
+
+        now = date.today()
+        month = month or now.month
+        year = year or now.year
+
+        db = get_supabase()
+        reconciler = GSTR2BReconciler()
+
+        # Get all GSTR-2B records for this period
+        gstr2b_records = await get_gstr2b_records(trader_id, month, year)
+        if not gstr2b_records:
+            return {"status": "no_2b_data", "message": "No GSTR-2B records found for this period. Please upload first.", "matched": 0}
+
+        # Get unmatched invoices for this month
+        invoices = await get_invoices_for_trader(trader_id, month, year)
+        unmatched = [inv for inv in invoices if inv.get("gstr2b_match_status") in (None, "UNRECONCILED", "ITC_AT_RISK")]
+
+        matched_count = 0
+        for inv in unmatched:
+            match_result = reconciler.reconcile(
+                invoice_number=inv.get("invoice_number", ""),
+                supplier_gstin=inv.get("gstin_supplier", ""),
+                invoice_amount=inv.get("total_amount", 0),
+                invoice_date=inv.get("invoice_date", ""),
+                gstr2b_records=gstr2b_records,
+            )
+
+            # Update the invoice with match result
+            new_status = "MATCHED" if match_result.is_matched else "UNRECONCILED"
+            db.table("invoices").update({
+                "gstr2b_match_status": new_status,
+                "gstr2b_match_type": match_result.match_type if match_result.is_matched else None,
+                "gstr2b_match_score": match_result.score,
+            }).eq("id", inv["id"]).execute()
+
+            if match_result.is_matched:
+                matched_count += 1
+
+        return {
+            "status": "complete",
+            "period": f"{month}/{year}",
+            "invoices_checked": len(unmatched),
+            "newly_matched": matched_count,
+            "gstr2b_records": len(gstr2b_records),
+        }
+
+    except Exception as e:
+        logger.error(f"Reconciliation trigger failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
