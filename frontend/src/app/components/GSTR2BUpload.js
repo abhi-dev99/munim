@@ -216,6 +216,6 @@ export default function GSTR2BUpload({ traderId, apiBase, onUploadComplete }) {
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 }
