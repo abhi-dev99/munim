@@ -136,9 +136,29 @@ async def reconcile_gstr2b(state: InvoiceAgentState) -> dict:
         from app.services.supabase_client import get_gstr2b_records
         from datetime import date
 
-        # Get GSTR-2B records for this trader
-        now = date.today()
-        raw_records = await get_gstr2b_records(state["trader_id"], now.month, now.year)
+        # Use invoice's own month/year for lookup (not today's date).
+        # GSTR-2B is filed by the supplier for the period the invoice belongs to.
+        lookup_month = None
+        lookup_year = None
+        if invoice.invoice_date:
+            try:
+                inv_date = date.fromisoformat(invoice.invoice_date)
+                lookup_month = inv_date.month
+                lookup_year = inv_date.year
+            except (ValueError, TypeError):
+                pass
+
+        # Also try current month as fallback if invoice date parse failed
+        if not lookup_month:
+            now = date.today()
+            lookup_month = now.month
+            lookup_year = now.year
+
+        # Try invoice month first, then current month if no records found
+        raw_records = await get_gstr2b_records(state["trader_id"], lookup_month, lookup_year)
+        if not raw_records and lookup_month != date.today().month:
+            now = date.today()
+            raw_records = await get_gstr2b_records(state["trader_id"], now.month, now.year)
 
         if not raw_records:
             return {"gstr2b_match": GSTR2BMatchResult(status=GSTR2BMatchStatus.UNRECONCILED)}
