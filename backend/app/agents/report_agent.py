@@ -222,12 +222,12 @@ async def generate_munim_report(
     for inv in invoices[:40]:
         itc_status = inv.get("itc_status", "")
         itc_amt = inv.get("itc_amount_eligible") or inv.get("itc_amount_blocked") or 0
-        supplier = (inv.get("supplier_name") or inv.get("gstin_supplier", "Unknown"))[:35]
+        supplier = (inv.get("supplier_name") or inv.get("gstin_supplier") or "Unknown")[:35]
         r, g, b = STATUS_COLORS.get(itc_status, (80, 80, 80))
 
         pdf.set_font('Helvetica', '', 7)
         pdf.set_text_color(20, 20, 20)
-        pdf.cell(22, 5, inv.get("invoice_date", "")[:10], border=1)
+        pdf.cell(22, 5, (inv.get("invoice_date") or "")[:10], border=1)
         pdf.cell(60, 5, supplier, border=1)
         pdf.cell(28, 5, _fmt(inv.get("total_amount", 0)), border=1)
         pdf.cell(25, 5, _fmt(itc_amt), border=1)

@@ -156,7 +156,7 @@ export default function TraderApp() {
 
       {/* Scan Result Toast */}
       {scanState !== "idle" && (
-        <div className="mx-4 mt-4 p-4 rounded-xl border border-[var(--border-subtle)] bg-white flex items-start gap-3">
+        <div className="mx-4 mt-4 p-4 rounded-none border border-[var(--border-subtle)] bg-white flex items-start gap-3">
           {scanState === "uploading" && <Loader2 size={18} className="animate-spin text-black mt-0.5 flex-shrink-0" />}
           {scanState === "success" && <CheckCircle2 size={18} className="text-black mt-0.5 flex-shrink-0" />}
           {scanState === "error" && <ShieldAlert size={18} className="text-[var(--red-primary)] mt-0.5 flex-shrink-0" />}
@@ -202,7 +202,7 @@ export default function TraderApp() {
       <main className="flex-1 p-4 overflow-y-auto space-y-6 bg-[var(--bg-primary)]">
         {loading ? (
           <div className="flex items-center justify-center h-40">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
+            <div className="animate-spin rounded-none h-8 w-8 border-b-2 border-black"></div>
           </div>
         ) : activeTab === "home" ? (
           <>
@@ -226,7 +226,7 @@ export default function TraderApp() {
                   <div 
                     key={inv.id} 
                     onClick={() => setSelectedIndex(index)}
-                    className={`border rounded-xl p-4 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-transform ${getRowBackground(inv.itc_status, inv.fraud_score)}`}
+                    className={`border rounded-none p-4 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-transform ${getRowBackground(inv.itc_status, inv.fraud_score)}`}
                   >
                     <div>
                       <div className="flex items-center gap-1">
@@ -265,7 +265,7 @@ export default function TraderApp() {
         <button
           onClick={() => { setActiveTab("home"); triggerScan(); }}
           disabled={scanState === "uploading"}
-          className="flex-2 flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-black text-white shadow-xl hover:bg-gray-900 transition-all transform hover:scale-105 w-full disabled:opacity-60 disabled:scale-100"
+          className="flex-2 flex items-center justify-center gap-2 px-6 py-3 rounded-none bg-black text-white  hover:bg-gray-900 transition-all transform hover:scale-105 w-full disabled:opacity-60 disabled:scale-100"
         >
           {scanState === "uploading" ? (
             <Loader2 size={20} className="animate-spin" />
