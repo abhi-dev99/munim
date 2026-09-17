@@ -22,8 +22,13 @@ export default function Home() {
 
   async function fetchDashboardData() {
     try {
-      // First, get the trader (demo: fetch first trader)
-      const res = await fetch(`${API_BASE}/api/v1/dashboard/summary/demo`);
+      // First, get the trader (dynamically fetch first trader from DB)
+      const tradersRes = await fetch(`${API_BASE}/api/v1/dashboard/traders`);
+      if (!tradersRes.ok) throw new Error("Failed to fetch traders");
+      const tradersData = await tradersRes.json();
+      const activeTrader = tradersData.traders?.[0]?.id || "demo";
+
+      const res = await fetch(`${API_BASE}/api/v1/dashboard/summary/${activeTrader}`);
       if (res.ok) {
         const data = await res.json();
         setSummary(data);
