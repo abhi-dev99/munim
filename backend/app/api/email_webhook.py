@@ -30,22 +30,19 @@ async def generate_informal_notification(language_pref: str, supplier_name: str,
     return await llm_router.generate_text(prompt, context={}, task=LLMTask.SUMMARY)
 
 async def generate_formal_notification(trader_name: str, supplier_name: str, invoice_number: str, invoice_date: str, total_amount: float, itc_status: str) -> str:
-    prompt = f"""
-    You are Munim.ai, an automated compliance system.
-    Write a brief, highly professional WhatsApp document caption for a Chartered Accountant (CA).
-    The attached document is an invoice processed via our email webhook.
-    
-    Details:
-    - Client: {trader_name}
-    - Supplier: {supplier_name}
-    - Invoice No: {invoice_number}
-    - Date: {invoice_date}
-    - Amount: ₹{total_amount}
-    - ITC Status: {itc_status}
-    
-    Keep it strictly professional, concise, and structured like an alert. No greetings needed.
-    """
-    return await llm_router.generate_text(prompt, context={}, task=LLMTask.SUMMARY)
+    msg = f"""*Invoice Alert: {trader_name}*
+
+Attached is the processed invoice via email webhook:
+
+  • Client: {trader_name}
+  • Supplier: {supplier_name}
+  • Invoice No.: {invoice_number}
+  • Date: {invoice_date}
+  • Amount: ₹{total_amount}
+  • ITC Status: {itc_status}
+
+Please review and confirm receipt."""
+    return msg
 
 @router.post("")
 async def receive_email_webhook(request: Request):
