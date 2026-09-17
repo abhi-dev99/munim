@@ -41,6 +41,7 @@ def embed_texts_batch(texts: list[str]) -> list[list[float]]:
         model=EMBEDDING_MODEL,
         content=texts,
         task_type="retrieval_document",
+        output_dimensionality=768,
     )
     return result["embedding"]
 

@@ -189,6 +189,9 @@ async def embed_text(text: str) -> list[float]:
         response = client.models.embed_content(
             model=settings.gemini_embedding_model,
             contents=text,
+            config=types.EmbedContentConfig(
+                output_dimensionality=768
+            )
         )
         return response.embeddings[0].values
     except Exception as e:
