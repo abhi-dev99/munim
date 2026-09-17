@@ -7,6 +7,7 @@ export default function Sidebar({ activeTab, onTabChange }) {
     { id: "money-meter", label: "Money Meter", icon: LayoutDashboard },
     { id: "suppliers", label: "Supplier Health", icon: Users },
     { id: "actions", label: "Action Queue", icon: AlertCircle },
+    { id: "upload", label: "GSTR-2B Upload", icon: FileText },
     { id: "reports", label: "Monthly Reports", icon: FileText },
   ];
 
