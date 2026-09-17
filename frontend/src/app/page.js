@@ -9,6 +9,7 @@ import InvoiceFeed from "./components/InvoiceFeed";
 import GSTR2BUpload from "./components/GSTR2BUpload";
 import ReportsPanel from "./components/ReportsPanel";
 import { ChevronDown, Users } from "lucide-react";
+import { motion } from "framer-motion";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -163,19 +164,34 @@ export default function Home() {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, staggerChildren: 0.1 }}
+            className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+          >
+            <motion.div 
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1, duration: 0.5 }}
+              className="lg:col-span-2 space-y-6"
+            >
               {activeTab === "money-meter" && <MoneyMeter summary={summary} apiBase={API_BASE} />}
               {activeTab === "suppliers" && <SupplierHealth traderId={traderId} apiBase={API_BASE} />}
               {activeTab === "actions" && <ActionQueue traderId={traderId} apiBase={API_BASE} />}
               {activeTab === "reports" && <ReportsPanel traderId={traderId} apiBase={API_BASE} />}
-            </div>
+            </motion.div>
             {/* Right Column - Upload + Live Feed */}
-            <div className="lg:col-span-1 space-y-6">
+            <motion.div 
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2, duration: 0.5 }}
+              className="lg:col-span-1 space-y-6"
+            >
               <GSTR2BUpload traderId={traderId} apiBase={API_BASE} />
               <InvoiceFeed traderId={traderId} apiBase={API_BASE} />
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         )}
       </main>
 

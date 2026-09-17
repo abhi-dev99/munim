@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { AlertCircle, Phone, CheckCircle2, ShieldAlert } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function ActionQueue({ traderId, apiBase }) {
   const [actions, setActions] = useState([]);
@@ -91,58 +92,80 @@ export default function ActionQueue({ traderId, apiBase }) {
         </div>
       </div>
 
-      <div className="grid gap-4">
-        {actions.map(action => (
-          <div key={action.id} className="glass-card p-6 flex flex-col md:flex-row gap-6 items-start md:items-center">
-            
-            <div className={`p-4 rounded flex-shrink-0 border ${
-              action.urgency === 'CRITICAL' ? 'bg-[var(--red-glow)] border-[var(--red-glow)] text-[var(--red-primary)]' :
-              action.urgency === 'HIGH' ? 'bg-[var(--orange-glow)] border-[var(--orange-glow)] text-[var(--orange-primary)]' :
-              'bg-[var(--blue-glow)] border-[var(--blue-glow)] text-[var(--blue-primary)]'
-            }`}>
-              {action.urgency === 'CRITICAL' ? <ShieldAlert size={24} /> : <AlertCircle size={24} />}
-            </div>
-
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-1">
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase border ${
-                  action.urgency === 'CRITICAL' ? 'bg-[var(--red-glow)] text-[var(--red-primary)] border-[var(--red-glow)]' :
-                  action.urgency === 'HIGH' ? 'bg-[var(--orange-glow)] text-[var(--orange-primary)] border-[var(--orange-glow)]' :
-                  'bg-[var(--blue-glow)] text-[var(--blue-primary)] border-[var(--blue-glow)]'
-                }`}>
-                  {action.urgency}
-                </span>
-                <span className="text-sm font-semibold text-[var(--text-secondary)]">{action.supplier}</span>
+      <motion.div 
+        className="grid gap-4"
+        initial="hidden"
+        animate="show"
+        variants={{
+          hidden: { opacity: 0 },
+          show: { opacity: 1, transition: { staggerChildren: 0.1 } }
+        }}
+      >
+        <AnimatePresence>
+          {actions.map(action => (
+            <motion.div 
+              key={action.id} 
+              layout
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, height: 0, overflow: 'hidden' }}
+              transition={{ duration: 0.3 }}
+              className="glass-card p-6 flex flex-col md:flex-row gap-6 items-start md:items-center relative overflow-hidden group"
+            >
+              <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-[60px] opacity-10 group-hover:opacity-20 transition-opacity ${
+                action.urgency === 'CRITICAL' ? 'bg-[var(--red-primary)]' :
+                action.urgency === 'HIGH' ? 'bg-[var(--orange-primary)]' :
+                'bg-[var(--blue-primary)]'
+              }`}></div>
+              <div className={`p-4 rounded flex-shrink-0 border relative z-10 ${
+                action.urgency === 'CRITICAL' ? 'bg-[var(--red-glow)] border-[var(--red-glow)] text-[var(--red-primary)]' :
+                action.urgency === 'HIGH' ? 'bg-[var(--orange-glow)] border-[var(--orange-glow)] text-[var(--orange-primary)]' :
+                'bg-[var(--blue-glow)] border-[var(--blue-glow)] text-[var(--blue-primary)]'
+              }`}>
+                {action.urgency === 'CRITICAL' ? <ShieldAlert size={24} /> : <AlertCircle size={24} />}
               </div>
-              <h4 className="text-lg font-bold text-black mb-1">{action.description}</h4>
-              <p className="text-sm text-[var(--text-muted)]">
-                ITC at stake: <strong className="text-[var(--text-primary)]">₹{action.amount.toLocaleString('en-IN')}</strong>
-                {action.fix_action && <span className="ml-2">· Fix: {action.fix_action}</span>}
-              </p>
-            </div>
 
-            <div className="flex gap-3 w-full md:w-auto mt-4 md:mt-0 flex-shrink-0">
-              <button className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded bg-white border border-[var(--border-subtle)] text-black hover:bg-[var(--bg-secondary)] transition-colors font-medium">
-                <Phone size={16} />
-                <span>Call</span>
-              </button>
-              <button
-                onClick={() => handleResolve(action.id)}
-                disabled={resolving === action.id}
-                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded bg-black border border-black text-white font-medium hover:bg-gray-800 transition-colors disabled:opacity-50"
-              >
-                {resolving === action.id ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                ) : (
-                  <CheckCircle2 size={16} />
-                )}
-                <span>{resolving === action.id ? "..." : "Resolved"}</span>
-              </button>
-            </div>
+              <div className="flex-1 relative z-10">
+                <div className="flex items-center gap-3 mb-1">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase border ${
+                    action.urgency === 'CRITICAL' ? 'bg-[var(--red-glow)] text-[var(--red-primary)] border-[var(--red-glow)]' :
+                    action.urgency === 'HIGH' ? 'bg-[var(--orange-glow)] text-[var(--orange-primary)] border-[var(--orange-glow)]' :
+                    'bg-[var(--blue-glow)] text-[var(--blue-primary)] border-[var(--blue-glow)]'
+                  }`}>
+                    {action.urgency}
+                  </span>
+                  <span className="text-sm font-semibold text-[var(--text-secondary)]">{action.supplier}</span>
+                </div>
+                <h4 className="text-lg font-bold text-black mb-1">{action.description}</h4>
+                <p className="text-sm text-[var(--text-muted)]">
+                  ITC at stake: <strong className="text-[var(--text-primary)]">₹{action.amount.toLocaleString('en-IN')}</strong>
+                  {action.fix_action && <span className="ml-2">· Fix: {action.fix_action}</span>}
+                </p>
+              </div>
 
-          </div>
-        ))}
-      </div>
+              <div className="flex gap-3 w-full md:w-auto mt-4 md:mt-0 flex-shrink-0 relative z-10">
+                <button className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded bg-white border border-[var(--border-subtle)] text-black hover:bg-[var(--bg-secondary)] transition-colors font-medium">
+                  <Phone size={16} />
+                  <span>Call</span>
+                </button>
+                <button
+                  onClick={() => handleResolve(action.id)}
+                  disabled={resolving === action.id}
+                  className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded bg-black border border-black text-white font-medium hover:bg-gray-800 hover:shadow-lg transition-all disabled:opacity-50"
+                >
+                  {resolving === action.id ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                  ) : (
+                    <CheckCircle2 size={16} />
+                  )}
+                  <span>{resolving === action.id ? "..." : "Resolved"}</span>
+                </button>
+              </div>
+
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </motion.div>
     </div>
   );
 }
