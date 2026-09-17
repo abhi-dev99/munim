@@ -14,6 +14,8 @@ from app.api.webhook import router as webhook_router
 from app.api.dashboard import router as dashboard_router
 from app.api.gstr2b import router as gstr2b_router
 from app.api.reports import router as reports_router
+from app.api.privacy import router as privacy_router
+from app.services.llm_router import llm_router
 
 # Configure logging
 logging.basicConfig(
@@ -38,6 +40,10 @@ async def lifespan(app: FastAPI):
     _setup_scheduled_jobs()
     scheduler.start()
     logger.info("📅 Scheduler started")
+
+    # Init LLM router
+    await llm_router.initialize()
+    logger.info("🧠 LLM router initialized")
 
     yield
 
@@ -149,6 +155,7 @@ app.include_router(webhook_router)
 app.include_router(dashboard_router)
 app.include_router(gstr2b_router)
 app.include_router(reports_router)
+app.include_router(privacy_router)
 
 
 @app.get("/")
