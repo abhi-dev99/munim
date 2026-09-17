@@ -108,7 +108,7 @@ async def get_action_items(trader_id: str):
                 id=inv["id"],
                 invoice_id=inv["id"],
                 supplier_name=inv.get("supplier_name") or inv.get("gstin_supplier", "Unknown Supplier"),
-                issue=inv.get("itc_block_reason", status),
+                issue=inv.get("itc_block_reason") or _get_issue_label(status),
                 impact_amount=impact,
                 fix_action=_get_fix_action(status),
                 priority=0,
@@ -198,6 +198,16 @@ def _get_fix_action(status: str) -> str:
         "FRAUD_FLAGGED": "CA se verify karwao — ITC claim mat karo abhi",
     }
     return actions.get(status, "Check with CA")
+
+
+def _get_issue_label(status: str) -> str:
+    """Get a human-readable issue description for an ITC status code."""
+    labels = {
+        "FIXABLE_BLOCKED": "HSN code mismatch or incorrect GST rate",
+        "AT_RISK": "Supplier GSTR-1 not filed — ITC at risk",
+        "FRAUD_FLAGGED": "Potential fraud or invalid supplier GSTIN",
+    }
+    return labels.get(status, status or "Compliance issue detected")
 
 
 def _month_name(month: int) -> str:
