@@ -96,8 +96,10 @@ async def extract_invoice_from_image(image_bytes: bytes, mime_type: str = "image
     """Extract structured invoice data from an image using the LLM Router."""
     try:
         invoice_dict = await llm_router.extract_invoice(image_bytes, mime_type)
+        if invoice_dict and invoice_dict.get("__quota_exceeded__"):
+            return InvoiceJSON(confidence=-1.0)  # sentinel: quota exceeded
         if invoice_dict:
-            return InvoiceJSON(**invoice_dict)
+            return InvoiceJSON(**{k: v for k, v in invoice_dict.items() if k in InvoiceJSON.model_fields})
         return InvoiceJSON(confidence=0.0)
     except Exception as e:
         logger.error(f"Extraction via router failed: {e}")
@@ -157,6 +159,8 @@ async def generate_hindi_diagnosis(
         return f"📄 Invoice processed: {supplier_name} | ₹{total_amount}\nITC Status: {itc_status}\nAmount: ₹{itc_amount}"
 
 
+QUOTA_EXCEEDED = "__QUOTA_EXCEEDED__"
+
 async def transcribe_voice_note(audio_bytes: bytes, mime_type: str = "audio/ogg") -> str:
     """Transcribe a WhatsApp voice note using Gemini. Supports Hindi, English, Marathi, Gujarati."""
     if mime_type and "ogg" in mime_type and "opus" not in mime_type:
@@ -191,6 +195,10 @@ async def transcribe_voice_note(audio_bytes: bytes, mime_type: str = "audio/ogg"
         logger.info(f"Voice transcribed: '{transcript[:80]}'")
         return transcript
     except Exception as e:
+        err_str = str(e)
+        if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
+            logger.error("Gemini API daily quota exceeded — voice transcription unavailable")
+            return QUOTA_EXCEEDED
         logger.error(f"Voice transcription failed: {e}")
         return ""
 
