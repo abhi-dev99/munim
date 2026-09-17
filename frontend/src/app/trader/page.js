@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Menu, Camera, FileText, CheckCircle2, ShieldAlert, X, Loader2 } from "lucide-react";
+import { Menu, Camera, FileText, CheckCircle2, ShieldAlert, X, Loader2, Home, BarChart2, ChevronRight, Upload } from "lucide-react";
 import MoneyMeter from "../components/MoneyMeter";
 import ActionQueue from "../components/ActionQueue";
 import InvoiceDetailModal from "../components/InvoiceDetailModal";
+import ReportsPanel from "../components/ReportsPanel";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -12,11 +13,14 @@ export default function TraderApp() {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [traderId, setTraderId] = useState(null);
-  const [scanState, setScanState] = useState("idle"); // idle | uploading | success | error
+  const [traderName, setTraderName] = useState("");
+  const [traderPhone, setTraderPhone] = useState(null);
+  const [scanState, setScanState] = useState("idle");
   const [scanResult, setScanResult] = useState(null);
-  const [activeTab, setActiveTab] = useState("home"); // home | history
+  const [activeTab, setActiveTab] = useState("home"); // home | history | reports
   const [invoiceHistory, setInvoiceHistory] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -25,14 +29,16 @@ export default function TraderApp() {
         const tradersRes = await fetch(`${API_BASE}/api/v1/dashboard/traders`);
         if (!tradersRes.ok) throw new Error("Failed to fetch traders");
         const tradersData = await tradersRes.json();
-        const activeTrader = tradersData.traders?.[0]?.id || "demo";
+        const activeTrader = tradersData.traders?.[0];
+        const activeId = activeTrader?.id || "demo";
+        setTraderName(activeTrader?.business_name || activeTrader?.name || "My Business");
+        setTraderPhone(activeTrader?.whatsapp_number || null);
 
-        const res = await fetch(`${API_BASE}/api/v1/dashboard/summary/${activeTrader}`);
+        const res = await fetch(`${API_BASE}/api/v1/dashboard/summary/${activeId}`);
       if (res.ok) {
           const data = await res.json();
           setSummary(data);
           setTraderId(data.trader_id);
-          // Fetch invoice history
           const invRes = await fetch(`${API_BASE}/api/v1/dashboard/invoices/${data.trader_id}`);
           if (invRes.ok) {
             const invData = await invRes.json();
@@ -149,10 +155,63 @@ export default function TraderApp() {
           <h1 className="text-xl font-bold tracking-tight text-black">Munim.ai</h1>
           <span className="text-[10px] uppercase font-bold text-[var(--green-primary)] tracking-widest">Active</span>
         </div>
-        <button className="p-2 -mr-2 text-black">
+        <button className="p-2 -mr-2 text-black" onClick={() => setSidebarOpen(true)}>
           <Menu size={24} />
         </button>
       </header>
+
+      {/* Slide-out Sidebar Drawer */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-50 flex">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} />
+          {/* Drawer */}
+          <div className="relative ml-auto w-72 h-full bg-white flex flex-col shadow-2xl">
+            {/* Drawer header */}
+            <div className="flex items-center justify-between p-5 border-b border-[var(--border-subtle)]">
+              <div>
+                <p className="font-bold text-black text-base">Munim.ai</p>
+                <p className="text-xs text-[var(--text-secondary)] truncate max-w-[180px]">{traderName}</p>
+              </div>
+              <button onClick={() => setSidebarOpen(false)} className="p-1.5 rounded hover:bg-[var(--bg-primary)] transition-colors">
+                <X size={20} className="text-black" />
+              </button>
+            </div>
+
+            {/* Nav items */}
+            <nav className="flex-1 p-4 space-y-1">
+              {[
+                { id: "home",    label: "Dashboard",       icon: <Home size={18} /> },
+                { id: "history", label: "Invoice History",  icon: <FileText size={18} /> },
+                { id: "reports", label: "Reports & GSTR-2B", icon: <BarChart2 size={18} /> },
+              ].map(item => (
+                <button
+                  key={item.id}
+                  onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                    activeTab === item.id
+                      ? "bg-black text-white"
+                      : "text-[var(--text-secondary)] hover:bg-[var(--bg-primary)] hover:text-black"
+                  }`}
+                >
+                  <span className="flex items-center gap-3">{item.icon}{item.label}</span>
+                  <ChevronRight size={14} className="opacity-50" />
+                </button>
+              ))}
+            </nav>
+
+            {/* Upload invoice from sidebar */}
+            <div className="p-4 border-t border-[var(--border-subtle)]">
+              <button
+                onClick={() => { setSidebarOpen(false); fileInputRef.current?.click(); }}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-black text-white font-bold text-sm hover:bg-gray-800 transition-colors"
+              >
+                <Upload size={16} /> Upload Invoice
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Scan Result Toast */}
       {scanState !== "idle" && (
@@ -212,9 +271,11 @@ export default function TraderApp() {
             </div>
             <div>
               <h2 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Required Actions</h2>
-              <ActionQueue traderId={traderId} apiBase={API_BASE} />
+              <ActionQueue traderId={traderId} apiBase={API_BASE} traderPhone={traderPhone} />
             </div>
           </>
+        ) : activeTab === "reports" ? (
+          <ReportsPanel traderId={traderId} apiBase={API_BASE} />
         ) : (
           <div>
             <h2 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-3">Invoice History</h2>
