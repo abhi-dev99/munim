@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GST Portal - GSTR-2B Simulation</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="main-header">
+        <div class="header-top">
+            <div class="logo-area">
+                <img src="https://tutorial.gst.gov.in/userguide/returns/assets/images/image424.png" alt="Emblem" style="height: 50px; opacity: 0; position:absolute;">
+                <div class="emblem-placeholder"></div>
+                <div class="title-area">
+                    <h1>Goods and Services Tax</h1>
+                    <p>Government of India, States and Union Territories</p>
+                </div>
+            </div>
+            <div class="user-info">
+                <span>MxWeb Infotech80 v</span><br>
+                <span class="gstin">24AAFCK2304M1ZP</span>
+            </div>
+        </div>
+        <nav class="main-nav">
+            <ul>
+                <li><a href="#">Dashboard</a></li>
+                <li class="active"><a href="#">Services ▾</a></li>
+                <li><a href="#">GST Law</a></li>
+                <li><a href="#">Downloads ▾</a></li>
+                <li><a href="#">Search Taxpayer ▾</a></li>
+                <li><a href="#">Help and Taxpayer Facilities</a></li>
+                <li><a href="#">e-Invoice</a></li>
+                <li><a href="#">News and Updates</a></li>
+            </ul>
+        </nav>
+        <div class="sub-nav">
+            <span class="breadcrumb">Dashboard > Returns > <strong>GSTR-2B</strong></span>
+            <span class="lang">🌍 English</span>
+        </div>
+    </header>
+
+    <main id="app-container">
+        <!-- View 1: Dashboard -->
+        <div id="dashboard-view" class="view-section active">
+            <div class="card">
+                <div class="card-header">File Returns</div>
+                <div class="card-body">
+                    <p class="info-text-red">Indicates Mandatory Fields</p>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Financial Year <span class="mandatory">*</span></label>
+                            <select>
+                                <option>2024-25</option>
+                                <option>2023-24</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Quarter <span class="mandatory">*</span></label>
+                            <select id="quarter-select">
+                                <option value="Q1">Quarter 1 (Apr - Jun)</option>
+                                <option value="Q2">Quarter 2 (Jul - Sep)</option>
+                                <option value="Q3">Quarter 3 (Oct - Dec)</option>
+                                <option value="Q4">Quarter 4 (Jan - Mar)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Period <span class="mandatory">*</span></label>
+                            <select id="period-select">
+                                <option>April</option>
+                                <option>May</option>
+                                <option>June</option>
+                            </select>
+                        </div>
+                        <div class="form-group btn-group">
+                            <button class="btn-primary">SEARCH</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-box-blue">
+                ⓘ You have selected to file the return on quarterly frequency and are required to file GSTR-1 and GSTR-3B for this period.
+            </div>
+
+            <div class="tiles-container">
+                <div class="tile">
+                    <div class="tile-header">
+                        <h3>Details of outward supplies of goods or services</h3>
+                        <p>GSTR1</p>
+                        <p>Quarterly</p>
+                    </div>
+                    <div class="tile-body">
+                        <p><strong>Status-</strong> <span class="status-filed">Filed</span></p>
+                        <div class="tile-actions">
+                            <button class="btn-tile">VIEW</button>
+                            <button class="btn-tile">DOWNLOAD</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tile">
+                    <div class="tile-header">
+                        <h3>Auto Drafted details (For view only)</h3>
+                        <p>GSTR2A</p>
+                    </div>
+                    <div class="tile-body empty-body">
+                        <div class="tile-actions center">
+                            <button class="btn-tile">VIEW</button>
+                            <button class="btn-tile">DOWNLOAD</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tile">
+                    <div class="tile-header">
+                        <h3>Auto - drafted ITC Statement for the month</h3>
+                        <p>GSTR2B</p>
+                    </div>
+                    <div class="tile-body empty-body">
+                        <div class="tile-actions center">
+                            <button class="btn-tile" id="btn-view-gstr2b">VIEW</button>
+                            <button class="btn-tile">DOWNLOAD</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- View 2: GSTR-2B View -->
+        <div id="gstr2b-view" class="view-section hidden">
+            <div class="gstr2b-banner">
+                <h2>GSTR-2B- AUTO-DRAFTED ITC STATEMENT</h2>
+                <span class="chevron-up">^</span>
+            </div>
+            
+            <div class="info-grid">
+                <div>
+                    <p>GSTIN- 29UATYY9012A1Z8</p>
+                    <p>Financial Year - 2024-25</p>
+                </div>
+                <div>
+                    <p>Legal Name - UATYCO</p>
+                    <p>Return Period - April</p>
+                </div>
+                <div>
+                    <p>Trade Name - GSTN</p>
+                    <p>Generation date - 01/01/2025</p>
+                </div>
+            </div>
+
+            <div class="tabs-container">
+                <div class="main-tabs">
+                    <button class="tab active">SUMMARY</button>
+                    <button class="tab">ALL TABLES</button>
+                    <a href="#" class="view-advisory">View Advisory</a>
+                </div>
+                
+                <div class="sub-tabs-container">
+                    <div class="sub-tabs">
+                        <button class="sub-tab active">ITC available</button>
+                        <button class="sub-tab">ITC Not Available</button>
+                        <button class="sub-tab">ITC Reversal</button>
+                        <button class="sub-tab">ITC Rejected</button>
+                    </div>
+                    <button class="btn-help">HELP ❓</button>
+                </div>
+
+                <table class="gstr2b-table">
+                    <thead>
+                        <tr>
+                            <th>S.NO.</th>
+                            <th>Heading <a href="#" class="expand-all">[Expand All ▾]</a></th>
+                            <th>GSTR-3B table</th>
+                            <th class="amount-col">Integrated<br>Tax (₹)</th>
+                            <th class="amount-col">Central<br>Tax (₹)</th>
+                            <th class="amount-col">State/UT<br>Tax (₹)</th>
+                            <th class="amount-col">Cess (₹)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="section-header">
+                            <td>Part A</td>
+                            <td colspan="6">ITC Available - Credit may be claimed in relevant headings in GSTR-3B</td>
+                        </tr>
+                        <tr>
+                            <td class="center">I</td>
+                            <td>All other ITC - Supplies from registered persons ▾ <span class="ims-tag">(IMS)</span></td>
+                            <td class="center">4(A)(5) ⓘ</td>
+                            <td class="amount">0.00</td>
+                            <td class="amount">0.00</td>
+                            <td class="amount">0.00</td>
+                            <td class="amount">0.00</td>
+                        </tr>
+                        <tr>
+                            <td class="center">II</td>
+                            <td>Inward Supplies from ISD ▾</td>
+                            <td class="center">4(A)(4) ⓘ</td>
+                            <td class="amount">0.00</td>
+                            <td class="amount">0.00</td>
+                            <td class="amount">0.00</td>
+                            <td class="amount">0.00</td>
+                        </tr>
+                        <tr>
+                            <td class="center">III</td>
+                            <td>Inward Supplies liable for reverse charge ▾</td>
+                            <td class="center">3.1(d)<br>4(A)(3) ⓘ</td>
+                            <td class="amount">0.00</td>
+                            <td class="amount">0.00</td>
+                            <td class="amount">0.00</td>
+                            <td class="amount">0.00</td>
+                        </tr>
+                        <tr>
+                            <td class="center">IV</td>
+                            <td>Import of Goods ▾</td>
+                            <td class="center">4(A)(1) ⓘ</td>
+                            <td class="amount">0.00</td>
+                            <td class="amount">0.00</td>
+                            <td class="amount">0.00</td>
+                            <td class="amount">0.00</td>
+                        </tr>
+                        <tr class="section-header">
+                            <td>Part B</td>
+                            <td colspan="6">ITC Available - Credit notes should be net off against relevant ITC available headings in GSTR-3B</td>
+                        </tr>
+                        <tr>
+                            <td class="center">I</td>
+                            <td>Others ▾</td>
+                            <td class="center">4(A) ⓘ</td>
+                            <td class="amount">0.00</td>
+                            <td class="amount">0.00</td>
+                            <td class="amount">0.00</td>
+                            <td class="amount">0.00</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="bottom-actions">
+                <button class="btn-outline" id="btn-back">BACK TO DASHBOARD</button>
+                <button class="btn-primary-action">DOWNLOAD GSTR-2B SUMMARY (PDF)</button>
+                <button class="btn-primary-action">DOWNLOAD GSTR-2B DETAILS (EXCEL)</button>
+                <button class="btn-primary-action mt-2">OPEN GSTR-3B</button>
+                <button class="btn-primary-action mt-2">OPEN IMS DASHBOARD</button>
+            </div>
+        </div>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
