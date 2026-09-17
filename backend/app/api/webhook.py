@@ -7,7 +7,8 @@ import re
 import logging
 import uuid
 
-from fastapi import APIRouter, Request, Response, BackgroundTasks, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Request, Response, HTTPException, UploadFile, File, Form
+import asyncio
 
 from app.config import get_settings
 from app.services import whatsapp
@@ -141,7 +142,7 @@ async def verify_webhook(request: Request):
 
 
 @router.post("/webhook")
-async def receive_webhook(request: Request, background_tasks: BackgroundTasks):
+async def receive_webhook(request: Request):
     """Receive and process incoming WhatsApp messages."""
     body = await request.json()
 
@@ -162,21 +163,15 @@ async def receive_webhook(request: Request, background_tasks: BackgroundTasks):
         return {"status": "rate_limited"}
 
     # Mark as read
-    background_tasks.add_task(whatsapp.mark_message_read, message_id)
+    asyncio.create_task(whatsapp.mark_message_read(message_id))
 
     # Dispatch based on message type
     if message_type in ("image", "document"):
-        background_tasks.add_task(
-            handle_invoice_message, from_number, msg
-        )
+        asyncio.create_task(handle_invoice_message(from_number, msg))
     elif message_type == "audio":
-        background_tasks.add_task(
-            handle_voice_message, from_number, msg
-        )
+        asyncio.create_task(handle_voice_message(from_number, msg))
     elif message_type == "text":
-        background_tasks.add_task(
-            handle_text_message, from_number, msg.get("text", "")
-        )
+        asyncio.create_task(handle_text_message(from_number, msg.get("text", "")))
     else:
         logger.info(f"Ignoring message type: {message_type}")
 
