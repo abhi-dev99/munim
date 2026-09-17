@@ -31,3 +31,5 @@ Thumbs.db
 .idea/
 .gemini/
 .agents/
+.tasks/
+.tasks
