@@ -127,6 +127,27 @@ async def get_action_items(trader_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.patch("/actions/{invoice_id}/resolve")
+async def resolve_action_item(invoice_id: str):
+    """Mark an action item (invoice issue) as manually resolved by CA."""
+    try:
+        db = get_supabase()
+        response = db.table("invoices").update({
+            "itc_status": "RESOLVED",
+            "resolved_at": "now()",
+        }).eq("id", invoice_id).execute()
+
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Invoice not found")
+
+        return {"status": "resolved", "invoice_id": invoice_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Resolve action failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/itc-timeline/{trader_id}")
 async def get_itc_timeline(trader_id: str):
     """Get 6-month ITC timeline data for charts."""
