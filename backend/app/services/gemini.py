@@ -12,6 +12,7 @@ from google.genai import types
 
 from app.config import get_settings
 from app.models.invoice import InvoiceJSON, LineItem
+from app.services.llm_router import llm_router, LLMTask
 
 logger = logging.getLogger(__name__)
 
@@ -92,42 +93,15 @@ Generate the WhatsApp message:
 
 
 async def extract_invoice_from_image(image_bytes: bytes, mime_type: str = "image/jpeg") -> InvoiceJSON:
-    """Extract structured invoice data from an image using Gemini Vision."""
+    """Extract structured invoice data from an image using the LLM Router."""
     try:
-        response = client.models.generate_content(
-            model=settings.gemini_model,
-            contents=[
-                types.Content(
-                    parts=[
-                        types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
-                        types.Part.from_text(text=EXTRACTION_PROMPT),
-                    ]
-                )
-            ],
-            config=types.GenerateContentConfig(
-                temperature=0.1,
-                max_output_tokens=4096,
-            ),
-        )
-
-        raw_text = response.text.strip()
-
-        # Strip markdown code fences if present
-        if raw_text.startswith("```"):
-            raw_text = raw_text.split("\n", 1)[1]
-            if raw_text.endswith("```"):
-                raw_text = raw_text[:-3].strip()
-
-        invoice_data = json.loads(raw_text)
-        return InvoiceJSON(**invoice_data)
-
-    except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse Gemini response as JSON: {e}")
-        logger.error(f"Raw response: {raw_text[:500]}")
+        invoice_dict = await llm_router.extract_invoice(image_bytes, mime_type)
+        if invoice_dict:
+            return InvoiceJSON(**invoice_dict)
         return InvoiceJSON(confidence=0.0)
     except Exception as e:
-        logger.error(f"Gemini extraction failed: {e}")
-        raise
+        logger.error(f"Extraction via router failed: {e}")
+        return InvoiceJSON(confidence=0.0)
 
 
 async def generate_hindi_diagnosis(
@@ -146,35 +120,31 @@ async def generate_hindi_diagnosis(
     gstr2b_status: str = "Unreconciled",
 ) -> str:
     """Generate a Hindi WhatsApp diagnosis message."""
-    prompt = DIAGNOSIS_PROMPT_TEMPLATE.format(
-        supplier_name=supplier_name or "Unknown",
-        total_amount=total_amount or 0,
-        itc_status=itc_status,
-        itc_amount=itc_amount,
-        itc_blocked=itc_blocked,
-        block_reason=block_reason,
-        fix_action=fix_action,
-        hsn_issues=hsn_issues,
-        gstin_status=gstin_status,
-        supplier_flags=supplier_flags,
-        fraud_score=fraud_score,
-        fraud_signals=fraud_signals,
-        gstr2b_status=gstr2b_status,
-    )
+    prompt = "Generate a WhatsApp message in Hindi (Hinglish script) explaining this invoice diagnosis. Emojis: ✅⚠️🚨🚫. Max 300 words. No Devanagari."
+    
+    context = {
+        "supplier_name": supplier_name or "Unknown",
+        "total_amount": total_amount or 0,
+        "itc_status": itc_status,
+        "itc_amount_eligible": itc_amount,
+        "itc_amount_blocked": itc_blocked,
+        "block_reason": block_reason,
+        "fix_action": fix_action,
+        "hsn_issues": hsn_issues,
+        "gstin_status": gstin_status,
+        "supplier_flags": supplier_flags,
+        "fraud_score": fraud_score,
+        "fraud_signals": fraud_signals,
+        "gstr2b_status": gstr2b_status,
+    }
 
     try:
-        response = client.models.generate_content(
-            model=settings.gemini_model,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                temperature=0.7,
-                max_output_tokens=1024,
-            ),
-        )
-        return response.text.strip()
+        response_text = await llm_router.generate_text(prompt, context, LLMTask.DIAGNOSIS, temperature=0.7)
+        if response_text:
+            return response_text
+        return f"📄 Invoice processed: {supplier_name} | ₹{total_amount}\nITC Status: {itc_status}\nAmount: ₹{itc_amount}"
     except Exception as e:
-        logger.error(f"Hindi diagnosis generation failed: {e}")
-        # Fallback static message
+        logger.error(f"Hindi diagnosis generation failed via router: {e}")
         return f"📄 Invoice processed: {supplier_name} | ₹{total_amount}\nITC Status: {itc_status}\nAmount: ₹{itc_amount}"
 
 
@@ -217,18 +187,16 @@ async def embed_text(text: str) -> list[float]:
         return []
 
 async def understand_intent(transcript: str) -> dict:
-    """Extract structured intent from voice note transcript using Gemini."""
+    """Extract structured intent from voice note transcript using the LLM Router."""
     prompt = f"""You are an intent router for a GST WhatsApp bot. 
 Analyze the following Hindi/Hinglish message from a trader and return ONLY a JSON object.
-
-Message: "{transcript}"
 
 Intents:
 1. "itc_status": Asking for their total ITC, money, dashboard, or status.
 2. "supplier_check": Asking to check a specific supplier or GSTIN.
 3. "report_request": Asking for their monthly report/PDF.
 4. "help": Asking for help or how to use the bot.
-5. "unknown": Anything else (e.g. greeting, random chatter, or describing an invoice manually).
+5. "unknown": Anything else.
 
 Schema:
 {{
@@ -239,18 +207,16 @@ Schema:
   }}
 }}
 """
+    context = {"message": transcript}
     try:
-        response = client.models.generate_content(
-            model=settings.gemini_model,
-            contents=prompt,
-            config=types.GenerateContentConfig(temperature=0.1)
-        )
-        raw_text = response.text.strip()
-        if raw_text.startswith("```"):
-            raw_text = raw_text.split("\n", 1)[1]
-            if raw_text.endswith("```"):
-                raw_text = raw_text[:-3].strip()
-        return json.loads(raw_text)
+        response_text = await llm_router.generate_text(prompt, context, LLMTask.INTENT, temperature=0.1)
+        if response_text:
+            if response_text.startswith("```"):
+                response_text = response_text.split("\n", 1)[1]
+                if response_text.endswith("```"):
+                    response_text = response_text[:-3].strip()
+            return json.loads(response_text)
+        return {"intent": "unknown", "entities": {}}
     except Exception as e:
-        logger.error(f"Intent extraction failed: {e}")
+        logger.error(f"Intent extraction via router failed: {e}")
         return {"intent": "unknown", "entities": {}}
