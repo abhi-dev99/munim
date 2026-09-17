@@ -15,8 +15,14 @@ class Settings(BaseSettings):
     fastapi_port: int = 8000
     debug: bool = True
 
-    # --- Gemini ---
+    # --- Gemini (key pool: add up to 7 keys, system auto-rotates on 429) ---
     gemini_api_key: str = ""
+    gemini_api_key_2: str = ""
+    gemini_api_key_3: str = ""
+    gemini_api_key_4: str = ""
+    gemini_api_key_5: str = ""
+    gemini_api_key_6: str = ""
+    gemini_api_key_7: str = ""
     gemini_model: str = "gemini-2.5-flash"
     gemini_embedding_model: str = "models/gemini-embedding-001"
 

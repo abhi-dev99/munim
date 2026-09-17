@@ -1,0 +1,207 @@
+{
+  "gstin": "27ACCPS7562H1Z8",
+  "rtnprd": "052026",
+  "version": "GST3.0.7",
+  "data": {
+    "docdata": {
+      "b2b": [
+        {
+          "ctin": "27AABCN5432P1Z3",
+          "trdnm": "NASHIK OPTICAL WHOLESALERS PVT LTD",
+          "supfildt": "11-06-2026",
+          "inv": [
+            {
+              "inum": "NOL/2025-26/1847",
+              "dt": "08-05-2026",
+              "val": 22500.00,
+              "pos": "27",
+              "rchrg": "N",
+              "inv_typ": "R",
+              "itms": [
+                {
+                  "num": 1,
+                  "itm_det": {
+                    "rt": 12,
+                    "txval": 22500.00,
+                    "iamt": 0.00,
+                    "camt": 1350.00,
+                    "samt": 1350.00,
+                    "csamt": 0.00
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ctin": "33AADCS7891K1Z2",
+          "trdnm": "SAFEVISION LENS MANUFACTURING CO",
+          "supfildt": "11-06-2026",
+          "inv": [
+            {
+              "inum": "SVLC/MAY/2026/892",
+              "dt": "14-05-2026",
+              "val": 19000.00,
+              "pos": "27",
+              "rchrg": "N",
+              "inv_typ": "R",
+              "itms": [
+                {
+                  "num": 1,
+                  "itm_det": {
+                    "rt": 12,
+                    "txval": 19000.00,
+                    "iamt": 2280.00,
+                    "camt": 0.00,
+                    "samt": 0.00,
+                    "csamt": 0.00
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ctin": "27AADCW3456P1Z8",
+          "trdnm": "WOODLAND RESIDENCY",
+          "supfildt": "11-06-2026",
+          "inv": [
+            {
+              "inum": "WR/MAY/2026/4521",
+              "dt": "22-05-2026",
+              "val": 3500.00,
+              "pos": "27",
+              "rchrg": "N",
+              "inv_typ": "R",
+              "itms": [
+                {
+                  "num": 1,
+                  "itm_det": {
+                    "rt": 18,
+                    "txval": 3500.00,
+                    "iamt": 0.00,
+                    "camt": 315.00,
+                    "samt": 315.00,
+                    "csamt": 0.00
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ctin": "27ABCPV6789H1Z1",
+          "trdnm": "SHREE VINAYAK SPECTACLE WORKS",
+          "supfildt": "11-06-2026",
+          "inv": [
+            {
+              "inum": "SVSW/2526/344",
+              "dt": "05-05-2026",
+              "val": 24000.00,
+              "pos": "27",
+              "rchrg": "N",
+              "inv_typ": "R",
+              "itms": [
+                {
+                  "num": 1,
+                  "itm_det": {
+                    "rt": 18,
+                    "txval": 24000.00,
+                    "iamt": 0.00,
+                    "camt": 2160.00,
+                    "samt": 2160.00,
+                    "csamt": 0.00
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ctin": "27AADCV3421P1ZN",
+          "trdnm": "VISIONTECH OPTICAL SOLUTIONS",
+          "supfildt": "11-06-2026",
+          "inv": [
+            {
+              "inum": "VTOS/2026/001",
+              "dt": "25-05-2026",
+              "val": 425000.00,
+              "pos": "27",
+              "rchrg": "N",
+              "inv_typ": "R",
+              "itms": [
+                {
+                  "num": 1,
+                  "itm_det": {
+                    "rt": 12,
+                    "txval": 425000.00,
+                    "iamt": 0.00,
+                    "camt": 25500.00,
+                    "samt": 25500.00,
+                    "csamt": 0.00
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ctin": "29AABCT8765P1Z4",
+          "trdnm": "TITAN EYEPLUS DISTRIBUTION NETWORK",
+          "supfildt": "11-06-2026",
+          "inv": [
+            {
+              "inum": "TITANB00040320",
+              "dt": "12-05-2026",
+              "val": 36000.00,
+              "pos": "27",
+              "rchrg": "N",
+              "inv_typ": "R",
+              "itms": [
+                {
+                  "num": 1,
+                  "itm_det": {
+                    "rt": 12,
+                    "txval": 36000.00,
+                    "iamt": 4320.00,
+                    "camt": 0.00,
+                    "samt": 0.00,
+                    "csamt": 0.00
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ctin": "27AABCA9876H1Z7",
+          "trdnm": "ARIHANT OPTICS LTD",
+          "supfildt": "11-06-2026",
+          "inv": [
+            {
+              "inum": "AOL/2526/0847",
+              "dt": "02-05-2026",
+              "val": 38000.00,
+              "pos": "27",
+              "rchrg": "N",
+              "inv_typ": "R",
+              "itms": [
+                {
+                  "num": 1,
+                  "itm_det": {
+                    "rt": 12,
+                    "txval": 38000.00,
+                    "iamt": 0.00,
+                    "camt": 2280.00,
+                    "samt": 2280.00,
+                    "csamt": 0.00
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

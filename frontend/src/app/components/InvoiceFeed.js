@@ -87,7 +87,7 @@ export default function InvoiceFeed({ traderId, apiBase }) {
 
   return (
     <>
-      <div className="bg-white border border-[var(--border-subtle)] overflow-hidden flex flex-col h-full max-h-[600px]">
+      <div className="flex-1 min-h-0 bg-white border border-[var(--border-subtle)] overflow-hidden flex flex-col">
         <div className="p-4 border-b border-[var(--border-subtle)] bg-white space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-sm uppercase tracking-wider text-black">Invoice Records</h3>

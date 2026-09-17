@@ -137,7 +137,7 @@ async def get_invoices_for_trader(trader_id: str, month: int = None, year: int =
                 end_date = f"{year + 1}-01-01"
             else:
                 end_date = f"{year}-{month + 1:02d}-01"
-            query = query.gte("created_at", start_date).lt("created_at", end_date)
+            query = query.gte("invoice_date", start_date).lt("invoice_date", end_date)
         response = query.order("created_at", desc=True).execute()
         return response.data or []
     except Exception as e:

@@ -24,6 +24,7 @@ export default function Home() {
   const [activeTraderName, setActiveTraderName] = useState("Loading...");
   const [actionCount, setActionCount] = useState(0);
   const [isComposition, setIsComposition] = useState(false);
+  const [traderPhone, setTraderPhone] = useState(null);
 
   useEffect(() => {
     fetchTraders();
@@ -42,6 +43,7 @@ export default function Home() {
       if (list.length > 0) {
         setTraderId(list[0].id);
         setActiveTraderName(list[0].business_name || list[0].name || "Trader 1");
+        setTraderPhone(list[0].whatsapp_number || null);
       } else {
         setTraderId("demo");
         setActiveTraderName("Demo Trader");
@@ -98,18 +100,19 @@ export default function Home() {
   function switchTrader(trader) {
     setTraderId(trader.id);
     setActiveTraderName(trader.business_name || trader.name || trader.id.slice(0, 8));
+    setTraderPhone(trader.whatsapp_number || null);
     setTraderDropdown(false);
   }
 
   return (
-    <div className="flex min-h-screen bg-[var(--bg-primary)]">
+    <div className="flex h-screen overflow-hidden bg-[var(--bg-primary)]">
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} actionCount={actionCount} />
 
-      <main className="flex-1 ml-64 p-8">
-        <header className="mb-8">
+      <main className="flex-1 ml-64 flex flex-col overflow-hidden">
+        <header className="flex-none px-6 pt-4 pb-3 border-b border-[var(--border-subtle)] bg-white">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold">
+              <h1 className="text-2xl font-bold">
                 <span className="gradient-text">Munim.ai</span>
               </h1>
               <p className="text-[var(--text-secondary)] mt-1">
@@ -173,33 +176,33 @@ export default function Home() {
         </header>
 
         {loading ? (
-          <div className="flex items-center justify-center h-96">
+          <div className="flex items-center justify-center flex-1">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
           </div>
         ) : (
           <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, staggerChildren: 0.1 }}
-            className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+            transition={{ duration: 0.3 }}
+            className="flex-1 grid grid-cols-3 gap-4 p-4 pt-3 overflow-hidden"
           >
             <motion.div 
-              initial={{ opacity: 0, x: -20 }}
+              initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1, duration: 0.5 }}
-              className="lg:col-span-2 space-y-6"
+              transition={{ delay: 0.1, duration: 0.3 }}
+              className="col-span-2 flex flex-col gap-4 min-h-0 overflow-y-auto"
             >
               {activeTab === "money-meter" && <MoneyMeter summary={summary} apiBase={API_BASE} isComposition={isComposition} />}
               {activeTab === "suppliers" && <SupplierHealth traderId={traderId} apiBase={API_BASE} />}
-              {activeTab === "actions" && <ActionQueue traderId={traderId} apiBase={API_BASE} />}
+              {activeTab === "actions" && <ActionQueue traderId={traderId} apiBase={API_BASE} traderPhone={traderPhone} />}
               {activeTab === "reports" && <ReportsPanel traderId={traderId} apiBase={API_BASE} />}
             </motion.div>
-            {/* Right Column - Upload + Live Feed */}
+            {/* Right Column — Timeline + GSTR-2B + Invoice Feed */}
             <motion.div 
-              initial={{ opacity: 0, x: 20 }}
+              initial={{ opacity: 0, x: 10 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2, duration: 0.5 }}
-              className="lg:col-span-1 space-y-6"
+              transition={{ delay: 0.15, duration: 0.3 }}
+              className="col-span-1 flex flex-col gap-3 min-h-0 overflow-hidden"
             >
               <GSTTimeline isComposition={isComposition} />
               <GSTR2BUpload traderId={traderId} apiBase={API_BASE} />
