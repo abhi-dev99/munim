@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Menu, Camera, FileText, CheckCircle2, ShieldAlert, X, Loader2 } from "lucide-react";
 import MoneyMeter from "../components/MoneyMeter";
 import ActionQueue from "../components/ActionQueue";
+import InvoiceDetailModal from "../components/InvoiceDetailModal";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -15,6 +16,7 @@ export default function TraderApp() {
   const [scanResult, setScanResult] = useState(null);
   const [activeTab, setActiveTab] = useState("home"); // home | history
   const [invoiceHistory, setInvoiceHistory] = useState([]);
+  const [selectedIndex, setSelectedIndex] = useState(null);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -86,6 +88,13 @@ export default function TraderApp() {
           setScanState("idle");
           setScanResult(null);
         }, 8000);
+        
+        // Refresh invoice history after successful upload
+        const invRes = await fetch(`${API_BASE}/api/v1/dashboard/invoices/${traderId}`);
+        if (invRes.ok) {
+          const invData = await invRes.json();
+          setInvoiceHistory((invData.invoices || []).slice(0, 20));
+        }
       } else {
         setScanState("error");
         setScanResult({ message: data.detail || "Processing failed. Try again." });
@@ -101,11 +110,21 @@ export default function TraderApp() {
   }
 
   const statusColors = {
-    CONFIRMED: "text-black",
+    CONFIRMED: "text-[var(--green-primary)]",
     FIXABLE_BLOCKED: "text-[var(--orange-primary)]",
     AT_RISK: "text-[var(--red-primary)]",
     INELIGIBLE: "text-[var(--text-muted)]",
     FRAUD_FLAGGED: "text-[var(--red-primary)]",
+  };
+
+  const getRowBackground = (status, fraudScore) => {
+    if (fraudScore >= 70) return "bg-red-50/50 border-red-200";
+    switch (status) {
+      case "FRAUD_FLAGGED":
+      case "AT_RISK": return "bg-red-50/50 border-red-200";
+      case "FIXABLE_BLOCKED": return "bg-orange-50/50 border-orange-200";
+      default: return "bg-white border-[var(--border-subtle)]";
+    }
   };
 
   return (
@@ -163,7 +182,11 @@ export default function TraderApp() {
             {scanState === "error" && scanResult && (
               <>
                 <p className="font-bold text-[var(--red-primary)] text-sm">Processing Failed</p>
-                <p className="text-xs text-[var(--text-secondary)]">{scanResult.message}</p>
+                <p className="text-xs text-[var(--text-secondary)]">
+                  {scanResult.message.includes("limit") || scanResult.message.includes("quota") 
+                    ? "API Usage Limit Reached. Please try again tomorrow or contact support." 
+                    : scanResult.message}
+                </p>
               </>
             )}
           </div>
@@ -199,18 +222,25 @@ export default function TraderApp() {
               <div className="text-center py-12 text-[var(--text-muted)] text-sm">No invoices processed yet. Scan your first invoice!</div>
             ) : (
               <div className="space-y-2">
-                {invoiceHistory.map((inv) => (
-                  <div key={inv.id} className="bg-white border border-[var(--border-subtle)] rounded-xl p-4 flex items-center justify-between">
+                {invoiceHistory.map((inv, index) => (
+                  <div 
+                    key={inv.id} 
+                    onClick={() => setSelectedIndex(index)}
+                    className={`border rounded-xl p-4 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-transform ${getRowBackground(inv.itc_status, inv.fraud_score)}`}
+                  >
                     <div>
-                      <p className="font-bold text-black text-sm">{inv.supplier_name || inv.gstin_supplier || "Unknown Supplier"}</p>
+                      <div className="flex items-center gap-1">
+                        <p className="font-bold text-black text-sm">{inv.supplier_name || inv.gstin_supplier || "Unknown Supplier"}</p>
+                        {inv.fraud_score >= 70 && <ShieldAlert size={12} className="text-[var(--red-primary)]" />}
+                      </div>
                       <p className="text-xs text-[var(--text-muted)]">{inv.invoice_number} · {inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString("en-IN") : ""}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-black text-sm">₹{Number(inv.total_amount || 0).toLocaleString("en-IN")}</p>
                       <span className={`text-[10px] font-bold uppercase ${
-                        inv.itc_status === "CONFIRMED" ? "text-black" :
-                        inv.itc_status === "FIXABLE_BLOCKED" ? "text-orange-500" :
-                        "text-red-500"
+                        inv.itc_status === "CONFIRMED" ? "text-[var(--green-primary)]" :
+                        inv.itc_status === "FIXABLE_BLOCKED" ? "text-[var(--orange-primary)]" :
+                        "text-[var(--red-primary)]"
                       }`}>{inv.itc_status || "PENDING"}</span>
                     </div>
                   </div>
@@ -247,6 +277,18 @@ export default function TraderApp() {
           </span>
         </button>
       </div>
+
+      {/* Modal */}
+      {selectedIndex !== null && (
+        <InvoiceDetailModal 
+          invoice={invoiceHistory[selectedIndex]} 
+          onClose={() => setSelectedIndex(null)} 
+          onNext={() => setSelectedIndex(selectedIndex < invoiceHistory.length - 1 ? selectedIndex + 1 : selectedIndex)}
+          onPrev={() => setSelectedIndex(selectedIndex > 0 ? selectedIndex - 1 : selectedIndex)}
+          hasNext={selectedIndex < invoiceHistory.length - 1}
+          hasPrev={selectedIndex > 0}
+        />
+      )}
     </div>
   );
 }
