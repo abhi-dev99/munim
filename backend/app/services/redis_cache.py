@@ -31,10 +31,10 @@ def get_redis() -> Optional[redis.Redis]:
         return _redis_client
     if settings.upstash_redis_url:
         try:
-            is_ssl = settings.upstash_redis_url.startswith("rediss://")
+            # redis.from_url reads ssl from URL scheme (rediss:// = ssl)
+            # Don't pass ssl= kwarg separately — causes errors with newer redis-py
             kwargs = {
                 "decode_responses": True,
-                "ssl": is_ssl,
                 "socket_connect_timeout": 2,
                 "socket_timeout": 2,
             }
