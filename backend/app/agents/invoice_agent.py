@@ -83,13 +83,23 @@ async def extract_entities(state: InvoiceAgentState) -> dict:
             mime_type=state.get("mime_type", "image/jpeg"),
         )
 
-        if not invoice_json or (invoice_json.confidence is not None and invoice_json.confidence < 0.3):
+        # Check for quota exceeded sentinel
+        if invoice_json and invoice_json.confidence == -1.0:
             return {
-                "error": "Low confidence extraction — image may be too blurry or not an invoice",
+                "error": "API_QUOTA_EXCEEDED",
+                "invoice_json": None,
+            }
+
+        if not invoice_json or (invoice_json.confidence is not None and invoice_json.confidence < 0.4):
+            conf = invoice_json.confidence if invoice_json else None
+            return {
+                "error": f"Low confidence extraction ({conf}) — image may be too blurry or not an invoice",
                 "invoice_json": invoice_json,
             }
 
+        # If confidence is None (field not returned by model), proceed — don't reject valid data
         return {"invoice_json": invoice_json, "error": None}
+
 
     except Exception as e:
         logger.error(f"Entity extraction failed: {e}")
