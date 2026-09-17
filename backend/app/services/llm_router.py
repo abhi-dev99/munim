@@ -144,23 +144,43 @@ IMPORTANT rules:
                 ],
                 config=types.GenerateContentConfig(
                     temperature=0.0,
-                    max_output_tokens=2048,
+                    max_output_tokens=8192,
                 )
             )
             raw = gemini_response.text.strip() if gemini_response.text else ""
-            logger.info(f"Gemini raw extraction response (first 200): {raw[:200]}")
+            logger.info(f"Gemini raw extraction response (first 300): {raw[:300]}")
             # Strip markdown code fences if Gemini wraps output
             if raw.startswith("```"):
                 lines = raw.split("\n")
                 raw = "\n".join(lines[1:])
                 if raw.endswith("```"):
                     raw = raw[:-3].strip()
-            result = json.loads(raw)
+            try:
+                result = json.loads(raw)
+            except json.JSONDecodeError:
+                # Response was truncated mid-JSON — try to salvage it
+                logger.warning("JSON truncated, attempting repair...")
+                # Find the last complete top-level field before truncation
+                # Strategy: find last complete '},\n' or '}\n' and close the JSON
+                salvage = raw
+                # Close any open array
+                open_arrays = salvage.count("[") - salvage.count("]")
+                open_objects = salvage.count("{") - salvage.count("}")
+                # Strip trailing incomplete string (find last complete ",)
+                last_quote = salvage.rfind('",')
+                last_newline = salvage.rfind('\n', 0, last_quote) if last_quote > 0 else -1
+                if last_newline > 0:
+                    salvage = salvage[:last_newline]
+                salvage += "]" * max(0, open_arrays) + "}" * max(0, open_objects)
+                try:
+                    result = json.loads(salvage)
+                    result["confidence"] = result.get("confidence", 0.7)  # partial = assume readable
+                    logger.info(f"Salvaged truncated JSON: {list(result.keys())}")
+                except Exception:
+                    logger.error(f"Salvage failed too. Raw (first 500): {raw[:500]}")
+                    return None
             logger.info(f"Invoice extracted: supplier={result.get('supplier_name')}, confidence={result.get('confidence')}, items={len(result.get('line_items', []))}")
             return result
-        except json.JSONDecodeError as e:
-            logger.error(f"Gemini extraction JSON parse failed: {e} | raw: {raw[:300] if 'raw' in locals() else 'N/A'}")
-            return None
         except Exception as e:
             err_str = str(e)
             logger.error(f"Gemini extraction exception (full): {err_str}")
