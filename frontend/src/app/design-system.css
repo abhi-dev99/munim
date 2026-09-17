@@ -1,49 +1,43 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
-  /* Color System — Rich dark theme */
-  --bg-primary: #0a0a1a;
-  --bg-secondary: #111128;
-  --bg-card: #1a1a3e;
-  --bg-card-hover: #222252;
-  --bg-glass: rgba(26, 26, 62, 0.7);
+  /* Color System — Uber-inspired Minimalist Light Theme */
+  --bg-primary: #F9F9F9;
+  --bg-secondary: #F3F3F3;
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #F9F9F9;
 
-  /* Accent colors */
-  --green-primary: #00e676;
-  --green-glow: rgba(0, 230, 118, 0.15);
-  --orange-primary: #ff9100;
-  --orange-glow: rgba(255, 145, 0, 0.15);
-  --red-primary: #ff1744;
-  --red-glow: rgba(255, 23, 68, 0.15);
-  --blue-primary: #2979ff;
-  --blue-glow: rgba(41, 121, 255, 0.15);
-  --purple-primary: #d500f9;
-  --purple-glow: rgba(213, 0, 249, 0.15);
+  /* Accent colors - Semantic but stark */
+  --green-primary: #059669; /* Emerald 600 */
+  --green-glow: #ECFDF5;    /* Emerald 50 */
+  --orange-primary: #D97706; /* Amber 600 */
+  --orange-glow: #FFFBEB;    /* Amber 50 */
+  --red-primary: #DC2626;   /* Red 600 */
+  --red-glow: #FEF2F2;      /* Red 50 */
+  --blue-primary: #2563EB;  /* Blue 600 */
+  --blue-glow: #EFF6FF;     /* Blue 50 */
+
+  /* Pure Black & White Contrast */
+  --uber-black: #000000;
+  --uber-white: #FFFFFF;
 
   /* Text */
-  --text-primary: #e8e8f0;
-  --text-secondary: #9090b0;
-  --text-muted: #606080;
+  --text-primary: #000000;
+  --text-secondary: #4B5563; /* Gray 600 */
+  --text-muted: #9CA3AF;     /* Gray 400 */
 
   /* Borders */
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-accent: rgba(41, 121, 255, 0.3);
+  --border-subtle: #E5E7EB;  /* Gray 200 */
+  --border-accent: #000000;
 
-  /* Gradients */
-  --gradient-primary: linear-gradient(135deg, #2979ff 0%, #d500f9 100%);
-  --gradient-success: linear-gradient(135deg, #00e676 0%, #00bcd4 100%);
-  --gradient-danger: linear-gradient(135deg, #ff1744 0%, #ff6d00 100%);
-  --gradient-card: linear-gradient(145deg, #1a1a3e 0%, #111128 100%);
-
-  /* Shadows */
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.04);
-  --shadow-glow-blue: 0 0 30px rgba(41, 121, 255, 0.2);
-  --shadow-glow-green: 0 0 30px rgba(0, 230, 118, 0.2);
+  /* Shadows - Crisp, not blurry */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-glow-blue: none; /* Removed for flat design */
+  --shadow-glow-green: none;
 
   /* Transitions */
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-medium: 300ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Global Styles */
@@ -54,20 +48,16 @@ body {
   min-height: 100vh;
 }
 
-/* Glass Card */
+/* Solid Card - Replaces Glass Card */
 .glass-card {
-  background: var(--bg-glass);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: 16px;
+  border-radius: 8px; /* Slightly sharper radius */
   box-shadow: var(--shadow-card);
-  transition: all var(--transition-medium);
+  transition: all var(--transition-fast);
 }
 .glass-card:hover {
-  border-color: var(--border-accent);
-  box-shadow: var(--shadow-card), var(--shadow-glow-blue);
-  transform: translateY(-2px);
+  border-color: var(--text-muted);
 }
 
 /* Status Badges */
@@ -76,36 +66,26 @@ body {
   align-items: center;
   gap: 4px;
   padding: 4px 10px;
-  border-radius: 20px;
+  border-radius: 4px; /* Sharper */
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 .badge-confirmed {
   background: var(--green-glow);
   color: var(--green-primary);
-  border: 1px solid rgba(0, 230, 118, 0.3);
+  border: 1px solid var(--green-glow);
 }
 .badge-blocked {
   background: var(--orange-glow);
   color: var(--orange-primary);
-  border: 1px solid rgba(255, 145, 0, 0.3);
+  border: 1px solid var(--orange-glow);
 }
 .badge-risk {
   background: var(--red-glow);
   color: var(--red-primary);
-  border: 1px solid rgba(255, 23, 68, 0.3);
-}
-.badge-missed {
-  background: var(--blue-glow);
-  color: var(--blue-primary);
-  border: 1px solid rgba(41, 121, 255, 0.3);
-}
-.badge-fraud {
-  background: var(--purple-glow);
-  color: var(--purple-primary);
-  border: 1px solid rgba(213, 0, 249, 0.3);
+  border: 1px solid var(--red-glow);
 }
 
 /* Health Score Indicators */
@@ -122,40 +102,17 @@ body {
   animation: countUp 0.6s ease-out forwards;
 }
 
-/* Pulse Indicator */
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-.pulse-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  animation: pulse 2s ease-in-out infinite;
-}
-.pulse-dot-green { background: var(--green-primary); }
-.pulse-dot-orange { background: var(--orange-primary); }
-.pulse-dot-red { background: var(--red-primary); }
-
-/* Gradient Text */
-.gradient-text {
-  background: var(--gradient-primary);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--text-muted);
+  background: var(--border-subtle);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
+  background: var(--text-muted);
 }

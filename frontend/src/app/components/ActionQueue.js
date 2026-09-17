@@ -22,7 +22,7 @@ export default function ActionQueue({ traderId, apiBase }) {
 
   if (loading) {
     return <div className="animate-pulse space-y-4">
-      {[1, 2, 3].map(i => <div key={i} className="h-32 bg-[var(--bg-card)] rounded-xl opacity-50"></div>)}
+      {[1, 2, 3].map(i => <div key={i} className="h-32 bg-[var(--bg-card)] rounded-xl opacity-50 border border-[var(--border-subtle)]"></div>)}
     </div>;
   }
 
@@ -30,7 +30,7 @@ export default function ActionQueue({ traderId, apiBase }) {
     <div className="space-y-6">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h2 className="text-2xl font-bold">Action Queue</h2>
+          <h2 className="text-2xl font-bold text-black">Action Queue</h2>
           <p className="text-[var(--text-secondary)] mt-1">Issues requiring your immediate attention</p>
         </div>
       </div>
@@ -39,35 +39,35 @@ export default function ActionQueue({ traderId, apiBase }) {
         {actions.map(action => (
           <div key={action.id} className="glass-card p-6 flex flex-col md:flex-row gap-6 items-start md:items-center">
             
-            <div className={`p-4 rounded-full flex-shrink-0 ${
-              action.urgency === 'CRITICAL' ? 'bg-[var(--red-glow)] text-[var(--red-primary)]' :
-              action.urgency === 'HIGH' ? 'bg-[var(--orange-glow)] text-[var(--orange-primary)]' :
-              'bg-[var(--blue-glow)] text-[var(--blue-primary)]'
+            <div className={`p-4 rounded flex-shrink-0 border ${
+              action.urgency === 'CRITICAL' ? 'bg-[var(--red-glow)] border-[var(--red-glow)] text-[var(--red-primary)]' :
+              action.urgency === 'HIGH' ? 'bg-[var(--orange-glow)] border-[var(--orange-glow)] text-[var(--orange-primary)]' :
+              'bg-[var(--blue-glow)] border-[var(--blue-glow)] text-[var(--blue-primary)]'
             }`}>
               {action.urgency === 'CRITICAL' ? <ShieldAlert size={24} /> : <AlertCircle size={24} />}
             </div>
 
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-1">
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
-                  action.urgency === 'CRITICAL' ? 'bg-[var(--red-primary)] text-white' :
-                  action.urgency === 'HIGH' ? 'bg-[var(--orange-primary)] text-white' :
-                  'bg-[var(--blue-primary)] text-white'
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase border ${
+                  action.urgency === 'CRITICAL' ? 'bg-[var(--red-glow)] text-[var(--red-primary)] border-[var(--red-glow)]' :
+                  action.urgency === 'HIGH' ? 'bg-[var(--orange-glow)] text-[var(--orange-primary)] border-[var(--orange-glow)]' :
+                  'bg-[var(--blue-glow)] text-[var(--blue-primary)] border-[var(--blue-glow)]'
                 }`}>
                   {action.urgency}
                 </span>
                 <span className="text-sm font-semibold text-[var(--text-secondary)]">{action.supplier}</span>
               </div>
-              <h4 className="text-lg font-bold text-white mb-1">{action.description}</h4>
+              <h4 className="text-lg font-bold text-black mb-1">{action.description}</h4>
               <p className="text-sm text-[var(--text-muted)]">ITC at stake: <strong className="text-[var(--text-primary)]">₹{action.amount.toLocaleString('en-IN')}</strong></p>
             </div>
 
             <div className="flex gap-3 w-full md:w-auto mt-4 md:mt-0 flex-shrink-0">
-              <button className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-white hover:bg-[var(--bg-card-hover)] transition-colors">
+              <button className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded bg-white border border-[var(--border-subtle)] text-black hover:bg-[var(--bg-secondary)] transition-colors font-medium">
                 <Phone size={16} />
                 <span>Call Supplier</span>
               </button>
-              <button className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-[var(--blue-primary)] text-white font-medium hover:bg-blue-600 transition-colors shadow-[var(--shadow-glow-blue)]">
+              <button className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded bg-black border border-black text-white font-medium hover:bg-gray-800 transition-colors">
                 <span>Resolve</span>
                 <ArrowRight size={16} />
               </button>
