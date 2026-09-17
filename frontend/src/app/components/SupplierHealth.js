@@ -26,7 +26,9 @@ export default function SupplierHealth({ traderId, apiBase }) {
               health: s.health_score || 100,
               status: s.health_score > 80 ? "GOOD" : s.health_score > 40 ? "RISK" : "CRITICAL",
               recentIssues: openIssues,
-              total_amount: s.total_invoices * 15000 // Just a proxy for volume if actual amount missing
+              flags: s.flags || [],
+              total_invoices: s.total_invoices || 0,
+              total_amount: s.total_amount || 0,
             };
           });
           setSuppliers(formatted);
@@ -71,8 +73,8 @@ export default function SupplierHealth({ traderId, apiBase }) {
               <th className="p-4 text-sm font-semibold text-black uppercase tracking-wider">Supplier</th>
               <th className="p-4 text-sm font-semibold text-black uppercase tracking-wider">Health Score</th>
               <th className="p-4 text-sm font-semibold text-black uppercase tracking-wider">Status</th>
-              <th className="p-4 text-sm font-semibold text-black uppercase tracking-wider">Recent Issues</th>
-              <th className="p-4 text-sm font-semibold text-black uppercase tracking-wider text-right">Volume (Proxy)</th>
+              <th className="p-4 text-sm font-semibold text-black uppercase tracking-wider">Flags</th>
+              <th className="p-4 text-sm font-semibold text-black uppercase tracking-wider text-right">Invoices</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border-subtle)]">
@@ -100,13 +102,22 @@ export default function SupplierHealth({ traderId, apiBase }) {
                 </td>
                 <td className="p-4">
                   {sup.recentIssues === 0 ? (
-                    <span className="text-[var(--text-muted)]">-</span>
+                    <span className="text-[var(--text-muted)]">—</span>
                   ) : (
-                    <span className="text-[var(--red-primary)] font-semibold">{sup.recentIssues} Open</span>
+                    <div>
+                      <span className="text-[var(--red-primary)] font-semibold">{sup.recentIssues} Open</span>
+                      {sup.flags && sup.flags.slice(0, 2).map((f, i) => (
+                        <div key={i} className="text-[10px] text-[var(--text-muted)] mt-0.5">{f.flag_type || f}</div>
+                      ))}
+                    </div>
                   )}
                 </td>
                 <td className="p-4 text-right font-semibold text-black">
-                  ₹{sup.total_amount.toLocaleString('en-IN')}
+                  {sup.total_amount > 0 ? (
+                    <span>₹{sup.total_amount.toLocaleString('en-IN')}</span>
+                  ) : (
+                    <span className="text-[var(--text-muted)]">{sup.total_invoices} inv</span>
+                  )}
                 </td>
               </tr>
             ))}
