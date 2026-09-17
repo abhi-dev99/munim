@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Menu, Camera, FileText, CheckCircle2, ShieldAlert } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Menu, Camera, FileText, CheckCircle2, ShieldAlert, X, Loader2 } from "lucide-react";
 import MoneyMeter from "../components/MoneyMeter";
 import ActionQueue from "../components/ActionQueue";
 
@@ -11,6 +11,9 @@ export default function TraderApp() {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [traderId, setTraderId] = useState(null);
+  const [scanState, setScanState] = useState("idle"); // idle | uploading | success | error
+  const [scanResult, setScanResult] = useState(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     async function fetchDashboardData() {
@@ -42,8 +45,77 @@ export default function TraderApp() {
     fetchDashboardData();
   }, []);
 
+  async function handleInvoiceUpload(file) {
+    if (!file || !traderId || traderId === "demo") {
+      setScanState("error");
+      setScanResult({ message: "No active trader. Please set up your GSTIN first." });
+      return;
+    }
+
+    setScanState("uploading");
+    setScanResult(null);
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("trader_id", traderId);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/webhook/upload-invoice`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setScanState("success");
+        setScanResult({
+          status: data.itc_verdict?.status || "PROCESSING",
+          itc_amount: data.itc_verdict?.itc_amount || 0,
+          message: data.diagnosis_hi || data.diagnosis_en || "Invoice processed!",
+        });
+        setTimeout(() => {
+          setScanState("idle");
+          setScanResult(null);
+        }, 8000);
+      } else {
+        setScanState("error");
+        setScanResult({ message: data.detail || "Processing failed. Try again." });
+      }
+    } catch (err) {
+      setScanState("error");
+      setScanResult({ message: "Network error — check your connection." });
+    }
+  }
+
+  function triggerScan() {
+    fileInputRef.current?.click();
+  }
+
+  const statusColors = {
+    CONFIRMED: "text-black",
+    FIXABLE_BLOCKED: "text-[var(--orange-primary)]",
+    AT_RISK: "text-[var(--red-primary)]",
+    INELIGIBLE: "text-[var(--text-muted)]",
+    FRAUD_FLAGGED: "text-[var(--red-primary)]",
+  };
+
   return (
     <div className="flex flex-col min-h-screen pb-20">
+      {/* Hidden file input — mobile camera capture */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,application/pdf"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleInvoiceUpload(file);
+          e.target.value = "";
+        }}
+      />
+
       {/* Header */}
       <header className="p-4 flex items-center justify-between border-b border-[var(--border-subtle)] bg-white sticky top-0 z-10">
         <div className="flex flex-col">
@@ -55,6 +127,46 @@ export default function TraderApp() {
         </button>
       </header>
 
+      {/* Scan Result Toast */}
+      {scanState !== "idle" && (
+        <div className="mx-4 mt-4 p-4 rounded-xl border border-[var(--border-subtle)] bg-white flex items-start gap-3">
+          {scanState === "uploading" && <Loader2 size={18} className="animate-spin text-black mt-0.5 flex-shrink-0" />}
+          {scanState === "success" && <CheckCircle2 size={18} className="text-black mt-0.5 flex-shrink-0" />}
+          {scanState === "error" && <ShieldAlert size={18} className="text-[var(--red-primary)] mt-0.5 flex-shrink-0" />}
+          <div className="flex-1">
+            {scanState === "uploading" && (
+              <>
+                <p className="font-bold text-black text-sm">Processing invoice...</p>
+                <p className="text-xs text-[var(--text-secondary)]">Checking GSTIN, HSN codes, GSTR-2B match</p>
+              </>
+            )}
+            {scanState === "success" && scanResult && (
+              <>
+                <p className="font-bold text-black text-sm">
+                  Invoice Analyzed —{" "}
+                  <span className={statusColors[scanResult.status] || "text-black"}>{scanResult.status}</span>
+                </p>
+                {scanResult.itc_amount > 0 && (
+                  <p className="text-xs font-bold text-black">ITC: ₹{scanResult.itc_amount.toLocaleString("en-IN")}</p>
+                )}
+                <p className="text-xs text-[var(--text-secondary)] mt-1">{scanResult.message}</p>
+              </>
+            )}
+            {scanState === "error" && scanResult && (
+              <>
+                <p className="font-bold text-[var(--red-primary)] text-sm">Processing Failed</p>
+                <p className="text-xs text-[var(--text-secondary)]">{scanResult.message}</p>
+              </>
+            )}
+          </div>
+          {scanState !== "uploading" && (
+            <button onClick={() => { setScanState("idle"); setScanResult(null); }}>
+              <X size={16} className="text-[var(--text-muted)]" />
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="flex-1 p-4 overflow-y-auto space-y-6 bg-[var(--bg-primary)]">
         {loading ? (
@@ -65,13 +177,11 @@ export default function TraderApp() {
           <>
             <div className="mb-2">
               <h2 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Financial Snapshot</h2>
-              {/* Reuse MoneyMeter, it's responsive */}
               <MoneyMeter summary={summary} apiBase={API_BASE} />
             </div>
 
             <div>
               <h2 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Required Actions</h2>
-              {/* Reuse ActionQueue, it's responsive */}
               <ActionQueue traderId={traderId} apiBase={API_BASE} />
             </div>
           </>
@@ -85,10 +195,20 @@ export default function TraderApp() {
           <span className="text-[10px] font-bold">Reports</span>
         </button>
         
-        {/* Massive Scan Button (Uber-style call to action) */}
-        <button className="flex-2 flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-black text-white shadow-xl hover:bg-gray-900 transition-all transform hover:scale-105 w-full">
-          <Camera size={20} />
-          <span className="font-bold text-sm">Scan Invoice</span>
+        {/* Massive Scan Button */}
+        <button
+          onClick={triggerScan}
+          disabled={scanState === "uploading"}
+          className="flex-2 flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-black text-white shadow-xl hover:bg-gray-900 transition-all transform hover:scale-105 w-full disabled:opacity-60 disabled:scale-100"
+        >
+          {scanState === "uploading" ? (
+            <Loader2 size={20} className="animate-spin" />
+          ) : (
+            <Camera size={20} />
+          )}
+          <span className="font-bold text-sm">
+            {scanState === "uploading" ? "Processing..." : "Scan Invoice"}
+          </span>
         </button>
       </div>
     </div>
