@@ -32,6 +32,8 @@ class MunimPDF(FPDF):
         self.set_text_color(255, 255, 255)
         self.set_xy(10, 4)
         self.cell(0, 10, 'Munim.ai -- GST Compliance Report', align='L')
+        # Reset Y so text doesn't overlap the header
+        self.set_y(22)
 
     def footer(self):
         self.set_y(-12)
@@ -41,6 +43,8 @@ class MunimPDF(FPDF):
 
     def section_title(self, title: str):
         self.ln(4)
+        if self.get_y() > 260:
+            self.add_page()
         self.set_fill_color(240, 240, 240)
         self.set_font('Helvetica', 'B', 10)
         self.set_text_color(30, 30, 30)
@@ -142,11 +146,11 @@ async def generate_munim_report(
     # --- Build PDF ---
     pdf = MunimPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
-    pdf.add_page()
     pdf.set_top_margin(22)
+    pdf.add_page()
 
     # Title block
-    pdf.ln(6)
+    pdf.ln(2)
     pdf.set_font('Helvetica', 'B', 16)
     pdf.set_text_color(30, 30, 30)
     pdf.cell(0, 8, 'Monthly GST Compliance Report', ln=True)
@@ -324,6 +328,8 @@ async def generate_munim_report(
 
     # Actionable Insights
     pdf.section_title("6. Compliance Advisory & Actionable Insights")
+    if pdf.get_y() > 260:
+        pdf.add_page()
     pdf.set_font('Helvetica', '', 9)
     pdf.set_text_color(40, 40, 40)
     pdf.multi_cell(0, 6, "1. Follow up with suppliers holding AT_RISK ITC to ensure GSTR-1 is filed before the 11th.\n"
