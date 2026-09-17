@@ -6,7 +6,7 @@
 ![Stack](https://img.shields.io/badge/Stack-FastAPI%20%7C%20Next.js%20%7C%20Supabase%20%7C%20Gemini-orange)
 ![License](https://img.shields.io/badge/License-Proprietary-red)
 
-> Traders forward invoices via WhatsApp. Munim extracts, validates, fraud-checks, and reconciles them automatically. CAs get a clean action-driven dashboard instead of a pile of paper.
+> Traders forward invoices via WhatsApp. Munim extracts, validates, fraud-checks, and reconciles them automatically. CAs get a clean action-driven dashboard instead of a pile of paper..
 
 ---
 
@@ -96,7 +96,7 @@ Score ≥ 70 → `FRAUD_FLAGGED`. Score 40–69 → soft flag for CA review.
 | GSTIN Validation | deepvue.tech API |
 | Fuzzy Matching | python-Levenshtein |
 | PDF Generation | WeasyPrint |
-| Deployment | server (backend) + server (frontend) |
+| Deployment | Railway (backend) + Vercel (frontend) |
 
 ---
 
@@ -111,7 +111,7 @@ Trader (WhatsApp / Email)
 Meta Cloud API / Cloudmailin Webhook
          │
          ▼
-FastAPI Backend (server)
+FastAPI Backend (Railway)
          │
     LangGraph Pipeline
     ├── 1. Gemini Vision OCR → InvoiceJSON
@@ -123,7 +123,7 @@ FastAPI Backend (server)
          │
          ▼
 Supabase PostgreSQL
-    ├── CA Dashboard (Next.js / server)
+    ├── CA Dashboard (Next.js / Vercel)
     │     ├── Action Queue
     │     ├── Supplier Health
     │     ├── ITC Timeline Chart
@@ -223,18 +223,18 @@ Run `backend/schema.sql` in your Supabase SQL editor.
 
 ## Production Deployment
 
-### Backend → server
+### Backend → Railway
 1. New Project → Deploy from GitHub → Root Directory: `backend/`
-2. Add Redis from server marketplace
-3. Set all env vars in server → Variables
+2. Add Redis from Railway marketplace
+3. Set all env vars in Railway → Variables
 4. Auto-deploys on every push to `main`
 
-### Frontend → server
+### Frontend → Vercel
 1. New Project → Import repo → Root Directory: `frontend/`
-2. Add env var: `NEXT_PUBLIC_API_URL=https://your-server-app.up.server.app`
+2. Add env var: `NEXT_PUBLIC_API_URL=https://your-railway-app.up.railway.app`
 
 ### WhatsApp Webhook
-- URL: `https://your-backend.up.server.app/api/v1/webhook`
+- URL: `https://your-backend.up.railway.app/api/v1/webhook`
 - Verify Token: set in `.env`
 - Subscribe to: `messages`
 
