@@ -66,7 +66,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen p-8 bg-[var(--background)]">
+    <div className="min-h-screen p-8 bg-[#f4f4f5]">
       <div className="max-w-6xl mx-auto space-y-8">
         <div className="flex justify-between items-end">
           <div>
