@@ -55,6 +55,13 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, trade
       }).catch(console.error);
   }, [traderId, apiBase]);
 
+  const navItems = [
+    { id: "money-meter", label: t("nav_money_meter"),     icon: LayoutDashboard },
+    { id: "suppliers",   label: t("nav_supplier_trust"),  icon: Users            },
+    { id: "actions",     label: t("nav_action_queue"),    icon: AlertCircle, badge: actionCount },
+    { id: "reports",     label: t("nav_monthly_reports"), icon: FileText         },
+  ];
+
   // Default nav items are defined as navItems above. We filter and sort based on prefs.
   const visibleNavItems = prefs 
     ? prefs.map(id => navItems.find(i => i.id === id)).filter(Boolean)
@@ -81,12 +88,6 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, trade
       .catch(() => setItcData([]));
   }, [traderId, apiBase]);
 
-  const navItems = [
-    { id: "money-meter", label: t("nav_money_meter"),     icon: LayoutDashboard },
-    { id: "suppliers",   label: t("nav_supplier_trust"),  icon: Users            },
-    { id: "actions",     label: t("nav_action_queue"),    icon: AlertCircle, badge: actionCount },
-    { id: "reports",     label: t("nav_monthly_reports"), icon: FileText         },
-  ];
 
   // Upcoming GST deadlines
   const today = new Date();
