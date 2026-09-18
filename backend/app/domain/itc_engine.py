@@ -98,26 +98,33 @@ class ITCRulesEngine:
         ])
 
     def is_within_time_limit(self, invoice_date_str: Optional[str]) -> bool:
-        """Check if ITC claim is within the statutory time limit (Section 16(4))."""
+        """
+        Check if ITC claim is within the statutory time limit (Section 16(4) CGST Act).
+        Statutory deadline is 30th November following the end of the financial year
+        in which the invoice was issued (e.g. FY 2024-25 invoice deadline is 30 Nov 2025).
+        """
         if not invoice_date_str:
             return True  # Assume valid if date unknown
 
         try:
             inv_date = date.fromisoformat(invoice_date_str)
-            deadline = inv_date + timedelta(days=self.ITC_CLAIM_DEADLINE_MONTHS * 30)
-            return date.today() <= deadline
+            # Indian Financial Year: April 1 to March 31
+            # If invoice is issued in April or later, FY ends in March of next year
+            # If invoice is issued in Jan-March, FY ends in March of current year
+            fy_end_year = inv_date.year + 1 if inv_date.month >= 4 else inv_date.year
+            statutory_deadline = date(fy_end_year, 11, 30)
+            return date.today() <= statutory_deadline
         except (ValueError, TypeError):
             return True
 
-    def is_within_payment_window(self, invoice_date_str: Optional[str]) -> bool:
+    def is_within_payment_window(self, invoice_date_str: Optional[str], is_paid: bool = True) -> bool:
         """
         Section 16(2) second proviso: ITC is not claimable if the supplier
         has not been paid within 180 days of the invoice date.
-        Returns True if still within the payment window (ITC is safe),
-        False if 180 days have elapsed (ITC must be reversed).
+        Returns True if paid OR within 180 days window.
         """
-        if not invoice_date_str:
-            return True  # Can't determine — don't block
+        if not invoice_date_str or is_paid:
+            return True
 
         try:
             inv_date = date.fromisoformat(invoice_date_str)
@@ -177,55 +184,6 @@ class ITCRulesEngine:
         """
 
         total_tax = invoice.total_tax_amount or 0.0
-
-        # --- Check 0: URD & Defective Invoice Logic ---
-        if not invoice.gstin_supplier or invoice.gstin_supplier.strip().upper() == "URD" or invoice.gstin_supplier == "MISSING_BUT_REGISTERED":
-            if invoice.total_tax_amount and invoice.total_tax_amount > 0:
-                return ITCVerdict(
-                    status=ITCStatus.FIXABLE_BLOCKED,
-                    itc_amount=0.0,
-                    itc_blocked=total_tax,
-                    reason="Defective Invoice: GST charged but supplier GSTIN is missing.",
-                    legal_section="16(2)(a)",
-                    fix_action="Ask supplier for a revised invoice containing their GSTIN."
-                )
-            
-            if invoice.gstin_supplier == "MISSING_BUT_REGISTERED":
-                return ITCVerdict(
-                    status=ITCStatus.FIXABLE_BLOCKED,
-                    itc_amount=0.0,
-                    itc_blocked=total_tax,
-                    reason=f"Defective Invoice: Missing GSTIN, but supplier '{invoice.supplier_name}' is known to be registered.",
-                    legal_section="16(2)(a)",
-                    fix_action="Ask supplier for a revised invoice containing their GSTIN."
-                )
-            
-            # True URD Purchase
-            # Check for RCM liability based on known RCM HSN codes (e.g. GTA, Legal)
-            rcm_applicable = False
-            for item in invoice.line_items:
-                if item.hsn_code and (item.hsn_code.startswith("9965") or item.hsn_code.startswith("9967") or item.hsn_code.startswith("9982")):
-                    rcm_applicable = True
-                    break
-            
-            if rcm_applicable:
-                return ITCVerdict(
-                    status=ITCStatus.CONFIRMED,
-                    itc_amount=total_tax,
-                    itc_blocked=0.0,
-                    reason="URD Purchase with RCM Liability: You must pay GST on reverse charge and then claim it as ITC.",
-                    legal_section="9(3) / 9(4)",
-                    fix_action="Pay RCM tax in GSTR-3B and claim equivalent ITC."
-                )
-            else:
-                return ITCVerdict(
-                    status=ITCStatus.INELIGIBLE,
-                    itc_amount=0.0,
-                    itc_blocked=0.0,
-                    reason="Unregistered Dealer (URD) Purchase: Exempt/Non-GST.",
-                    legal_section="Exempt",
-                    fix_action="No action needed. Logged as URD expense."
-                )
 
         # --- Check 1: Section 17(5) hard blocks ---
         for item in invoice.line_items:
@@ -323,14 +281,15 @@ class ITCRulesEngine:
                     )
 
         # --- Check 9: 180-day payment rule (Section 16(2) second proviso) ---
-        if not self.is_within_payment_window(invoice.invoice_date):
+        is_paid = getattr(invoice, "is_paid", True)
+        if not self.is_within_payment_window(invoice.invoice_date, is_paid=is_paid):
             return ITCVerdict(
-                status=ITCStatus.FIXABLE_BLOCKED,
-                itc_amount=0.0,
-                itc_blocked=total_tax,
-                reason="ITC reversal required — invoice unpaid beyond 180 days (Section 16(2) second proviso)",
+                status=ITCStatus.AT_RISK,
+                itc_amount=total_tax,
+                itc_blocked=0.0,
+                reason="Invoice >180 days old: verify supplier payment status (Section 16(2) 2nd Proviso)",
                 legal_section="16(2)",
-                fix_action="Pay the supplier and re-claim ITC in the return for the month of payment. Interest is applicable on reversed ITC.",
+                fix_action="If unpaid >180 days, ITC reversal with interest is statutory; confirm payment status to clear warning.",
             )
 
         # --- Check 10: HSN rate mismatches (fixable blocks) ---
