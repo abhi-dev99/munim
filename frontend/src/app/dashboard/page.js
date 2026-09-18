@@ -273,7 +273,10 @@ function EWayBillCard() {
   );
 }
 
+import { useRouter } from "next/navigation";
+
 export default function Home() {
+  const router = useRouter();
   const { t, lang, changeLanguage } = useLanguage();
   const [activeTab, setActiveTab] = useState("money-meter");
   const [summary, setSummary] = useState(null);
@@ -340,11 +343,13 @@ export default function Home() {
         },
         { 
           element: '#sidebar-nav-suppliers', 
-          popover: { title: 'Supplier Trust', description: 'Navigate to the Supplier Trust tab to view a detailed breakdown of all supplier invoices and pinpoint exactly which ones are causing blocked ITC.', side: "right", align: 'start' }
+          popover: { title: 'Supplier Trust', description: 'Navigate to the Supplier Trust tab to view a detailed breakdown of all supplier invoices and pinpoint exactly which ones are causing blocked ITC.', side: "right", align: 'start' },
+          onHighlightStarted: () => { setActiveTab("suppliers"); }
         },
         { 
           element: '#sidebar-nav-actions', 
-          popover: { title: 'Action Queue', description: 'This is your triage center. Any discrepancies, mismatching invoices, or blocked ITC that require your immediate attention will be queued here.', side: "right", align: 'start' }
+          popover: { title: 'Action Queue', description: 'This is your triage center. Any discrepancies, mismatching invoices, or blocked ITC that require your immediate attention will be queued here.', side: "right", align: 'start' },
+          onHighlightStarted: () => { setActiveTab("actions"); }
         },
         { 
           element: '#sidebar-my-profile', 
