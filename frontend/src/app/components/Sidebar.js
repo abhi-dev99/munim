@@ -48,6 +48,23 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0 }) {
         })}
       </nav>
 
+      <div className="px-6 mb-6">
+        <div className="p-4 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-subtle)] space-y-3">
+          <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center">
+            <AlertCircle size={16} />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-black">Need Help?</h4>
+            <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">
+              Having trouble with ITC claims? Contact your CA or our support team.
+            </p>
+          </div>
+          <button className="w-full py-2 bg-white border border-[var(--border-subtle)] rounded-lg text-xs font-bold text-black hover:bg-gray-50 transition-colors shadow-sm">
+            Contact Support
+          </button>
+        </div>
+      </div>
+
       <div className="p-4 border-t border-[var(--border-subtle)] space-y-1">
         <button className="flex items-center gap-3 px-3 py-2 text-[var(--text-secondary)] hover:text-black hover:bg-[var(--bg-secondary)] rounded-lg transition-colors w-full">
           <div className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center font-bold text-[10px]">
