@@ -1,0 +1,100 @@
+{
+  "widgets": [
+    {
+      "type": "text", "x": 0, "y": 0, "width": 24, "height": 1,
+      "properties": { "markdown": "# Munim.ai -- Invoice Pipeline (ap-south-1)" }
+    },
+    {
+      "type": "metric", "x": 0, "y": 1, "width": 12, "height": 6,
+      "properties": {
+        "title": "Lambda invocations", "region": "ap-south-1", "stat": "Sum", "period": 300,
+        "metrics": [
+          ["AWS/Lambda", "Invocations", "FunctionName", "munim-upload-invoice"],
+          ["AWS/Lambda", "Invocations", "FunctionName", "munim-whatsapp-inbound"],
+          ["AWS/Lambda", "Invocations", "FunctionName", "munim-invoice-ingest"],
+          ["AWS/Lambda", "Invocations", "FunctionName", "munim-extract-invoice"],
+          ["AWS/Lambda", "Invocations", "FunctionName", "munim-compute-verdict"],
+          ["AWS/Lambda", "Invocations", "FunctionName", "munim-explain-verdict"],
+          ["AWS/Lambda", "Invocations", "FunctionName", "munim-finalize-invoice"]
+        ]
+      }
+    },
+    {
+      "type": "metric", "x": 12, "y": 1, "width": 12, "height": 6,
+      "properties": {
+        "title": "Lambda errors", "region": "ap-south-1", "stat": "Sum", "period": 300,
+        "metrics": [
+          ["AWS/Lambda", "Errors", "FunctionName", "munim-upload-invoice"],
+          ["AWS/Lambda", "Errors", "FunctionName", "munim-whatsapp-inbound"],
+          ["AWS/Lambda", "Errors", "FunctionName", "munim-invoice-ingest"],
+          ["AWS/Lambda", "Errors", "FunctionName", "munim-extract-invoice"],
+          ["AWS/Lambda", "Errors", "FunctionName", "munim-compute-verdict"],
+          ["AWS/Lambda", "Errors", "FunctionName", "munim-explain-verdict"],
+          ["AWS/Lambda", "Errors", "FunctionName", "munim-finalize-invoice"]
+        ]
+      }
+    },
+    {
+      "type": "metric", "x": 0, "y": 7, "width": 12, "height": 6,
+      "properties": {
+        "title": "Lambda duration (avg, ms)", "region": "ap-south-1", "stat": "Average", "period": 300,
+        "metrics": [
+          ["AWS/Lambda", "Duration", "FunctionName", "munim-extract-invoice"],
+          ["AWS/Lambda", "Duration", "FunctionName", "munim-compute-verdict"],
+          ["AWS/Lambda", "Duration", "FunctionName", "munim-explain-verdict"],
+          ["AWS/Lambda", "Duration", "FunctionName", "munim-finalize-invoice"]
+        ]
+      }
+    },
+    {
+      "type": "metric", "x": 12, "y": 7, "width": 12, "height": 6,
+      "properties": {
+        "title": "Step Functions -- pipeline outcomes", "region": "ap-south-1", "stat": "Sum", "period": 300,
+        "metrics": [
+          ["AWS/States", "ExecutionsSucceeded", "StateMachineArn", "arn:aws:states:ap-south-1:753654068031:stateMachine:munim-invoice-pipeline"],
+          ["AWS/States", "ExecutionsFailed", "StateMachineArn", "arn:aws:states:ap-south-1:753654068031:stateMachine:munim-invoice-pipeline"],
+          ["AWS/States", "ExecutionThrottled", "StateMachineArn", "arn:aws:states:ap-south-1:753654068031:stateMachine:munim-invoice-pipeline"]
+        ]
+      }
+    },
+    {
+      "type": "metric", "x": 0, "y": 13, "width": 12, "height": 6,
+      "properties": {
+        "title": "API Gateway -- munim-invoice-api", "region": "ap-south-1", "stat": "Sum", "period": 300,
+        "metrics": [
+          ["AWS/ApiGateway", "Count", "ApiName", "munim-invoice-api"],
+          ["AWS/ApiGateway", "4XXError", "ApiName", "munim-invoice-api"],
+          ["AWS/ApiGateway", "5XXError", "ApiName", "munim-invoice-api"]
+        ]
+      }
+    },
+    {
+      "type": "metric", "x": 12, "y": 13, "width": 12, "height": 6,
+      "properties": {
+        "title": "WhatsApp inbound -- SNS publishes to the Lambda", "region": "ap-south-1", "stat": "Sum", "period": 300,
+        "metrics": [
+          ["AWS/SNS", "NumberOfMessagesPublished", "TopicName", "munim-whatsapp-inbound"]
+        ]
+      }
+    },
+    {
+      "type": "metric", "x": 0, "y": 19, "width": 12, "height": 6,
+      "properties": {
+        "title": "DynamoDB -- munim-invoices consumed capacity", "region": "ap-south-1", "stat": "Sum", "period": 300,
+        "metrics": [
+          ["AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", "munim-invoices"],
+          ["AWS/DynamoDB", "ConsumedWriteCapacityUnits", "TableName", "munim-invoices"]
+        ]
+      }
+    },
+    {
+      "type": "metric", "x": 12, "y": 19, "width": 12, "height": 6,
+      "properties": {
+        "title": "DLQ -- failed pipeline messages waiting", "region": "ap-south-1", "stat": "Maximum", "period": 300,
+        "metrics": [
+          ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", "munim-invoice-ingest-dlq"]
+        ]
+      }
+    }
+  ]
+}
