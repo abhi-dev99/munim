@@ -43,6 +43,23 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, trade
   const [testAlertSent, setTestAlertSent] = useState(false);
   const [testAlertLoading, setTestAlertLoading] = useState(false);
   const [testAlertError, setTestAlertError] = useState(null);
+
+  const [prefs, setPrefs] = useState(null);
+
+  useEffect(() => {
+    if (!traderId || !apiBase) return;
+    authFetch(`${apiBase}/api/v1/dashboard/preferences/${traderId}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.sidebar) setPrefs(d.sidebar);
+      }).catch(console.error);
+  }, [traderId, apiBase]);
+
+  // Default nav items are defined as navItems above. We filter and sort based on prefs.
+  const visibleNavItems = prefs 
+    ? prefs.map(id => navItems.find(i => i.id === id)).filter(Boolean)
+    : navItems;
+
   const [authName, setAuthName] = useState("N");
   const [itcData, setItcData] = useState([]);
 
@@ -104,7 +121,7 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, trade
 
       {/* Main Nav */}
       <nav className="px-3 pt-4 pb-2 space-y-1 flex-none">
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
           return (
