@@ -151,8 +151,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from app.api.webhook import router as webhook_router
+from app.api.dashboard import router as dashboard_router
+from app.api.gstr2b import router as gstr2b_router
+from app.api.reports import router as reports_router
+from app.api.privacy import router as privacy_router
+from app.api.admin import router as admin_router
 from app.api.email_webhook import router as email_webhook_router
 from app.api.auth import router as auth_router
+from app.api.communications import router as communications_router
 
 # Mount routers
 app.include_router(auth_router)
@@ -163,6 +170,7 @@ app.include_router(gstr2b_router)
 app.include_router(reports_router)
 app.include_router(privacy_router)
 app.include_router(admin_router)
+app.include_router(communications_router)
 
 
 @app.get("/")

@@ -246,6 +246,58 @@ export default function InvoiceDetailModal({ invoice, onClose, onNext, onPrev, h
               </div>
             )}
 
+            {/* GSTR-2B Warning Panel */}
+            {(invoice.gstr2b_match_status === "UNRECONCILED" || invoice.gstr2b_match_status === "ITC_AT_RISK") && (
+              <div className="mt-4 p-4 border rounded-none bg-yellow-50 border-yellow-300">
+                <p className="text-xs font-bold uppercase tracking-wide mb-2 flex items-center gap-1 text-yellow-800">
+                  <AlertTriangle size={14} /> Missed GSTR-1 Filing (Vendor)
+                </p>
+                <p className="text-sm text-yellow-900 mb-3">
+                  This vendor has not filed this invoice in their GSTR-1. Send them a warning to file it immediately.
+                </p>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={async () => {
+                      try {
+                        const res = await fetch(`http://localhost:8000/api/v1/communicate/email-vendor/${invoice.id}`, { method: 'POST' });
+                        if (res.ok) {
+                          alert("Warning Email sent successfully!");
+                        } else {
+                          const err = await res.json();
+                          alert(`Failed to send email: ${err.detail}`);
+                        }
+                      } catch (e) {
+                        alert("Failed to send email");
+                      }
+                    }}
+                    disabled={!invoice.supplier_email}
+                    className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-none ${invoice.supplier_email ? 'bg-black text-white hover:bg-gray-800' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
+                  >
+                    Email Warning
+                  </button>
+                  <button 
+                    onClick={async () => {
+                      try {
+                        const res = await fetch(`http://localhost:8000/api/v1/communicate/whatsapp-vendor/${invoice.id}`, { method: 'POST' });
+                        if (res.ok) {
+                          alert("WhatsApp Warning sent successfully!");
+                        } else {
+                          const err = await res.json();
+                          alert(`Failed to send WhatsApp: ${err.detail}`);
+                        }
+                      } catch (e) {
+                        alert("Failed to send WhatsApp");
+                      }
+                    }}
+                    disabled={!invoice.supplier_phone}
+                    className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-none ${invoice.supplier_phone ? 'bg-[#25D366] text-white hover:bg-[#128C7E]' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
+                  >
+                    WhatsApp Warning
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* CA Actions */}
             <div className="mt-auto pt-4">
               <div className="flex gap-2">
