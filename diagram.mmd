@@ -1,0 +1,73 @@
+flowchart TD
+    %% -- Theme & Colors --
+    classDef client fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0f172a,rx:10,ry:10
+    classDef gateway fill:#fef08a,stroke:#ca8a04,stroke-width:2px,color:#0f172a,rx:10,ry:10
+    classDef core fill:#f1f5f9,stroke:#475569,stroke-width:2px,color:#0f172a,rx:10,ry:10
+    classDef ai fill:#ede9fe,stroke:#7c3aed,stroke-width:2px,color:#0f172a,rx:10,ry:10
+    classDef db fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#0f172a,rx:10,ry:10
+    classDef ext fill:#fee2e2,stroke:#dc2626,stroke-width:2px,color:#0f172a,rx:10,ry:10
+
+    subgraph Clients ["Ingestion Layer"]
+        direction LR
+        WA["WhatsApp"]:::client
+        Email["CloudMailin"]:::client
+        PWA["Next.js PWA"]:::client
+    end
+
+    subgraph Gateway ["FastAPI Gateway"]
+        direction LR
+        WH["Webhooks Router"]:::gateway
+        REST["REST API"]:::core
+    end
+
+    subgraph Engine ["Core Processing & Agents"]
+        direction TB
+        InvAgent["Invoice Agent"]:::ai
+        Fraud["Fraud Engine"]:::ai
+        Reconciler["GSTR-2B Reconciler"]:::core
+        Report["Report Generator"]:::core
+    end
+
+    subgraph AILayer ["AI & Privacy Layer"]
+        direction LR
+        Router{"Privacy Router"}:::ai
+        Gemini("Google Gemini"):::ext
+        Ollama("Ollama"):::ext
+    end
+
+    subgraph Data ["Database & Infrastructure"]
+        direction LR
+        DB[("PostgreSQL")]:::db
+        Vector[("pgvector")]:::db
+        Store[("Supabase Storage")]:::db
+        Redis[("Redis")]:::db
+    end
+
+    subgraph Outbound ["Outbound Alerts"]
+        direction LR
+        WAMeta("Meta API"):::ext
+        Resend("Resend API"):::ext
+    end
+
+    WA --> WH
+    Email --> WH
+    PWA --> REST
+
+    WH --> InvAgent
+    REST --> Reconciler
+    REST --> Report
+
+    InvAgent --> Router
+    Router --> Gemini
+    Router --> Ollama
+    
+    InvAgent --> Fraud
+    Fraud --> Reconciler
+    
+    Reconciler --> DB
+    Fraud --> Vector
+    InvAgent --> Store
+    WH -.-> Redis
+
+    Reconciler --> WAMeta
+    Report --> Resend
