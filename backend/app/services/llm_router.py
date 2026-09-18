@@ -75,16 +75,40 @@ class LLMRouter:
             return ""
 
     async def generate_text(self, prompt: str, context: Dict[str, Any], task: LLMTask, temperature: float = 0.3) -> str:
-        # Check if local is preferred and available
-        if self.prefer_local and any(m.startswith(self.ollama_text_model.split(":")[0]) for m in self.available_ollama_models):
-            # For local, we can technically pass raw data, but let's be safe and use privacy layer anyway,
-            # or just log it locally. We'll pass raw to Ollama.
-            full_prompt = f"{prompt}\n\nContext:\n{json.dumps(context, indent=2)}"
-            response = await ollama_client.generate(self.ollama_text_model, full_prompt, temperature=temperature)
-            if response:
-                return response.strip()
+        # Check if Groq API key is configured
+        if settings.groq_api_key:
+            try:
+                from groq import AsyncGroq
+                client = AsyncGroq(api_key=settings.groq_api_key)
+                
+                # Anonymize context for Groq
+                anon_ctx, de_anon_fn = privacy_layer.anonymize_for_llm(context, "groq", task.value)
+                full_prompt = f"{prompt}\n\nContext:\n{json.dumps(anon_ctx, indent=2)}"
+                
+                logger.info(f"Calling Groq LLM ({settings.groq_model}) for task {task.value}")
+                response = await client.chat.completions.create(
+                    messages=[{"role": "user", "content": full_prompt}],
+                    model=settings.groq_model,
+                    temperature=temperature,
+                )
+                raw_text = response.choices[0].message.content.strip()
+                
+                if raw_text.startswith("```"):
+                    raw_text = raw_text.split("\n", 1)[1]
+                    if raw_text.endswith("```"):
+                        raw_text = raw_text[:-3].strip()
 
-        # Fallback to online
+                try:
+                    parsed_json = json.loads(raw_text)
+                    restored_json = de_anon_fn(parsed_json)
+                    return json.dumps(restored_json)
+                except json.JSONDecodeError:
+                    return raw_text
+                    
+            except Exception as e:
+                logger.error(f"Groq generation failed: {e}. Falling back to Gemini.")
+
+        # Fallback to online (Gemini)
         return await self._generate_online(prompt, context, task, temperature)
 
     async def extract_invoice(self, image_bytes: bytes, mime_type: str) -> Optional[Dict[str, Any]]:
