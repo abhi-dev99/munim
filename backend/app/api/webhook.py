@@ -235,6 +235,20 @@ async def handle_text_message(phone: str, text: str):
 
     if intent == "itc_status":
         await _send_itc_status(phone, trader)
+    elif intent == "change_language":
+        lang = intent_data.get("entities", {}).get("language_code", "hi")
+        if not lang or lang not in ["en", "hi", "mr", "gu"]:
+            lang = "hi"
+        from app.services.supabase_client import update_trader
+        await update_trader(trader["id"], {"language_pref": lang})
+        if lang == "hi":
+            await whatsapp.send_text_message(phone, "Theek hai, ab se main aapse Hindi mein baat karunga. 💬")
+        elif lang == "mr":
+            await whatsapp.send_text_message(phone, "Theek aahe, aathapasun mi tumchyashi Marathi madhe bolel. 💬")
+        elif lang == "gu":
+            await whatsapp.send_text_message(phone, "Barabar, have thi hu tamari sathe Gujarati ma vaat karish. 💬")
+        else:
+            await whatsapp.send_text_message(phone, "Got it, I will speak with you in English from now on. 💬")
     elif intent == "help":
         await _send_help(phone, trader)
     elif intent == "general_query":

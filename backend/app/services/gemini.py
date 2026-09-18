@@ -296,14 +296,16 @@ Intents:
 3. "report_request": Asking for their monthly report/PDF.
 4. "help": Asking for help or how to use the bot.
 5. "general_query": Asking a specific question about their business, numbers, GST rules, or requesting an explanation.
-6. "unknown": Anything else.
+6. "change_language": Requesting to change the language (e.g. 'hindi mein baat karo', 'speak in english', 'marathi bol').
+7. "unknown": Anything else.
 
 Schema:
 {{
-  "intent": "itc_status" | "supplier_check" | "report_request" | "help" | "general_query" | "unknown",
+  "intent": "itc_status" | "supplier_check" | "report_request" | "help" | "general_query" | "change_language" | "unknown",
   "entities": {{
     "supplier_name": "extracted name or null",
-    "gstin": "extracted GSTIN or null"
+    "gstin": "extracted GSTIN or null",
+    "language_code": "extracted language code (en, hi, mr, gu) or null"
   }}
 }}
 """
