@@ -204,6 +204,10 @@ export default function SupplierHealth({ traderId, apiBase, onSwitchTab }) {
   const [sortDir, setSortDir]         = useState("asc");
   const [activeSupplier, setActiveSupplier] = useState(null); // supplier overlay
 
+  const dragItem = useRef(null);
+  const dragOverItem = useRef(null);
+  const [cardOrder, setCardOrder] = useState(["ALL", "GOOD", "RISK", "CRITICAL"]);
+
   useEffect(() => {
     if (!traderId) return;
     setLoading(true);
@@ -263,10 +267,6 @@ export default function SupplierHealth({ traderId, apiBase, onSwitchTab }) {
       </div>
     </div>
   );
-
-  const dragItem = useRef(null);
-  const dragOverItem = useRef(null);
-  const [cardOrder, setCardOrder] = useState(["ALL", "GOOD", "RISK", "CRITICAL"]);
 
   const handleCardSort = () => {
     if (dragItem.current === null || dragOverItem.current === null) return;
