@@ -581,6 +581,13 @@ export default function Home() {
                 </span>
               </button>
 
+              <button 
+                onClick={startTour} 
+                className="hidden md:block px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-semibold hover:bg-indigo-100 transition-colors shadow-sm"
+              >
+                Take Tour
+              </button>
+
               {/* Composition toggle */}
               <button
                 onClick={() => setIsComposition(!isComposition)}
