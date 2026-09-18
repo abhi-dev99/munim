@@ -658,27 +658,6 @@ export default function Home() {
                 GST Portal
               </a>
 
-              {/* AI Keys button */}
-              <button
-                onClick={() => setShowGeminiModal(true)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm border ${
-                  geminiStatus?.all_exhausted
-                    ? "bg-red-50 text-red-700 hover:bg-red-100 border-red-300 animate-pulse"
-                    : geminiStatus?.rate_limited_count > 0
-                    ? "bg-amber-50 text-amber-800 hover:bg-amber-100 border-amber-300"
-                    : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border-emerald-200"
-                }`}
-                title="Manage Gemini AI Keys & Quota Pool"
-              >
-                <Key size={15} />
-                <span>
-                  {geminiStatus?.all_exhausted
-                    ? "🚨 AI Quota Alert"
-                    : geminiStatus?.rate_limited_count > 0
-                    ? `⚠️ AI Keys (${geminiStatus.total_keys - geminiStatus.rate_limited_count}/${geminiStatus.total_keys})`
-                    : `✨ AI Keys (${geminiStatus ? `${geminiStatus.total_keys}/${geminiStatus.total_keys}` : "2/2"})`}
-                </span>
-              </button>
             </div>
           </div>
         </header>
