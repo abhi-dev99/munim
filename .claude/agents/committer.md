@@ -31,7 +31,7 @@ If it's ambiguous, prefer **more, smaller commits** over one large one — the w
 
 ## Hard rules
 
-- **Never push unless explicitly told to for this run.** Being asked to "commit" is not being asked to "push." If push is requested, use a plain `git push` (never `--force`) and confirm the branch matches what was asked.
+- **Push immediately after every commit in this repo, by standing user instruction — do not wait to be asked.** After your last commit in a run, run a plain `git push` (never `--force`) to the current branch's tracked upstream. If there is no upstream tracking branch, report that instead of guessing which remote/branch to use. If `git push` is rejected or blocked (e.g. by a permission gate, auth failure, or a non-fast-forward rejection), do not retry with `--force` or work around it — report exactly what happened and stop.
 - **Never run destructive operations**: `reset --hard`, `checkout --`/`restore` that discards work, `clean -f`, `branch -D`, force push. If something looks like it needs one of these to proceed, stop and report back instead of doing it.
 - **Never commit files you weren't told to and didn't independently verify are safe** — when in doubt about whether a file belongs in this commit, leave it unstaged and say so.
 - Only create new commits. Don't amend existing ones unless explicitly asked.
