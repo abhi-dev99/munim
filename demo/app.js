@@ -1,9 +1,13 @@
 document.addEventListener('DOMContentLoaded', () => {
     const dashboardView = document.getElementById('dashboard-view');
     const gstr2bView = document.getElementById('gstr2b-view');
+    const imsView = document.getElementById('ims-view');
     
     const btnViewGstr2b = document.getElementById('btn-view-gstr2b');
     const btnBack = document.getElementById('btn-back');
+    const btnOpenIms = document.getElementById('btn-open-ims');
+    const btnBackToDashboardIms = document.getElementById('btn-back-to-dashboard-ims');
+    
     const breadcrumbText = document.querySelector('.breadcrumb');
     const quarterSelect = document.getElementById('quarter-select');
     const periodSelect = document.getElementById('period-select');
@@ -98,6 +102,16 @@ document.addEventListener('DOMContentLoaded', () => {
         showView(gstr2bView, gstr3bQuestionnaire, 'Dashboard > Returns > <strong>GSTR-3B Questionnaire</strong>');
     });
 
+    // Open IMS Dashboard from GSTR-2B view
+    btnOpenIms.addEventListener('click', () => {
+        showView(gstr2bView, imsView, 'Dashboard > Returns > <strong>Invoice Management System (IMS)</strong>');
+    });
+
+    // Back to Dashboard from IMS view
+    btnBackToDashboardIms.addEventListener('click', () => {
+        showView(imsView, dashboardView, 'Dashboard > Returns > <strong>Returns Dashboard</strong>');
+    });
+
     // Open GSTR-3B from Dashboard
     btnPrepGstr3b.addEventListener('click', () => {
         showView(dashboardView, gstr3bQuestionnaire, 'Dashboard > Returns > <strong>GSTR-3B Questionnaire</strong>');
@@ -130,19 +144,59 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Offset Math Logic
     btnMakePayment.addEventListener('click', () => {
-        document.getElementById('offset-igst-itc').innerText = '₹12,000.00';
+        // Calculate dynamic offset based on accepted ITC vs liability
+        let acceptedIGST = 0;
+        let acceptedCGST = 0;
+        let acceptedSGST = 0;
+        
+        inwardSupplies.forEach(inv => {
+            if (inv.action === 'accept') {
+                if (inv.type === 'IGST') {
+                    acceptedIGST += inv.tax;
+                } else if (inv.type === 'CGST_SGST') {
+                    acceptedCGST += inv.tax / 2;
+                    acceptedSGST += inv.tax / 2;
+                }
+            }
+        });
+
+        // IGST Offset: Liability = 12000
+        const igstLiab = 12000;
+        const igstPaidITC = Math.min(igstLiab, acceptedIGST);
+        const igstBal = 0; // Balance payable is paid via cash, so balance becomes 0
+        const igstPaidCash = igstLiab - igstPaidITC;
+
+        // CGST Offset: Liability = 6000
+        const cgstLiab = 6000;
+        const cgstPaidITC = Math.min(cgstLiab, acceptedCGST);
+        const cgstBal = 0;
+        const cgstPaidCash = cgstLiab - cgstPaidITC;
+
+        // SGST Offset: Liability = 6000
+        const sgstLiab = 6000;
+        const sgstPaidITC = Math.min(sgstLiab, acceptedSGST);
+        const sgstBal = 0;
+        const sgstPaidCash = sgstLiab - sgstPaidITC;
+
+        // Cess Offset: Liability = 1500
+        const cessLiab = 1500;
+        const cessPaidITC = 0; // Cess ITC is 0
+        const cessBal = 0;
+        const cessPaidCash = cessLiab;
+
+        document.getElementById('offset-igst-itc').innerText = `₹${igstPaidITC.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
         document.getElementById('offset-igst-bal').innerText = '₹0.00';
         document.getElementById('offset-igst-bal').style.color = '#00a65a';
 
-        document.getElementById('offset-cgst-itc').innerText = '₹6,000.00';
+        document.getElementById('offset-cgst-itc').innerText = `₹${cgstPaidITC.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
         document.getElementById('offset-cgst-bal').innerText = '₹0.00';
         document.getElementById('offset-cgst-bal').style.color = '#00a65a';
 
-        document.getElementById('offset-sgst-itc').innerText = '₹6,000.00';
+        document.getElementById('offset-sgst-itc').innerText = `₹${sgstPaidITC.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
         document.getElementById('offset-sgst-bal').innerText = '₹0.00';
         document.getElementById('offset-sgst-bal').style.color = '#00a65a';
 
-        document.getElementById('offset-cess-itc').innerText = '₹1,500.00';
+        document.getElementById('offset-cess-itc').innerText = '₹0.00';
         document.getElementById('offset-cess-bal').innerText = '₹0.00';
         document.getElementById('offset-cess-bal').style.color = '#00a65a';
 
@@ -155,6 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btnProceedToFile.disabled = false;
         btnProceedToFile.classList.remove('disabled');
         btnProceedToFile.style.cursor = 'pointer';
+        btnProceedToFile.style.background = '#00a65a';
     });
 
     // Proceed to File
@@ -239,11 +294,202 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Inward Supplies State for IMS
+    const inwardSupplies = [
+        { id: 1, gstin: '24AAFCK2304M1ZP', name: 'Balaji Hardware', invNo: 'INV-2024-001', date: '05/04/2026', taxable: 66666.67, tax: 12000.00, type: 'IGST', action: 'pending' },
+        { id: 2, gstin: '29UATYY9012A1Z8', name: 'Surat Textiles', invNo: 'TX-9988', date: '12/04/2026', taxable: 33333.33, tax: 6000.00, type: 'CGST_SGST', action: 'pending' },
+        { id: 3, gstin: '29UATYY9012A1Z8', name: 'Surat Textiles', invNo: 'TX-9989', date: '15/04/2026', taxable: 33333.33, tax: 6000.00, type: 'CGST_SGST', action: 'pending' }
+    ];
+
+    let activeGstr2bSubTab = 'ITC available';
+
+    // IMS elements
+    const imsActionButtons = document.querySelectorAll('.btn-ims-action');
+    const imsTotalInvoicesEl = document.getElementById('ims-total-invoices');
+    const imsActionTakenEl = document.getElementById('ims-action-taken');
+    const imsPendingActionEl = document.getElementById('ims-pending-action');
+    const btnSaveImsActions = document.getElementById('btn-save-ims-actions');
+
+    function updateImsCounters() {
+        let actionTaken = 0;
+        let pendingAction = 0;
+        inwardSupplies.forEach(inv => {
+            if (inv.action === 'pending') {
+                pendingAction++;
+            } else {
+                actionTaken++;
+            }
+        });
+        imsTotalInvoicesEl.innerText = inwardSupplies.length.toString();
+        imsActionTakenEl.innerText = actionTaken.toString();
+        imsPendingActionEl.innerText = pendingAction.toString();
+    }
+
+    imsActionButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const rowId = parseInt(e.target.getAttribute('data-row'));
+            const action = e.target.getAttribute('data-action');
+            
+            // Update state
+            const invoice = inwardSupplies.find(inv => inv.id === rowId);
+            if (invoice) {
+                invoice.action = action;
+            }
+
+            // Update buttons visually in the same row
+            const row = document.getElementById(`ims-row-${rowId}`);
+            const buttons = row.querySelectorAll('.btn-ims-action');
+            buttons.forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+
+            // Update status text and color class
+            const statusTextEl = document.getElementById(`ims-status-${rowId}`);
+            statusTextEl.className = 'ims-status-text'; // reset classes
+            
+            if (action === 'accept') {
+                statusTextEl.innerText = 'Accepted';
+                statusTextEl.classList.add('status-accepted');
+            } else if (action === 'reject') {
+                statusTextEl.innerText = 'Rejected';
+                statusTextEl.classList.add('status-rejected');
+            } else {
+                statusTextEl.innerText = 'Pending';
+                statusTextEl.classList.add('status-pending');
+            }
+
+            updateImsCounters();
+        });
+    });
+
+    // Sub-tab selection in GSTR-2B view
     const subTabs = document.querySelectorAll('.sub-tabs .sub-tab');
     subTabs.forEach(tab => {
         tab.addEventListener('click', (e) => {
             subTabs.forEach(t => t.classList.remove('active'));
             e.target.classList.add('active');
+            activeGstr2bSubTab = e.target.textContent.trim();
+            updateGstr2bTable();
         });
     });
+
+    function updateGstr2bTable() {
+        let igstVal = 0;
+        let cgstVal = 0;
+        let sgstVal = 0;
+        let cessVal = 0;
+
+        if (activeGstr2bSubTab === 'ITC available') {
+            inwardSupplies.forEach(inv => {
+                if (inv.action === 'accept') {
+                    if (inv.type === 'IGST') {
+                        igstVal += inv.tax;
+                    } else if (inv.type === 'CGST_SGST') {
+                        cgstVal += inv.tax / 2;
+                        sgstVal += inv.tax / 2;
+                    }
+                }
+            });
+        } else if (activeGstr2bSubTab === 'ITC Rejected') {
+            inwardSupplies.forEach(inv => {
+                if (inv.action === 'reject') {
+                    if (inv.type === 'IGST') {
+                        igstVal += inv.tax;
+                    } else if (inv.type === 'CGST_SGST') {
+                        cgstVal += inv.tax / 2;
+                        sgstVal += inv.tax / 2;
+                    }
+                }
+            });
+        }
+        
+        document.getElementById('gstr2b-itc-igst-val').innerText = igstVal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        document.getElementById('gstr2b-itc-cgst-val').innerText = cgstVal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        document.getElementById('gstr2b-itc-sgst-val').innerText = sgstVal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        document.getElementById('gstr2b-itc-cess-val').innerText = cessVal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // Save IMS Actions
+    btnSaveImsActions.addEventListener('click', () => {
+        // Recalculate GSTR-2B
+        updateGstr2bTable();
+
+        // Calculate accepted totals for GSTR-3B propagation
+        let acceptedIGST = 0;
+        let acceptedCGST = 0;
+        let acceptedSGST = 0;
+
+        inwardSupplies.forEach(inv => {
+            if (inv.action === 'accept') {
+                if (inv.type === 'IGST') {
+                    acceptedIGST += inv.tax;
+                } else if (inv.type === 'CGST_SGST') {
+                    acceptedCGST += inv.tax / 2;
+                    acceptedSGST += inv.tax / 2;
+                }
+            }
+        });
+
+        // Propagate to GSTR-3B Prep Dashboard Table 4
+        document.getElementById('gstr3b-itc-igst').innerText = `₹${acceptedIGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+        document.getElementById('gstr3b-itc-cgst').innerText = `₹${acceptedCGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+        document.getElementById('gstr3b-itc-sgst').innerText = `₹${acceptedSGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+        document.getElementById('gstr3b-itc-cess').innerText = '₹0.00';
+
+        // Propagate to GSTR-3B Payment Ledger
+        document.getElementById('credit-igst').innerText = `₹${acceptedIGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+        document.getElementById('credit-cgst').innerText = `₹${acceptedCGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+        document.getElementById('credit-sgst').innerText = `₹${acceptedSGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+        document.getElementById('credit-cess').innerText = '₹0.00';
+
+        // Reset offset table display to reflect new inputs
+        document.getElementById('offset-igst-itc').innerText = '₹0.00';
+        document.getElementById('offset-igst-bal').innerText = '₹12,000.00';
+        document.getElementById('offset-igst-bal').style.color = 'red';
+
+        document.getElementById('offset-cgst-itc').innerText = '₹0.00';
+        document.getElementById('offset-cgst-bal').innerText = '₹6,000.00';
+        document.getElementById('offset-cgst-bal').style.color = 'red';
+
+        document.getElementById('offset-sgst-itc').innerText = '₹0.00';
+        document.getElementById('offset-sgst-bal').innerText = '₹6,000.00';
+        document.getElementById('offset-sgst-bal').style.color = 'red';
+
+        document.getElementById('offset-cess-itc').innerText = '₹0.00';
+        document.getElementById('offset-cess-bal').innerText = '₹1,500.00';
+        document.getElementById('offset-cess-bal').style.color = 'red';
+
+        // Reset the Make Payment button
+        btnMakePayment.innerText = 'MAKE PAYMENT / POST CREDIT TO LEDGER';
+        btnMakePayment.disabled = false;
+        btnMakePayment.style.background = '#2b5299';
+        btnMakePayment.style.cursor = 'pointer';
+
+        // Disable file button until offset clicked
+        btnProceedToFile.disabled = true;
+        btnProceedToFile.classList.add('disabled');
+        btnProceedToFile.style.cursor = 'not-allowed';
+        btnProceedToFile.style.background = '#ccc';
+
+        alert('Actions saved successfully! GSTR-2B and GSTR-3B values have been updated based on your actions.');
+
+        // Automatically show GSTR-2B view to proceed
+        showView(imsView, gstr2bView, 'Dashboard > Returns > <strong>GSTR-2B</strong>');
+    });
+
+    // Initialize IMS state colors
+    inwardSupplies.forEach(inv => {
+        const statusTextEl = document.getElementById(`ims-status-${inv.id}`);
+        statusTextEl.classList.add('status-pending');
+        
+        // Find default active pending buttons and style them
+        const row = document.getElementById(`ims-row-${inv.id}`);
+        const pendBtn = row.querySelector('.btn-pending');
+        if (pendBtn) pendBtn.classList.add('active');
+    });
+    updateImsCounters();
+    updateGstr2bTable();
 });
+
+
+
+

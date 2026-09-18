@@ -2,7 +2,7 @@ const { chromium } = require('playwright');
 
 (async () => {
   // Launch the browser in non-headless mode so the user can watch the action
-  const browser = await chromium.launch({ headless: false, slowMo: 2500 });
+  const browser = await chromium.launch({ headless: false, slowMo: 4000 });
   const page = await browser.newPage();
 
   console.log('Navigating to local GST Portal simulation (Demo)...');
@@ -12,17 +12,66 @@ const { chromium } = require('playwright');
   console.log('Verifying File Returns dashboard...');
   await page.waitForSelector('#dashboard-view.active');
 
-  // --- Step 1: Run GSTR-2B Flow ---
+  // --- Step 1: Run GSTR-2B Flow & Navigate to IMS ---
   console.log('Clicking the VIEW button on the GSTR-2B tile...');
   await page.click('#btn-view-gstr2b');
 
   console.log('Verifying GSTR-2B detailed statement is displayed...');
   await page.waitForSelector('#gstr2b-view.active');
 
-  console.log('Clicking through GSTR-2B sub-tabs...');
-  await page.click('text=ITC Not Available');
-  await page.click('text=ITC Reversal');
+  // Set dialog listener to handle the alert dialog on save
+  page.on('dialog', async dialog => {
+    console.log(`[Dialog Alert] Dismissing: "${dialog.message()}"`);
+    await dialog.accept();
+  });
+
+  console.log('Clicking OPEN IMS DASHBOARD from GSTR-2B view...');
+  await page.click('#btn-open-ims');
+
+  console.log('Verifying IMS Dashboard view is active...');
+  await page.waitForSelector('#ims-view.active');
+
+  console.log('Checking initial IMS counts (Pending: 3)...');
+  let pendingCount = await page.innerText('#ims-pending-action');
+  console.log(`Initial IMS Pending Action Invoices: ${pendingCount}`);
+
+  console.log('Accepting Invoice 1 (IGST ₹12,000.00)...');
+  await page.click('#ims-row-1 .btn-accept');
+
+  console.log('Accepting Invoice 2 (CGST/SGST ₹3,000.00 each)...');
+  await page.click('#ims-row-2 .btn-accept');
+
+  console.log('Rejecting Invoice 3 (CGST/SGST ₹3,000.00 each)...');
+  await page.click('#ims-row-3 .btn-reject');
+
+  console.log('Verifying updated IMS counts (Action Taken: 3, Pending: 0)...');
+  let actionTaken = await page.innerText('#ims-action-taken');
+  pendingCount = await page.innerText('#ims-pending-action');
+  console.log(`IMS Action Taken: ${actionTaken}, Pending Action: ${pendingCount}`);
+
+  console.log('Clicking SAVE ACTIONS...');
+  await page.click('#btn-save-ims-actions');
+
+  console.log('Returned to GSTR-2B detailed statement. Verifying dynamic calculations...');
+  await page.waitForSelector('#gstr2b-view.active');
+
+  // Verify GSTR-2B row values for ITC Available (Active Sub-tab)
+  console.log('Checking GSTR-2B ITC Available sub-tab values...');
+  await page.click('text=ITC available');
+  let gstr2bIgst = await page.innerText('#gstr2b-itc-igst-val');
+  let gstr2bCgst = await page.innerText('#gstr2b-itc-cgst-val');
+  let gstr2bSgst = await page.innerText('#gstr2b-itc-sgst-val');
+  console.log(`GSTR-2B ITC Available -> IGST: ₹${gstr2bIgst}, CGST: ₹${gstr2bCgst}, SGST: ₹${gstr2bSgst}`);
+
+  // Verify GSTR-2B row values for ITC Rejected sub-tab
+  console.log('Checking GSTR-2B ITC Rejected sub-tab values...');
   await page.click('text=ITC Rejected');
+  let rejectedIgst = await page.innerText('#gstr2b-itc-igst-val');
+  let rejectedCgst = await page.innerText('#gstr2b-itc-cgst-val');
+  let rejectedSgst = await page.innerText('#gstr2b-itc-sgst-val');
+  console.log(`GSTR-2B ITC Rejected -> IGST: ₹${rejectedIgst}, CGST: ₹${rejectedCgst}, SGST: ₹${rejectedSgst}`);
+
+  // Click back to available
   await page.click('text=ITC available');
 
   // Move to GSTR-3B from GSTR-2B View

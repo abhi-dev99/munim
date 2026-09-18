@@ -204,10 +204,10 @@
                             <td class="center">I</td>
                             <td>All other ITC - Supplies from registered persons ▾ <span class="ims-tag">(IMS)</span></td>
                             <td class="center">4(A)(5) ⓘ</td>
-                            <td class="amount">0.00</td>
-                            <td class="amount">0.00</td>
-                            <td class="amount">0.00</td>
-                            <td class="amount">0.00</td>
+                            <td class="amount" id="gstr2b-itc-igst-val">0.00</td>
+                            <td class="amount" id="gstr2b-itc-cgst-val">0.00</td>
+                            <td class="amount" id="gstr2b-itc-sgst-val">0.00</td>
+                            <td class="amount" id="gstr2b-itc-cess-val">0.00</td>
                         </tr>
                         <tr>
                             <td class="center">II</td>
@@ -258,7 +258,7 @@
                 <button class="btn-primary-action">DOWNLOAD GSTR-2B SUMMARY (PDF)</button>
                 <button class="btn-primary-action">DOWNLOAD GSTR-2B DETAILS (EXCEL)</button>
                 <button class="btn-primary-action mt-2" id="btn-open-gstr3b">OPEN GSTR-3B</button>
-                <button class="btn-primary-action mt-2">OPEN IMS DASHBOARD</button>
+                <button class="btn-primary-action mt-2" id="btn-open-ims">OPEN IMS DASHBOARD</button>
             </div>
         </div>
 
@@ -562,6 +562,122 @@
                     <button class="btn-outline" id="btn-cancel-otp">CANCEL</button>
                     <button class="btn-primary-action" id="btn-verify-otp">VERIFY & FILE</button>
                 </div>
+            </div>
+        </div>
+
+        <!-- View 8: Invoice Management System (IMS) Recipient Dashboard -->
+        <div id="ims-view" class="view-section hidden">
+            <div class="gstr2b-banner" style="background-color: #1a3c74;">
+                <h2>Invoice Management System (IMS) - Recipient Dashboard (Inward Supplies)</h2>
+                <span class="chevron-up">^</span>
+            </div>
+
+            <div class="info-grid">
+                <div>
+                    <p>GSTIN- 29UATYY9012A1Z8</p>
+                    <p>Financial Year - 2024-25</p>
+                </div>
+                <div>
+                    <p>Legal Name - UATYCO</p>
+                    <p>Return Period - April</p>
+                </div>
+                <div>
+                    <p>Trade Name - GSTN</p>
+                    <p>Deemed Acceptance Date - 14/05/2026</p>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="tiles-container" style="margin-bottom: 25px; display: flex; gap: 20px;">
+                <div class="tile" style="border: 1px solid #ddd; background: white; padding: 15px; border-radius: 4px; text-align: center; flex: 1;">
+                    <h4 style="font-size: 13px; color: #666; margin-bottom: 5px;">Total Invoices</h4>
+                    <span id="ims-total-invoices" style="font-size: 24px; font-weight: bold; color: #1a3c74;">3</span>
+                </div>
+                <div class="tile" style="border: 1px solid #ddd; background: white; padding: 15px; border-radius: 4px; text-align: center; flex: 1;">
+                    <h4 style="font-size: 13px; color: #666; margin-bottom: 5px;">Action Taken</h4>
+                    <span id="ims-action-taken" style="font-size: 24px; font-weight: bold; color: #00a65a;">0</span>
+                </div>
+                <div class="tile" style="border: 1px solid #ddd; background: white; padding: 15px; border-radius: 4px; text-align: center; flex: 1;">
+                    <h4 style="font-size: 13px; color: #666; margin-bottom: 5px;">Pending Action</h4>
+                    <span id="ims-pending-action" style="font-size: 24px; font-weight: bold; color: #d9534f;">3</span>
+                </div>
+            </div>
+
+            <!-- Inward Supplies Table -->
+            <div class="card" style="padding: 15px; background: white; border: 1px solid #ddd;">
+                <h3 style="font-size: 14px; font-weight: 700; margin-bottom: 15px; color: #1a3c74;">Invoices Filed by Suppliers (Action Required)</h3>
+                <table class="gstr2b-table">
+                    <thead>
+                        <tr>
+                            <th>Supplier GSTIN</th>
+                            <th>Supplier Name</th>
+                            <th>Invoice No.</th>
+                            <th>Invoice Date</th>
+                            <th class="amount-col">Taxable Value (₹)</th>
+                            <th class="amount-col">Tax (₹)</th>
+                            <th style="width: 250px; text-align: center;">Actions</th>
+                            <th style="width: 100px; text-align: center;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ims-invoice-table-body">
+                        <!-- Invoice 1 -->
+                        <tr id="ims-row-1" data-tax="12000">
+                            <td>24AAFCK2304M1ZP</td>
+                            <td>Balaji Hardware</td>
+                            <td>INV-2024-001</td>
+                            <td>05/04/2026</td>
+                            <td class="amount">₹66,666.67</td>
+                            <td class="amount" style="font-weight: bold;">₹12,000.00</td>
+                            <td style="text-align: center; vertical-align: middle;">
+                                <div style="display: flex; gap: 8px; justify-content: center;">
+                                    <button class="btn-ims-action btn-accept" data-row="1" data-action="accept">ACCEPT</button>
+                                    <button class="btn-ims-action btn-reject" data-row="1" data-action="reject">REJECT</button>
+                                    <button class="btn-ims-action btn-pending active" data-row="1" data-action="pending">PENDING</button>
+                                </div>
+                            </td>
+                            <td class="ims-status-text" id="ims-status-1" style="text-align: center; font-weight: bold;">Pending</td>
+                        </tr>
+                        <!-- Invoice 2 -->
+                        <tr id="ims-row-2" data-tax="6000">
+                            <td>29UATYY9012A1Z8</td>
+                            <td>Surat Textiles</td>
+                            <td>TX-9988</td>
+                            <td>12/04/2026</td>
+                            <td class="amount">₹33,333.33</td>
+                            <td class="amount" style="font-weight: bold;">₹6,000.00</td>
+                            <td style="text-align: center; vertical-align: middle;">
+                                <div style="display: flex; gap: 8px; justify-content: center;">
+                                    <button class="btn-ims-action btn-accept" data-row="2" data-action="accept">ACCEPT</button>
+                                    <button class="btn-ims-action btn-reject" data-row="2" data-action="reject">REJECT</button>
+                                    <button class="btn-ims-action btn-pending active" data-row="2" data-action="pending">PENDING</button>
+                                </div>
+                            </td>
+                            <td class="ims-status-text" id="ims-status-2" style="text-align: center; font-weight: bold;">Pending</td>
+                        </tr>
+                        <!-- Invoice 3 -->
+                        <tr id="ims-row-3" data-tax="6000">
+                            <td>29UATYY9012A1Z8</td>
+                            <td>Surat Textiles</td>
+                            <td>TX-9989</td>
+                            <td>15/04/2026</td>
+                            <td class="amount">₹33,333.33</td>
+                            <td class="amount" style="font-weight: bold;">₹6,000.00</td>
+                            <td style="text-align: center; vertical-align: middle;">
+                                <div style="display: flex; gap: 8px; justify-content: center;">
+                                    <button class="btn-ims-action btn-accept" data-row="3" data-action="accept">ACCEPT</button>
+                                    <button class="btn-ims-action btn-reject" data-row="3" data-action="reject">REJECT</button>
+                                    <button class="btn-ims-action btn-pending active" data-row="3" data-action="pending">PENDING</button>
+                                </div>
+                            </td>
+                            <td class="ims-status-text" id="ims-status-3" style="text-align: center; font-weight: bold;">Pending</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="bottom-actions">
+                <button class="btn-outline" id="btn-back-to-dashboard-ims">BACK TO DASHBOARD</button>
+                <button class="btn-primary-action" id="btn-save-ims-actions" style="background-color: #00a65a;">SAVE ACTIONS</button>
             </div>
         </div>
     </main>
