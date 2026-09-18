@@ -21,11 +21,12 @@ Lambda always attempts real HMAC verification -- an empty or wrong
 secret fails CLOSED (every request rejected) rather than open.
 
 GET handles Meta's one-time verification handshake. POST verifies
-X-Hub-Signature-256 over the *raw* request body, checks the sender
-against munim-traders (same anti-abuse gate as every other trigger
-path in this pipeline), downloads the media directly from Meta's Graph
-API, and writes it to the invoices bucket -- the existing S3 event
-notification takes over from there, unchanged.
+X-Hub-Signature-256 over the *raw* request body, marks the message read
+(basic courtesy, independent of everything downstream), checks the
+sender against munim-traders (same anti-abuse gate as every other
+trigger path in this pipeline), downloads the media directly from
+Meta's Graph API, and writes it to the invoices bucket -- the existing
+S3 event notification takes over from there, unchanged.
 """
 
 import hashlib
@@ -53,6 +54,7 @@ META_VERIFY_TOKEN = os.environ["META_VERIFY_TOKEN"]
 META_APP_SECRET = os.environ.get("META_APP_SECRET", "")
 META_WHATSAPP_TOKEN = os.environ["META_WHATSAPP_TOKEN"]
 META_API_VERSION = os.environ.get("META_API_VERSION", "v21.0")
+META_PHONE_NUMBER_ID = os.environ["META_PHONE_NUMBER_ID"]
 GRAPH_BASE_URL = f"https://graph.facebook.com/{META_API_VERSION}"
 
 NON_DIGIT = re.compile(r"\D")
@@ -136,6 +138,11 @@ def _handle_message(message):
     sender = NON_DIGIT.sub("", message.get("from", "")) or "unknown"
     message_id = message.get("id", str(uuid.uuid4()))
 
+    # Basic courtesy, independent of anything downstream -- the sender
+    # should see their message was received regardless of whether it
+    # turns out to be an invoice, a stranger, or plain text.
+    _mark_as_read(message_id)
+
     media = message.get("image") or message.get("document")
     if not media:
         logger.info("Inbound message has no media -- not an invoice, skipping.")
@@ -167,6 +174,25 @@ def _handle_message(message):
         return
 
     logger.info("Wrote inbound media for message %s to s3://%s/%s", message_id, INVOICES_BUCKET, s3_key)
+
+
+def _mark_as_read(message_id):
+    body = json.dumps({
+        "messaging_product": "whatsapp",
+        "status": "read",
+        "message_id": message_id,
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        f"{GRAPH_BASE_URL}/{META_PHONE_NUMBER_ID}/messages",
+        data=body,
+        headers={"Authorization": f"Bearer {META_WHATSAPP_TOKEN}", "Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        urllib.request.urlopen(req, timeout=10)
+    except Exception:
+        # Never let a failed read-receipt block actual invoice processing.
+        logger.exception("Failed to mark message %s as read.", message_id)
 
 
 def _is_registered_trader(sender):
