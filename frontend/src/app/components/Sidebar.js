@@ -1,19 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { LayoutDashboard, Users, AlertCircle, FileText, Settings, LogOut, RefreshCw, CheckCircle2 } from "lucide-react";
+import { LayoutDashboard, Users, AlertCircle, FileText, MessageCircle } from "lucide-react";
 
 export default function Sidebar({ activeTab, onTabChange, actionCount = 0 }) {
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [lastSynced, setLastSynced] = useState("Just now");
-
-  const handleSync = () => {
-    setIsSyncing(true);
-    setTimeout(() => {
-      setIsSyncing(false);
-      setLastSynced("Just now");
-    }, 2000);
-  };
+  const [isWhatsappEnabled, setIsWhatsappEnabled] = useState(false);
 
   const navItems = [
     { id: "money-meter", label: "Money Meter", icon: LayoutDashboard },
@@ -63,30 +54,34 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0 }) {
       <div className="px-6 mb-6">
         <div className="p-4 bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-subtle)] space-y-3">
           <div className="flex items-center justify-between">
-            <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center">
-              <RefreshCw size={14} className={isSyncing ? "animate-spin" : ""} />
+            <div className="w-8 h-8 rounded-full bg-[#25D366] text-white flex items-center justify-center shadow-sm">
+              <MessageCircle size={14} />
             </div>
-            {isSyncing ? (
-              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">SYNCING</span>
-            ) : (
-              <span className="text-[10px] font-bold text-[var(--green-primary)] bg-green-50 px-2 py-1 rounded flex items-center gap-1">
-                <CheckCircle2 size={10} /> LIVE
-              </span>
-            )}
+            <button 
+              onClick={() => setIsWhatsappEnabled(!isWhatsappEnabled)}
+              className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${isWhatsappEnabled ? 'bg-[#25D366]' : 'bg-gray-300'}`}
+            >
+              <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${isWhatsappEnabled ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+            </button>
           </div>
           <div>
-            <h4 className="text-sm font-bold text-black">GST Portal Sync</h4>
-            <p className="text-[10px] text-[var(--text-secondary)] mt-1">
-              Last synced: {isSyncing ? "..." : lastSynced}
+            <h4 className="text-sm font-bold text-black flex items-center gap-1.5">
+              WhatsApp Alerts
+            </h4>
+            <p className="text-[10px] text-[var(--text-secondary)] mt-1 leading-relaxed">
+              {isWhatsappEnabled ? "You will receive automated alerts for deadlines & mismatches." : "Turn on to get instant compliance reminders on your phone."}
             </p>
           </div>
-          <button 
-            onClick={handleSync}
-            disabled={isSyncing}
-            className="w-full py-2 bg-white border border-[var(--border-subtle)] rounded-lg text-xs font-bold text-black hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50"
-          >
-            {isSyncing ? "Pulling Data..." : "Force Sync Now"}
-          </button>
+          {isWhatsappEnabled && (
+            <button 
+              onClick={() => {
+                alert("Test WhatsApp alert sent to registered number!");
+              }}
+              className="w-full py-2 bg-white border border-[#25D366] text-[#25D366] rounded-lg text-xs font-bold hover:bg-green-50 transition-colors shadow-sm"
+            >
+              Send Test Alert
+            </button>
+          )}
         </div>
       </div>
 
