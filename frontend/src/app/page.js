@@ -15,10 +15,14 @@ export default function LoginPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    // Auto-redirect if already logged in
+    // Auto-redirect if already logged in (need BOTH token and trader data)
     const token = localStorage.getItem("munim_auth_token");
-    if (token) {
+    const trader = localStorage.getItem("munim_auth_trader");
+    if (token && trader) {
       router.push("/dashboard");
+    } else if (token && !trader) {
+      // Orphaned token from a bad logout — clean it up
+      localStorage.removeItem("munim_auth_token");
     }
   }, [router]);
 

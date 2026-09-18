@@ -95,7 +95,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const authUser = localStorage.getItem("munim_auth_trader");
-    if (!authUser) { router.push("/"); return; }
+    if (!authUser) { localStorage.removeItem("munim_auth_token"); window.location.href = "/"; return; }
     const parsed = JSON.parse(authUser);
 
     // Pre-fill from localStorage
