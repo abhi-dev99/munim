@@ -16,6 +16,7 @@ from app.services.redis_cache import (
     get_conversation_state,
     set_conversation_state,
     check_rate_limit,
+    mark_message_processed,
 )
 from app.services.supabase_client import (
     get_supabase,
@@ -146,6 +147,12 @@ async def verify_webhook(request: Request):
 @router.post("/webhook")
 async def receive_webhook(request: Request):
     """Receive and process incoming WhatsApp messages."""
+    raw_body = await request.body()
+    signature = request.headers.get("x-hub-signature-256", "")
+    if not whatsapp.verify_webhook_signature(raw_body, signature):
+        logger.warning("Webhook signature verification failed — rejecting payload")
+        raise HTTPException(status_code=403, detail="Invalid signature")
+
     body = await request.json()
 
     # Parse the message
@@ -156,6 +163,11 @@ async def receive_webhook(request: Request):
     from_number = msg["from_number"]
     message_id = msg["message_id"]
     message_type = msg["message_type"]
+
+    # Idempotency — Meta retries webhook deliveries on slow/failed responses
+    if not mark_message_processed(message_id):
+        logger.info(f"Duplicate webhook delivery for message_id={message_id}, skipping")
+        return {"status": "duplicate"}
 
     # Rate limiting
     if not check_rate_limit(f"wa:{from_number}", max_requests=20, window_seconds=60):

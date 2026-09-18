@@ -163,6 +163,28 @@ def clear_conversation_state(phone: str) -> None:
     _mem_delete(key)
 
 
+# --- Webhook Idempotency ---
+
+def mark_message_processed(message_id: str, ttl: int = 3600) -> bool:
+    """
+    Claim a WhatsApp message_id for processing. Returns True the first time
+    a given message_id is seen (Meta retries webhook deliveries on slow
+    responses), False on any subsequent delivery of the same message.
+    """
+    r = get_redis()
+    key = f"wa_msg:{message_id}"
+    if r:
+        try:
+            return bool(r.set(key, "1", nx=True, ex=ttl))
+        except Exception as e:
+            logger.error(f"Redis mark_message_processed failed: {e}")
+            return True
+    if _mem_get(key) is not None:
+        return False
+    _mem_set(key, "1", ex=ttl)
+    return True
+
+
 # --- Rate Limiting ---
 
 def check_rate_limit(key: str, max_requests: int = 10, window_seconds: int = 60) -> bool:
