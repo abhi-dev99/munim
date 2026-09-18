@@ -339,12 +339,12 @@ export default function Home() {
           popover: { title: 'Right Panel Widgets', description: 'All the widgets on the right panel of your dashboard can also be dragged and dropped into any order you prefer.', side: "left", align: 'start' } 
         },
         { 
-          element: () => { setActiveTab("suppliers"); return '#supplier-table-row-0'; }, 
-          popover: { title: 'Supplier Trust', description: 'Click any supplier row to view a detailed breakdown of all their invoices and pinpoint exactly which ones are causing blocked ITC.', side: "bottom", align: 'start' }
+          element: '#sidebar-nav-suppliers', 
+          popover: { title: 'Supplier Trust', description: 'Navigate to the Supplier Trust tab to view a detailed breakdown of all supplier invoices and pinpoint exactly which ones are causing blocked ITC.', side: "right", align: 'start' }
         },
         { 
-          element: () => { setActiveTab("actions"); return '#action-queue-card-0'; }, 
-          popover: { title: 'Action Queue', description: 'This is your triage center. Any discrepancies, mismatching invoices, or blocked ITC that require your immediate attention will be queued here.', side: "bottom", align: 'start' }
+          element: '#sidebar-nav-actions', 
+          popover: { title: 'Action Queue', description: 'This is your triage center. Any discrepancies, mismatching invoices, or blocked ITC that require your immediate attention will be queued here.', side: "right", align: 'start' }
         },
         { 
           element: '#sidebar-my-profile', 
@@ -697,6 +697,7 @@ export default function Home() {
 
             {/* Right (1/3) — Supplier Risk + Filing Readiness */}
             <motion.div
+              id="right-panel"
               initial={{ opacity: 0, x: 8 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.12, duration: 0.3 }}
