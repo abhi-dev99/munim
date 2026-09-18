@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, status
 from app.services.supabase_client import get_supabase
 from app.services import whatsapp
 
-router = APIRouter(prefix="/auth", tags=["Auth"])
+router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
 logger = logging.getLogger(__name__)
 
 # In-memory OTP store for demo

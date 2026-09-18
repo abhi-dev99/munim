@@ -80,8 +80,8 @@ export default function LoginPage() {
       {/* Left Side: Marketing/Value Prop (White) */}
       <div className="hidden lg:flex w-1/2 bg-white flex-col justify-center px-20">
         <div className="max-w-xl">
-          <div className="w-16 h-16 bg-black text-white flex items-center justify-center font-bold text-3xl mb-8 shadow-xl">
-            M
+          <div className="font-bold text-4xl tracking-tight text-black mb-10">
+            Munim.ai
           </div>
           <h1 className="text-6xl font-black text-black tracking-tighter leading-none mb-6">
             The CA in your pocket.
