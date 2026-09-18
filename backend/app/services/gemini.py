@@ -216,7 +216,8 @@ Rules:
 - Max 6-7 lines total
 - No bullet points, no headers, no horizontal lines
 - Hinglish is fine (mix Hindi + English naturally)
-- No URLs"""
+- No URLs
+- No mention of any dashboard (that is for CA, not trader)"""
     context = {
         "supplier_name": supplier_name or "Unknown",
         "total_amount": total_amount or 0,
