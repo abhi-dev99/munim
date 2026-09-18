@@ -121,6 +121,8 @@ const en = {
   fr_upload_gstr2b: "UPLOAD GSTR-2B",
   fr_json_excel: "JSON / EXCEL FROM GST PORTAL",
   fr_drop_or_click: "Drop GSTR-2B JSON/Excel · or click",
+  fr_upload_start: "Upload GSTR-2B to start",
+  fr_ready_to_file: "Ready to file!",
 
   // Common
   loading: "Loading…",
