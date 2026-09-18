@@ -276,7 +276,7 @@ async def get_gstr2b_records(trader_id: str = Depends(verify_trader_access), mon
 
 
 @router.delete("/records/{trader_id}")
-async def clear_gstr2b_records(trader_id: str = Depends(verify_trader_access), month: int, year: int):
+async def clear_gstr2b_records(month: int, year: int, trader_id: str = Depends(verify_trader_access)):
     """Clear GSTR-2B records for a specific month (to re-upload)."""
     try:
         db = get_supabase()
