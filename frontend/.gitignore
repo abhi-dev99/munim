@@ -36,6 +36,9 @@ yarn-error.log*
 # server
 .server
 
+# debug-mode email preview (contains real trader/invoice data, never publicly serve this)
+/public/latest_email.html
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
