@@ -213,7 +213,7 @@ async def receive_email_webhook(request: Request):
                 to=trader["whatsapp_number"],
                 document_url=image_url,
                 caption=msg,
-                filename=f"Invoice_{inv_no}.pdf"
+                filename=f"Invoice_{inv_no}.{file_ext}"
             )
 
         # 2. CA (Formal Document with Caption)
