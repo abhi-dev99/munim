@@ -177,16 +177,19 @@ async def reconcile_gstr2b(state: InvoiceAgentState) -> dict:
         records = []
         for r in raw_records:
             try:
+                date_obj = date.fromisoformat(r["invoice_date"])
                 records.append(GSTR2BRecord(
                     record_id=r["id"],
-                    supplier_gstin=r["supplier_gstin"],
-                    invoice_number=r["invoice_number"],
-                    invoice_date=date.fromisoformat(r["invoice_date"]),
-                    taxable_value=float(r.get("taxable_value", 0)),
-                    igst=float(r.get("igst", 0)),
-                    cgst=float(r.get("cgst", 0)),
-                    sgst=float(r.get("sgst", 0)),
+                    supplier_gstin=r.get("supplier_gstin", ""),
+                    invoice_number=r.get("invoice_number", ""),
+                    invoice_date=date_obj,
+                    taxable_value=float(r.get("taxable_value") or 0),
+                    igst=float(r.get("igst") or 0),
+                    cgst=float(r.get("cgst") or 0),
+                    sgst=float(r.get("sgst") or 0),
+                    record_type=r.get("record_type", "B2B")
                 ))
+                records[-1].matched_invoice_id = r.get("matched_invoice_id")
             except (ValueError, KeyError):
                 continue
 

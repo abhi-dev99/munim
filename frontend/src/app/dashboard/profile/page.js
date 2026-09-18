@@ -1,4 +1,6 @@
 "use client";
+import { authFetch } from "@/src/app/utils/api";
+
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -94,7 +96,7 @@ export default function ProfilePage() {
     }));
 
     // Fetch all traders managed by this CA
-    fetch(`${API_BASE}/api/v1/dashboard/traders`)
+    authFetch(`${API_BASE}/api/v1/dashboard/traders`)
       .then(r => r.json())
       .then(d => setTraders(d.traders || []))
       .catch(() => setTraders([]));

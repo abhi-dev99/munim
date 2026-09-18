@@ -1,4 +1,6 @@
 "use client";
+import { authFetch } from "@/src/app/utils/api";
+
 
 import { useState, useEffect } from "react";
 import { CheckCircle2, AlertTriangle, XCircle, ShieldAlert, FileText, RefreshCw } from "lucide-react";
@@ -31,7 +33,7 @@ export default function GSTR3BPanel({ traderId, apiBase }) {
   async function load() {
     setLoading(true);
     try {
-      const res = await fetch(`${apiBase}/api/v1/dashboard/gstr3b/${traderId}?month=${month}&year=${year}`);
+      const res = await authFetch(`${apiBase}/api/v1/dashboard/gstr3b/${traderId}?month=${month}&year=${year}`);
       const json = await res.json();
       setData(json);
     } catch {

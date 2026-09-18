@@ -1,4 +1,6 @@
 "use client";
+import { authFetch } from "@/src/app/utils/api";
+
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -56,7 +58,7 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, trade
   // Fetch ITC trend for mini chart
   useEffect(() => {
     if (!traderId || !apiBase) return;
-    fetch(`${apiBase}/api/v1/dashboard/itc-timeline/${traderId}`)
+    authFetch(`${apiBase}/api/v1/dashboard/itc-timeline/${traderId}`)
       .then(r => r.json())
       .then(d => setItcData(d.timeline || []))
       .catch(() => setItcData([]));
@@ -205,7 +207,7 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, trade
                   setTestAlertLoading(true);
                   setTestAlertError(null);
                   try {
-                    const res = await fetch(`${apiBase}/api/v1/communicate/test-alert/${traderId}?lang=${lang}`, { method: "POST" });
+                    const res = await authFetch(`${apiBase}/api/v1/communicate/test-alert/${traderId}?lang=${lang}`, { method: "POST" });
                     if (res.ok) {
                       setTestAlertSent(true);
                       setTimeout(() => setTestAlertSent(false), 4000);

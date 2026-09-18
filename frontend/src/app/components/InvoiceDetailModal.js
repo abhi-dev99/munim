@@ -1,3 +1,4 @@
+import { authFetch } from "@/src/app/utils/api";
 import { useEffect } from "react";
 import { X, CheckCircle2, AlertTriangle, ShieldAlert, FileText, Image as ImageIcon, ChevronLeft, ChevronRight, Check } from "lucide-react";
 
@@ -259,7 +260,7 @@ export default function InvoiceDetailModal({ invoice, onClose, onNext, onPrev, h
                   <button 
                     onClick={async () => {
                       try {
-                        const res = await fetch(`http://localhost:8000/api/v1/communicate/email-vendor/${invoice.id}`, { method: 'POST' });
+                        const res = await authFetch(`http://localhost:8000/api/v1/communicate/email-vendor/${invoice.id}`, { method: 'POST' });
                         if (res.ok) {
                           alert("Warning Email sent successfully!");
                         } else {
@@ -278,7 +279,7 @@ export default function InvoiceDetailModal({ invoice, onClose, onNext, onPrev, h
                   <button 
                     onClick={async () => {
                       try {
-                        const res = await fetch(`http://localhost:8000/api/v1/communicate/whatsapp-vendor/${invoice.id}`, { method: 'POST' });
+                        const res = await authFetch(`http://localhost:8000/api/v1/communicate/whatsapp-vendor/${invoice.id}`, { method: 'POST' });
                         if (res.ok) {
                           alert("WhatsApp Warning sent successfully!");
                         } else {
