@@ -195,7 +195,17 @@ async def receive_email_webhook(request: Request):
         # 1. Shopkeeper (Informal Document with Caption)
         if trader.get("whatsapp_number") and image_url:
             lang = trader.get("language_pref", "hi")
-            msg = await generate_informal_notification(lang, supplier_name, total_amount)
+            
+            # Use the actual AI diagnosis which contains ITC warnings and edge case logic
+            if diagnosis and getattr(diagnosis, f"diagnosis_{lang}", None):
+                msg = getattr(diagnosis, f"diagnosis_{lang}")
+                if lang == "hi":
+                    msg += "\n\n*(ईमेल से प्राप्त, CA को फॉरवर्ड कर दिया गया है)*"
+                else:
+                    msg += "\n\n*(Received via email, forwarded to CA)*"
+            else:
+                msg = await generate_informal_notification(lang, supplier_name, total_amount)
+                
             # Await the call so it doesn't get cancelled when request ends
             inv_no = invoice_data.get("invoice_number", "Unknown")
             await whatsapp.send_document(
