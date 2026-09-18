@@ -1,4 +1,6 @@
 "use client";
+import { authFetch } from "@/src/app/utils/api";
+
 
 import { useState, useEffect } from "react";
 import { AlertTriangle, CheckCircle2, XCircle, Search, ChevronUp, ChevronDown, ArrowUpRight, X, FileText, ShieldAlert, ChevronRight } from "lucide-react";
@@ -50,7 +52,7 @@ function SupplierInvoiceOverlay({ supplier, apiBase, traderId, onClose }) {
   useEffect(() => {
     if (!traderId || !supplier) return;
     setLoading(true);
-    fetch(`${apiBase}/api/v1/dashboard/invoices/${traderId}`)
+    authFetch(`${apiBase}/api/v1/dashboard/invoices/${traderId}`)
       .then(r => r.json())
       .then(data => {
         const all = (data.invoices || []).filter(
@@ -205,7 +207,7 @@ export default function SupplierHealth({ traderId, apiBase, onSwitchTab }) {
   useEffect(() => {
     if (!traderId) return;
     setLoading(true);
-    fetch(`${apiBase}/api/v1/dashboard/suppliers/${traderId}`)
+    authFetch(`${apiBase}/api/v1/dashboard/suppliers/${traderId}`)
       .then((r) => r.json())
       .then((data) => {
         const list = (data.suppliers || []).map((s) => ({

@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     app_version: str = "1.0.0"
     fastapi_port: int = 8000
     debug: bool = False
+    jwt_secret: str = "default_secret_key_change_in_prod"
+    allowed_origins: str = "http://localhost:3000,https://moaning-thwarting-dinginess.ngrok-free.dev"
 
     # --- Gemini (key pool: add up to 7 keys, system auto-rotates on 429) ---
     gemini_api_key: str = ""

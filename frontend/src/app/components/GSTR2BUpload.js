@@ -1,4 +1,6 @@
 "use client";
+import { authFetch } from "@/src/app/utils/api";
+
 
 import { useState } from "react";
 import { Upload, FileText, CheckCircle2, AlertCircle, X, ChevronDown } from "lucide-react";
@@ -59,7 +61,7 @@ export default function GSTR2BUpload({ traderId, apiBase, onUploadComplete }) {
     formData.append("year", y);
 
     try {
-      const res = await fetch(`${apiBase}/api/v1/gstr2b/upload-file/${traderId}`, {
+      const res = await authFetch(`${apiBase}/api/v1/gstr2b/upload-file/${traderId}`, {
         method: "POST",
         body: formData,
       });
@@ -166,7 +168,7 @@ export default function GSTR2BUpload({ traderId, apiBase, onUploadComplete }) {
               whileTap={{ scale: 0.98 }}
               onClick={async () => {
                 try {
-                  const res = await fetch(`${apiBase}/api/v1/gstr2b/reconcile/${traderId}?month=${month}&year=${year}`, { method: "POST" });
+                  const res = await authFetch(`${apiBase}/api/v1/gstr2b/reconcile/${traderId}?month=${month}&year=${year}`, { method: "POST" });
                   const data = await res.json();
                   setResult(prev => ({ ...prev, reconciliation: data }));
                 } catch (e) { /* ignore */ }

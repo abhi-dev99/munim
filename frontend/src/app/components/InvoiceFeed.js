@@ -1,4 +1,6 @@
 "use client";
+import { authFetch } from "@/src/app/utils/api";
+
 
 import { useState, useEffect } from "react";
 import { Clock, CheckCircle2, AlertTriangle, ShieldAlert, Search, Filter } from "lucide-react";
@@ -25,7 +27,7 @@ export default function InvoiceFeed({ traderId, apiBase }) {
 
     async function fetchInvoices() {
       try {
-        const res = await fetch(`${apiBase}/api/v1/dashboard/invoices/${traderId}`);
+        const res = await authFetch(`${apiBase}/api/v1/dashboard/invoices/${traderId}`);
         if (!res.ok) throw new Error("Failed to fetch invoices");
         const data = await res.json();
         
@@ -162,43 +164,101 @@ export default function InvoiceFeed({ traderId, apiBase }) {
         </div>
         
         {/* wrapper */}
-        <div className="overflow-y-auto flex-1 p-2">
+        <div className="overflow-y-auto flex-1 bg-white">
+          {/* Quick Metrics to fill gap */}
+          <div className="grid grid-cols-3 gap-4 p-4 border-b border-[var(--border-subtle)] bg-gray-50/50">
+            <div className="flex flex-col">
+              <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Total Invoices</span>
+              <span className="text-xl font-bold text-gray-900">{filteredInvoices.length}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Total ITC Value</span>
+              <span className="text-xl font-bold text-gray-900">₹{filteredInvoices.reduce((sum, inv) => sum + (Number(inv.total_amount) || 0), 0).toLocaleString('en-IN')}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Blocked/Risk</span>
+              <span className="text-xl font-bold text-red-600">
+                {filteredInvoices.filter(inv => inv.itc_status === 'FIXABLE_BLOCKED' || inv.itc_status === 'AT_RISK' || inv.itc_status === 'FRAUD_FLAGGED').length}
+              </span>
+            </div>
+          </div>
+
+          {/* Grid Header */}
+          <div className="grid grid-cols-12 gap-3 px-4 py-2 border-b border-[var(--border-subtle)] bg-gray-50 text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider sticky top-0 z-10">
+            <div className="col-span-4">Supplier & Invoice</div>
+            <div className="col-span-2">GSTIN</div>
+            <div className="col-span-2 text-right">Taxable Val</div>
+            <div className="col-span-2 text-right">Total ITC</div>
+            <div className="col-span-2 text-right">Status</div>
+          </div>
+          
           {filteredInvoices.length === 0 ? (
             <div className="p-8 text-center text-xs text-gray-400">No records found.</div>
           ) : (
             <div className="space-y-0">
-              {filteredInvoices.map((inv, index) => (
-                <div 
-                  key={inv.id} 
-                  onClick={() => setSelectedIndex(index)}
-                  className={`group p-3 transition-colors flex items-center justify-between border-b border-[var(--border-subtle)] last:border-0 cursor-pointer ${getRowBackground(inv.itc_status, inv.fraud_score)}`}
-                >
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-black">{inv.supplier_name || inv.gstin_supplier || "Unknown Supplier"}</span>
-                    {inv.fraud_score >= 70 && <ShieldAlert size={14} className="text-[var(--red-primary)]" />}
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)] mt-1">
-                    <span className="uppercase tracking-widest text-[10px]">{inv.invoice_number || "NO-INV-NUM"}</span>
-                    <span>•</span>
-                    <span>{new Date(inv.processed_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                  </div>
-                </div>
+              {filteredInvoices.map((inv, index) => {
+                // Calculate tax manually if backend sends cgst/sgst/igst
+                const taxTotal = (Number(inv.cgst_amount) || 0) + (Number(inv.sgst_amount) || 0) + (Number(inv.igst_amount) || 0);
+                const isTaxCalculated = taxTotal > 0;
                 
-                <div className="flex flex-col items-end gap-1">
-                  <span className="text-sm font-bold text-black">
-                    ₹{Number(inv.total_amount || 0).toLocaleString('en-IN')}
-                  </span>
-                  <div className="flex items-center gap-1.5 px-2 py-0.5 bg-white border border-[var(--border-subtle)] rounded-none">
-                    {getStatusIcon(inv.itc_status)}
-                    <span className="text-[10px] font-bold uppercase tracking-wider">
-                      {getStatusLabel(inv.itc_status)}
-                    </span>
+                return (
+                  <div 
+                    key={inv.id} 
+                    onClick={() => setSelectedIndex(index)}
+                    className={`group px-4 py-3 transition-colors grid grid-cols-12 gap-3 items-center border-b border-[var(--border-subtle)] last:border-0 cursor-pointer ${getRowBackground(inv.itc_status, inv.fraud_score)}`}
+                  >
+                    {/* Supplier & Invoice */}
+                    <div className="col-span-4 flex flex-col min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[13px] font-bold text-black truncate">{inv.supplier_name || inv.gstin_supplier || "Unknown Supplier"}</span>
+                        {inv.fraud_score >= 70 && <ShieldAlert size={14} className="text-[var(--red-primary)] flex-shrink-0" />}
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px] text-[var(--text-secondary)] mt-0.5">
+                        <span className="font-mono tracking-tight">{inv.invoice_number || "NO-INV-NUM"}</span>
+                        <span>•</span>
+                        <span>{new Date(inv.processed_at).toLocaleDateString('en-GB', {day: '2-digit', month: 'short'})}</span>
+                      </div>
+                    </div>
+
+                    {/* GSTIN */}
+                    <div className="col-span-2 flex items-center">
+                      <span className="text-[11px] font-mono text-[var(--text-secondary)]">
+                        {inv.gstin_supplier || "—"}
+                      </span>
+                    </div>
+
+                    {/* Taxable */}
+                    <div className="col-span-2 text-right flex flex-col justify-center">
+                      <span className="text-[12px] font-medium text-[var(--text-secondary)]">
+                        {inv.taxable_amount ? `₹${Number(inv.taxable_amount).toLocaleString('en-IN')}` : '—'}
+                      </span>
+                    </div>
+                    
+                    {/* Total ITC */}
+                    <div className="col-span-2 text-right flex flex-col justify-center gap-0.5">
+                      <span className="text-[13px] font-bold text-black">
+                        ₹{Number(inv.total_amount || 0).toLocaleString('en-IN')}
+                      </span>
+                      {isTaxCalculated && (
+                        <span className="text-[9px] text-[var(--text-muted)] font-mono">
+                          Tax: ₹{taxTotal.toLocaleString('en-IN')}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Status */}
+                    <div className="col-span-2 flex justify-end items-center">
+                      <div className="flex items-center gap-1.5 px-2 py-1 bg-white border border-[var(--border-subtle)] rounded-md shadow-sm">
+                        {getStatusIcon(inv.itc_status)}
+                        <span className="text-[9px] font-bold uppercase tracking-widest whitespace-nowrap">
+                          {getStatusLabel(inv.itc_status)}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
           )}
         </div>
       </div>

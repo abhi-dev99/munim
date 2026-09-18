@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends
+from app.api.deps import verify_trader_access, get_current_trader_id, HTTPException
 import logging
 from datetime import datetime, timedelta, timezone
 from app.services.supabase_client import get_supabase
@@ -45,7 +46,7 @@ def _stamp_notified(db, invoice_id: str) -> None:
         logger.warning(f"Could not stamp last_vendor_notified_at on invoice {invoice_id}: {e}")
 
 @router.post("/email-vendor/{invoice_id}")
-async def email_vendor_warning(invoice_id: str):
+async def email_vendor_warning(invoice_id: str, current_trader_id: str = Depends(get_current_trader_id)):
     """Send an automated warning email to the vendor regarding missed GSTR-1 filing."""
     db = get_supabase()
     # Fetch invoice
@@ -122,7 +123,7 @@ async def email_vendor_warning(invoice_id: str):
 
 
 @router.post("/whatsapp-vendor/{invoice_id}")
-async def whatsapp_vendor_warning(invoice_id: str, lang: str = "en"):
+async def whatsapp_vendor_warning(invoice_id: str, lang: str = "en", current_trader_id: str = Depends(get_current_trader_id)):
     """Send an automated WhatsApp warning to the vendor regarding missed GSTR-1 filing."""
     db = get_supabase()
     inv_resp = db.table("invoices").select("*, traders(business_name)").eq("id", invoice_id).execute()
@@ -180,7 +181,7 @@ async def whatsapp_vendor_warning(invoice_id: str, lang: str = "en"):
 
 
 @router.post("/test-alert/{trader_id}")
-async def send_test_alert(trader_id: str, lang: str = "en"):
+async def send_test_alert(trader_id: str = Depends(verify_trader_access), lang: str = "en"):
     """Send a test WhatsApp alert to the trader (CA self-test)."""
     db = get_supabase()
     trader_resp = db.table("traders").select("whatsapp_number, business_name, name").eq("id", trader_id).execute()

@@ -1,4 +1,6 @@
 "use client";
+import { authFetch } from "@/src/app/utils/api";
+
 
 import { useState, useEffect } from "react";
 import { FileText, Download, Loader2, AlertCircle, CheckCircle2, AlertTriangle, XCircle, Clock } from "lucide-react";
@@ -25,7 +27,7 @@ export default function ReportsPanel({ traderId, apiBase }) {
 
   async function fetchGSTR2B() {
     try {
-      const res = await fetch(`${apiBase}/api/v1/gstr2b/records/${traderId}`);
+      const res = await authFetch(`${apiBase}/api/v1/gstr2b/records/${traderId}`);
       const data = await res.json();
       // Group by month+year
       const records = data.records || [];
@@ -45,7 +47,7 @@ export default function ReportsPanel({ traderId, apiBase }) {
 
   async function fetchReports() {
     try {
-      const res = await fetch(`${apiBase}/api/v1/reports/list/${traderId}`);
+      const res = await authFetch(`${apiBase}/api/v1/reports/list/${traderId}`);
       const data = await res.json();
       setReports(data.reports || []);
     } catch {
@@ -63,7 +65,7 @@ export default function ReportsPanel({ traderId, apiBase }) {
 
     try {
       const now = new Date();
-      const res = await fetch(
+      const res = await authFetch(
         `${apiBase}/api/v1/reports/generate/${traderId}?month=${now.getMonth() + 1}&year=${now.getFullYear()}&send_whatsapp=false`,
         { method: "POST" }
       );
@@ -150,7 +152,7 @@ export default function ReportsPanel({ traderId, apiBase }) {
     const toastId = setTimeout(() => {}, 10); // dummy timeout to trigger render if needed
     
     try {
-      const res = await fetch(
+      const res = await authFetch(
         `${apiBase}/api/v1/reports/generate/${traderId}?month=${month}&year=${year}&send_whatsapp=false`,
         { method: "POST" }
       );

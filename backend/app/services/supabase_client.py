@@ -265,7 +265,7 @@ async def get_active_supplier_flags(supplier_id: str) -> list[dict]:
 
 # --- GSTR-2B Operations ---
 
-async def get_gstr2b_records(trader_id: str, month: int = None, year: int = None) -> list[dict]:
+async def get_gstr2b_records(trader_id: str, month: int = None, year: int = None, unmatched_only: bool = False) -> list[dict]:
     """Get GSTR-2B records for a trader."""
     try:
         db = get_supabase()
@@ -274,11 +274,23 @@ async def get_gstr2b_records(trader_id: str, month: int = None, year: int = None
             query = query.eq("month", month)
         if year:
             query = query.eq("year", year)
+        if unmatched_only:
+            query = query.is_("matched_invoice_id", "null")
         response = query.execute()
         return response.data or []
     except Exception as e:
         logger.error(f"Failed to get GSTR-2B records: {e}")
         return []
+
+async def mark_gstr2b_record_matched(record_id: str, invoice_id: str) -> None:
+    """Mark a GSTR-2B record as matched with an invoice."""
+    try:
+        db = get_supabase()
+        db.table("gstr2b_records").update({
+            "matched_invoice_id": invoice_id
+        }).eq("id", record_id).execute()
+    except Exception as e:
+        logger.error(f"Failed to mark GSTR-2B record as matched: {e}")
 
 
 # --- Dashboard Operations ---

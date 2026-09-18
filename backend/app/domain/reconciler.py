@@ -38,6 +38,7 @@ class GSTR2BRecord:
         self.total_tax = igst + cgst + sgst
         self.total = taxable_value + self.total_tax
         self.record_type = record_type
+        self.matched_invoice_id = None
 
 
 class GSTR2BReconciler:
@@ -77,11 +78,24 @@ class GSTR2BReconciler:
         """Normalize invoice number for comparison (strip spaces, lowercase)."""
         return inv_num.strip().lower().replace(" ", "").replace("-", "").replace("/", "")
 
-    def _similarity(self, s1: str, s2: str) -> float:
-        """Character-level similarity ratio using difflib (no external deps)."""
-        if not s1 or not s2:
-            return 0.0
-        return SequenceMatcher(None, s1, s2).ratio()
+    def _levenshtein_distance(self, s1: str, s2: str) -> int:
+        """Calculate the Levenshtein distance between two strings using DP."""
+        if len(s1) < len(s2):
+            return self._levenshtein_distance(s2, s1)
+        if len(s2) == 0:
+            return len(s1)
+
+        previous_row = range(len(s2) + 1)
+        for i, c1 in enumerate(s1):
+            current_row = [i + 1]
+            for j, c2 in enumerate(s2):
+                insertions = previous_row[j + 1] + 1
+                deletions = current_row[j] + 1
+                substitutions = previous_row[j] + (c1 != c2)
+                current_row.append(min(insertions, deletions, substitutions))
+            previous_row = current_row
+            
+        return previous_row[-1]
 
     def match_invoice(
         self,
@@ -134,10 +148,10 @@ class GSTR2BReconciler:
                         itc_amount=record.total_tax,
                     )
 
-        # --- Pass 2: Fuzzy Match (≥85% char similarity + amount + date window) ---
+        # --- Pass 2: Fuzzy Match (Levenshtein distance <= 2 + amount + date window) ---
         for record in candidates:
             normalized_record_num = self._normalize_invoice_number(record.invoice_number)
-            similarity = self._similarity(normalized_inv_num, normalized_record_num)
+            distance = self._levenshtein_distance(normalized_inv_num, normalized_record_num)
             amount_ok = self._amount_within_tolerance(
                 record.total, total_amount, self.amount_tolerance
             )
@@ -147,12 +161,12 @@ class GSTR2BReconciler:
                 else True
             )
 
-            if similarity >= 0.85 and amount_ok and date_ok:
-                confidence = 0.7 + (similarity - 0.85) * 2.0  # 0.70–1.0 range
+            if distance <= 2 and amount_ok and date_ok:
+                confidence = max(0.70, 0.99 - (distance * 0.1))  # 0.99 for 0, 0.89 for 1, 0.79 for 2
                 consumed_ids.add(record.record_id)
                 return GSTR2BMatchResult(
                     status=GSTR2BMatchStatus.PROBABLE_MATCH,
-                    confidence=round(min(confidence, 0.99), 2),
+                    confidence=round(confidence, 2),
                     matched_record_id=record.record_id,
                     itc_amount=record.total_tax,
                 )
@@ -238,8 +252,21 @@ class GSTR2BReconciler:
         Find B2B records in GSTR-2B that were never matched to any trader invoice.
         These represent missed ITC — money left unclaimed.
         """
-        return [
+        orphaned = [
             r for r in gstr2b_records
             if r.record_type in ("B2B", "B2BA")
             and r.record_id not in consumed_ids
+            and r.matched_invoice_id is None
         ]
+        
+        grouped = {}
+        for r in orphaned:
+            key = f"{r.supplier_gstin}_{r.invoice_number}"
+            if key not in grouped:
+                grouped[key] = r
+            else:
+                # If there's already a record, prefer B2BA
+                if r.record_type == "B2BA":
+                    grouped[key] = r
+                    
+        return list(grouped.values())

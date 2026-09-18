@@ -1,4 +1,6 @@
 "use client";
+import { authFetch } from "@/src/app/utils/api";
+
 
 import { useState, useEffect } from "react";
 import MoneyMeter from "../components/MoneyMeter";
@@ -19,6 +21,7 @@ import {
   CheckCircle2,
   PieChart,
   Globe,
+  Lightbulb,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -31,6 +34,57 @@ function formatINR(amount) {
   return `₹${amount}`;
 }
 
+// Right-rail: Quick Links Card
+function QuickLinksCard({ traderId }) {
+  const portalUrl = `/demo/index.html${traderId && traderId !== 'demo' ? `?traderId=${traderId}` : ''}`;
+  
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-4 mt-3">
+      <div className="flex items-center gap-2 mb-3">
+        <Globe size={15} className="text-gray-400" />
+        <h3 className="text-sm font-bold text-gray-900">Quick Links</h3>
+      </div>
+      
+      <div className="space-y-2">
+        <a 
+          href={portalUrl} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="group flex items-center justify-between p-2.5 rounded-lg border border-gray-100 hover:border-blue-200 hover:bg-blue-50 transition-colors"
+        >
+          <div className="flex flex-col">
+            <span className="text-xs font-bold text-gray-800 group-hover:text-blue-700 transition-colors">GST Portal Dashboard</span>
+            <span className="text-[10px] text-gray-500">IMS, GSTR-2B, GSTR-3B</span>
+          </div>
+          <span className="text-gray-400 group-hover:text-blue-600 transition-colors">→</span>
+        </a>
+
+        <button 
+          className="w-full flex items-center justify-between p-2.5 rounded-lg border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-colors opacity-70 cursor-not-allowed"
+          title="Coming soon"
+        >
+          <div className="flex flex-col text-left">
+            <span className="text-xs font-bold text-gray-800">E-Way Bill System</span>
+            <span className="text-[10px] text-gray-500">Generate & Manage EWB</span>
+          </div>
+          <span className="text-gray-400">→</span>
+        </button>
+
+        <button 
+          className="w-full flex items-center justify-between p-2.5 rounded-lg border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-colors opacity-70 cursor-not-allowed"
+          title="Coming soon"
+        >
+          <div className="flex flex-col text-left">
+            <span className="text-xs font-bold text-gray-800">E-Invoice Portal</span>
+            <span className="text-[10px] text-gray-500">IRN Generation</span>
+          </div>
+          <span className="text-gray-400">→</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // Right-rail: Supplier Risk Summary card
 function SupplierRiskCard({ traderId, onSwitchTab }) {
   const { t } = useLanguage();
@@ -38,7 +92,7 @@ function SupplierRiskCard({ traderId, onSwitchTab }) {
 
   useEffect(() => {
     if (!traderId) return;
-    fetch(`${API_BASE}/api/v1/dashboard/suppliers/${traderId}`)
+    authFetch(`${API_BASE}/api/v1/dashboard/suppliers/${traderId}`)
       .then((r) => r.json())
       .then((d) => setData(d))
       .catch(() => setData(null));
@@ -190,6 +244,33 @@ function FilingReadinessCard({ traderId, summary, onSwitchTab }) {
   );
 }
 
+// Right-rail: E-Way Bill Summary Card
+function EWayBillCard() {
+  const { t } = useLanguage();
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+      <div className="flex items-center gap-2 mb-3">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect><path d="M7 15h0M2 9.5h20"></path></svg>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">E-Way Bills</h3>
+      </div>
+      
+      <div className="space-y-3">
+        <div className="flex justify-between items-center text-xs">
+          <span className="text-gray-500">Active E-Way Bills</span>
+          <span className="font-semibold text-gray-900 bg-gray-100 px-2 py-0.5 rounded-full">0</span>
+        </div>
+        <div className="flex justify-between items-center text-xs">
+          <span className="text-gray-500">Expiring Today</span>
+          <span className="font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">0</span>
+        </div>
+        <p className="text-[10px] text-gray-400 mt-2 leading-tight">
+          Required for movement of goods worth &gt; ₹50,000. Connect E-Way Bill portal to track validity.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const { t, lang, changeLanguage } = useLanguage();
   const [activeTab, setActiveTab] = useState("money-meter");
@@ -220,7 +301,7 @@ export default function Home() {
 
   async function fetchTraders(defaultId = null) {
     try {
-      const res = await fetch(`${API_BASE}/api/v1/dashboard/traders`);
+      const res = await authFetch(`${API_BASE}/api/v1/dashboard/traders`);
       const data = await res.json();
       const list = data.traders || [];
       setTraders(list);
@@ -247,7 +328,7 @@ export default function Home() {
   async function fetchSummary(tid) {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/v1/dashboard/summary/${tid}`);
+      const res = await authFetch(`${API_BASE}/api/v1/dashboard/summary/${tid}`);
       if (res.ok) {
         const data = await res.json();
         setSummary(data);
@@ -261,7 +342,7 @@ export default function Home() {
     }
     // Also fetch action count
     try {
-      const actRes = await fetch(`${API_BASE}/api/v1/dashboard/actions/${tid}`);
+      const actRes = await authFetch(`${API_BASE}/api/v1/dashboard/actions/${tid}`);
       if (actRes.ok) {
         const actData = await actRes.json();
         setActionCount(actData.total || 0);
@@ -486,10 +567,12 @@ export default function Home() {
               initial={{ opacity: 0, x: 8 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.12, duration: 0.3 }}
-              className="flex flex-col gap-3 min-h-0 overflow-y-auto"
+              className="flex flex-col gap-3 min-h-0 overflow-y-auto pr-1"
             >
               <SupplierRiskCard traderId={traderId} onSwitchTab={setActiveTab} />
               <FilingReadinessCard traderId={traderId} summary={summary} onSwitchTab={setActiveTab} />
+              <EWayBillCard />
+              <QuickLinksCard traderId={traderId} />
             </motion.div>
           </motion.div>
         )}

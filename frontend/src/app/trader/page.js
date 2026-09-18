@@ -1,4 +1,6 @@
 "use client";
+import { authFetch } from "@/src/app/utils/api";
+
 
 import { useState, useEffect, useRef } from "react";
 import { Menu, Camera, FileText, CheckCircle2, ShieldAlert, X, Loader2, Home, BarChart2, ChevronRight, Upload } from "lucide-react";
@@ -26,7 +28,7 @@ export default function TraderApp() {
   useEffect(() => {
     async function fetchDashboardData() {
       try {
-        const tradersRes = await fetch(`${API_BASE}/api/v1/dashboard/traders`);
+        const tradersRes = await authFetch(`${API_BASE}/api/v1/dashboard/traders`);
         if (!tradersRes.ok) throw new Error("Failed to fetch traders");
         const tradersData = await tradersRes.json();
         const activeTrader = tradersData.traders?.[0];
@@ -34,12 +36,12 @@ export default function TraderApp() {
         setTraderName(activeTrader?.business_name || activeTrader?.name || "My Business");
         setTraderPhone(activeTrader?.whatsapp_number || null);
 
-        const res = await fetch(`${API_BASE}/api/v1/dashboard/summary/${activeId}`);
+        const res = await authFetch(`${API_BASE}/api/v1/dashboard/summary/${activeId}`);
       if (res.ok) {
           const data = await res.json();
           setSummary(data);
           setTraderId(data.trader_id);
-          const invRes = await fetch(`${API_BASE}/api/v1/dashboard/invoices/${data.trader_id}`);
+          const invRes = await authFetch(`${API_BASE}/api/v1/dashboard/invoices/${data.trader_id}`);
           if (invRes.ok) {
             const invData = await invRes.json();
             setInvoiceHistory((invData.invoices || []).slice(0, 20));
@@ -76,7 +78,7 @@ export default function TraderApp() {
     formData.append("trader_id", traderId);
 
     try {
-      const res = await fetch(`${API_BASE}/api/v1/webhook/upload-invoice`, {
+      const res = await authFetch(`${API_BASE}/api/v1/webhook/upload-invoice`, {
         method: "POST",
         body: formData,
       });
@@ -96,7 +98,7 @@ export default function TraderApp() {
         }, 8000);
         
         // Refresh invoice history after successful upload
-        const invRes = await fetch(`${API_BASE}/api/v1/dashboard/invoices/${traderId}`);
+        const invRes = await authFetch(`${API_BASE}/api/v1/dashboard/invoices/${traderId}`);
         if (invRes.ok) {
           const invData = await invRes.json();
           setInvoiceHistory((invData.invoices || []).slice(0, 20));

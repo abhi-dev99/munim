@@ -81,6 +81,7 @@ class HSNValidationResult(BaseModel):
 
 class GSTINValidation(BaseModel):
     gstin: str
+    verification_status: str = "UNVERIFIED"
     is_valid: bool = False
     legal_name: Optional[str] = None
     trade_name: Optional[str] = None

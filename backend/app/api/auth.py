@@ -108,7 +108,21 @@ async def verify_otp(data: OTPVerify):
         res_ca = db.table("traders").select("*").eq("ca_whatsapp_number", phone).execute()
         trader = res_ca.data[0] if res_ca.data else None
     
+    import jwt
+    from app.config import get_settings
+    settings = get_settings()
+    
+    token = None
+    if trader:
+        payload = {
+            "sub": trader["id"],
+            "exp": datetime.utcnow() + timedelta(days=7),
+            "iat": datetime.utcnow(),
+        }
+        token = jwt.encode(payload, settings.jwt_secret, algorithm="HS256")
+    
     return {
         "message": "Login successful.",
-        "trader": trader
+        "trader": trader,
+        "token": token
     }
