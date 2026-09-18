@@ -286,6 +286,7 @@ export default function Home() {
   const [traderDropdown, setTraderDropdown] = useState(false);
   const [activeTraderName, setActiveTraderName] = useState("Loading...");
   const [activeBusinessName, setActiveBusinessName] = useState("");
+  const [activeTraderGstin, setActiveTraderGstin] = useState("");
   const [actionCount, setActionCount] = useState(0);
 
   const [fullPrefs, setFullPrefs] = useState(null);
@@ -442,6 +443,7 @@ export default function Home() {
         setTraderId(selected.id);
         setActiveTraderName(selected.name || selected.business_name || "Trader 1");
         setActiveBusinessName(selected.business_name || selected.name || "");
+        setActiveTraderGstin(selected.gstin || "");
         setTraderPhone(selected.whatsapp_number || null);
         setIsComposition(selected.is_composition || false);
       } else {
@@ -500,6 +502,7 @@ export default function Home() {
     setTraderId(trader.id);
     setActiveTraderName(trader.name || trader.business_name || trader.id.slice(0, 8));
     setActiveBusinessName(trader.business_name || trader.name || "");
+    setActiveTraderGstin(trader.gstin || "");
     setTraderPhone(trader.whatsapp_number || null);
     setIsComposition(trader.is_composition || false);
     setTraderDropdown(false);
