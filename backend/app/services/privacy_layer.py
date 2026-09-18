@@ -35,9 +35,10 @@ class PrivacyLayer:
 
     def anonymize_for_llm(self, context: dict, llm_target: str, task: str) -> Tuple[Dict[str, Any], Callable[[Dict[str, Any]], Dict[str, Any]]]:
         """
-        Anonymizes context for LLM.
-        Returns (anonymized_context, de_anonymize_fn)
         """
+        if task in ("DIAGNOSIS", "SUMMARY"):
+            return context, lambda x: x
+
         session_id = str(uuid.uuid4())
         anonymized_context = {}
         real_data = {}

@@ -111,7 +111,7 @@ async def email_vendor_warning(invoice_id: str, current_trader_id: str = Depends
             "subject": subject,
             "html": html_content
         }
-        resend.Emails.send(params)
+        await asyncio.to_thread(resend.Emails.send, params)
         logger.info(f"Warning email sent to vendor {supplier_email} for invoice {invoice_id}")
         _stamp_notified(db, invoice_id)
         return {"status": "success", "message": "Email sent to vendor"}
