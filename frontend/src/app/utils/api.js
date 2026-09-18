@@ -9,5 +9,16 @@ export const authFetch = async (url, options = {}) => {
       };
     }
   }
-  return fetch(url, options);
+  const res = await fetch(url, options);
+  
+  if (res.status === 401 && typeof window !== 'undefined') {
+    // Prevent redirect loop if already on login page
+    if (window.location.pathname !== "/") {
+      localStorage.removeItem('munim_auth_token');
+      localStorage.removeItem('munim_auth_trader');
+      window.location.href = "/";
+    }
+  }
+  
+  return res;
 };
