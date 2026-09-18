@@ -44,11 +44,7 @@ export default function ActionQueue({ traderId, apiBase, traderPhone }) {
       }
     } catch (err) {
       console.warn("Using demo action data:", err);
-      setActions([
-        { id: 1, supplier: "Balaji Hardware", amount: 12400, description: "Supplier has not filed GSTR-1 for May. ₹12,400 ITC at risk.", fix_action: "Contact supplier", urgency: "HIGH" },
-        { id: 2, supplier: "Surat Textiles", amount: 8600, description: "HSN code mismatch — rate applied differs from official rate.", fix_action: "Ask CA to correct HSN before filing", urgency: "MEDIUM" },
-        { id: 3, supplier: "Unknown Trader", amount: 45000, description: "Velocity anomaly: 15 sequential invoices from new supplier.", fix_action: "Verify invoice authenticity with CA", urgency: "CRITICAL" },
-      ]);
+      setActions([]);
     } finally {
       setLoading(false);
     }

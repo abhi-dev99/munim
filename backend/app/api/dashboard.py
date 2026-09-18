@@ -92,6 +92,10 @@ async def get_trader_suppliers(trader_id: str):
 async def get_action_items(trader_id: str):
     """Get prioritized action items (issues sorted by ₹ impact)."""
     try:
+        db = get_supabase()
+        trader_res = db.table("traders").select("language_pref").eq("id", trader_id).execute()
+        lang = trader_res.data[0].get("language_pref", "en") if trader_res.data else "en"
+
         invoices = await get_invoices_for_trader(trader_id)
 
         actions = []
@@ -108,9 +112,9 @@ async def get_action_items(trader_id: str):
                 id=inv["id"],
                 invoice_id=inv["id"],
                 supplier_name=inv.get("supplier_name") or inv.get("gstin_supplier", "Unknown Supplier"),
-                issue=inv.get("itc_block_reason") or _get_issue_label(status),
+                issue=inv.get("itc_block_reason") or _get_issue_label(status, lang),
                 impact_amount=impact,
-                fix_action=_get_fix_action(status),
+                fix_action=_get_fix_action(status, lang),
                 priority=0,
             ))
 
@@ -190,24 +194,60 @@ async def get_itc_timeline(trader_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-def _get_fix_action(status: str) -> str:
-    """Get human-readable fix action for an ITC status."""
+def _get_fix_action(status: str, lang: str = "en") -> str:
+    """Get human-readable fix action for an ITC status based on language."""
     actions = {
-        "FIXABLE_BLOCKED": "CA ko bolo HSN code / rate correct kare filing se pehle",
-        "AT_RISK": "Supplier se contact karo — unhe GSTR-1 file karna hoga",
-        "FRAUD_FLAGGED": "CA se verify karwao — ITC claim mat karo abhi",
+        "en": {
+            "FIXABLE_BLOCKED": "Correct HSN code / tax rate before filing",
+            "AT_RISK": "Contact supplier to ensure GSTR-1 filing",
+            "FRAUD_FLAGGED": "Verify invoice authenticity; withhold ITC claim",
+        },
+        "hi": {
+            "FIXABLE_BLOCKED": "Filing se pehle HSN code ya tax rate theek karein",
+            "AT_RISK": "Supplier se sampark karein aur GSTR-1 file karwayein",
+            "FRAUD_FLAGGED": "Invoice check karein, abhi ITC claim na karein",
+        },
+        "mr": {
+            "FIXABLE_BLOCKED": "फाइलिंगपूर्वी HSN कोड / टॅक्स रेट दुरुस्त करा",
+            "AT_RISK": "सप्लायरला संपर्क करून GSTR-1 फाईल करायला सांगा",
+            "FRAUD_FLAGGED": "इनव्हॉइस तपासा, आत्ता ITC क्लेम करू नका",
+        },
+        "gu": {
+            "FIXABLE_BLOCKED": "ફાઇલિંગ પહેલાં HSN કોડ / ટેક્સ રેટ સુધારો",
+            "AT_RISK": "સપ્લાયરનો સંપર્ક કરો અને GSTR-1 ફાઇલ કરાવો",
+            "FRAUD_FLAGGED": "ઇનવોઇસ તપાસો, હમણાં ITC ક્લેમ ન કરો",
+        }
     }
-    return actions.get(status, "Check with CA")
+    lang_dict = actions.get(lang) or actions.get("en")
+    return lang_dict.get(status, "Check with CA")
 
 
-def _get_issue_label(status: str) -> str:
-    """Get a human-readable issue description for an ITC status code."""
+def _get_issue_label(status: str, lang: str = "en") -> str:
+    """Get a human-readable issue description for an ITC status code based on language."""
     labels = {
-        "FIXABLE_BLOCKED": "HSN code mismatch or incorrect GST rate",
-        "AT_RISK": "Supplier GSTR-1 not filed — ITC at risk",
-        "FRAUD_FLAGGED": "Potential fraud or invalid supplier GSTIN",
+        "en": {
+            "FIXABLE_BLOCKED": "HSN code mismatch or incorrect GST rate",
+            "AT_RISK": "Supplier GSTR-1 not filed — ITC at risk",
+            "FRAUD_FLAGGED": "Potential fraud or invalid supplier GSTIN",
+        },
+        "hi": {
+            "FIXABLE_BLOCKED": "HSN code ya GST rate galat hai",
+            "AT_RISK": "Supplier ne GSTR-1 file nahi kiya — ITC risk par",
+            "FRAUD_FLAGGED": "Supplier fraud ho sakta hai ya GSTIN galat hai",
+        },
+        "mr": {
+            "FIXABLE_BLOCKED": "HSN कोड जुळत नाही किंवा GST रेट चुकीचा आहे",
+            "AT_RISK": "सप्लायरने GSTR-1 फाईल केले नाही — ITC धोक्यात",
+            "FRAUD_FLAGGED": "सप्लायर फ्रॉड असू शकतो किंवा GSTIN चुकीचा आहे",
+        },
+        "gu": {
+            "FIXABLE_BLOCKED": "HSN કોડ મેચ થતો નથી અથવા GST રેટ ખોટો છે",
+            "AT_RISK": "સપ્લાયરે GSTR-1 ફાઈલ કર્યું નથી — ITC જોખમમાં",
+            "FRAUD_FLAGGED": "સપ્લાયર ફ્રોડ હોઈ શકે છે અથવા GSTIN ખોટો છે",
+        }
     }
-    return labels.get(status, status or "Compliance issue detected")
+    lang_dict = labels.get(lang) or labels.get("en")
+    return lang_dict.get(status, status or "Compliance issue detected")
 
 
 def _month_name(month: int) -> str:
@@ -299,6 +339,7 @@ async def get_reports(trader_id: str):
     except Exception as e:
         logger.error(f"Get reports failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.post("/check-deadlines")
 async def check_deadlines():

@@ -7,12 +7,41 @@ from fastapi import APIRouter, HTTPException, status
 from app.services.supabase_client import get_supabase
 from app.services import whatsapp
 
+from app.services.redis_cache import get_redis, _mem_set, _mem_get, _mem_delete
+
 router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
 logger = logging.getLogger(__name__)
 
-# In-memory OTP store for demo
-# Format: { "919822062252": {"otp": "123456", "expires_at": datetime} }
-otp_store: Dict[str, dict] = {}
+def set_otp(phone: str, otp: str):
+    r = get_redis()
+    key = f"otp:{phone}"
+    if r:
+        try:
+            r.set(key, otp, ex=300)
+            return
+        except:
+            pass
+    _mem_set(key, otp, ex=300)
+
+def get_otp(phone: str) -> Optional[str]:
+    r = get_redis()
+    key = f"otp:{phone}"
+    if r:
+        try:
+            return r.get(key)
+        except:
+            pass
+    return _mem_get(key)
+
+def delete_otp(phone: str):
+    r = get_redis()
+    key = f"otp:{phone}"
+    if r:
+        try:
+            r.delete(key)
+        except:
+            pass
+    _mem_delete(key)
 
 class OTPRequest(BaseModel):
     mobile_number: str
@@ -45,11 +74,8 @@ async def request_otp(data: OTPRequest):
         logger.info(f"DEMO OTP FOR {phone}: {otp}")
         logger.info("=" * 40)
     
-    # Store OTP with 5 min expiry
-    otp_store[phone] = {
-        "otp": otp,
-        "expires_at": datetime.now() + timedelta(minutes=5)
-    }
+    # Store OTP with 5 min expiry via Redis/Memory
+    set_otp(phone, otp)
     
     # Send via WhatsApp
     msg = f"Your Munim.ai verification code is: *{otp}*. Do not share this with anyone."
@@ -62,19 +88,15 @@ async def verify_otp(data: OTPVerify):
     phone = data.mobile_number.strip().replace("+", "").replace(" ", "")
     otp_submitted = data.otp.strip()
     
-    record = otp_store.get(phone)
+    record = get_otp(phone)
     if not record:
-        raise HTTPException(status_code=400, detail="No active OTP found for this number. Please request a new one.")
+        raise HTTPException(status_code=400, detail="No active OTP found or expired. Please request a new one.")
         
-    if datetime.now() > record["expires_at"]:
-        del otp_store[phone]
-        raise HTTPException(status_code=400, detail="OTP has expired. Please request a new one.")
-        
-    if record["otp"] != otp_submitted:
+    if record != otp_submitted:
         raise HTTPException(status_code=400, detail="Invalid OTP.")
         
     # Success
-    del otp_store[phone]
+    delete_otp(phone)
     
     # Fetch user data to return
     db = get_supabase()

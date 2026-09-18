@@ -1,10 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { LayoutDashboard, Users, AlertCircle, FileText, MessageCircle } from "lucide-react";
 
 export default function Sidebar({ activeTab, onTabChange, actionCount = 0 }) {
+  const router = useRouter();
   const [isWhatsappEnabled, setIsWhatsappEnabled] = useState(false);
+  const [testAlertSent, setTestAlertSent] = useState(false);
+  const [authName, setAuthName] = useState("N");
+
+  useEffect(() => {
+    const authUser = localStorage.getItem("munim_auth_trader");
+    if (authUser) {
+      const parsed = JSON.parse(authUser);
+      const name = parsed.name || parsed.business_name || "N";
+      setAuthName(name.charAt(0).toUpperCase());
+    }
+  }, []);
 
   const navItems = [
     { id: "money-meter", label: "Money Meter", icon: LayoutDashboard },
@@ -75,20 +88,28 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0 }) {
           {isWhatsappEnabled && (
             <button 
               onClick={() => {
-                alert("Test WhatsApp alert sent to registered number!");
+                setTestAlertSent(true);
+                setTimeout(() => setTestAlertSent(false), 3000);
               }}
-              className="w-full py-2 bg-white border border-[#25D366] text-[#25D366] rounded-lg text-xs font-bold hover:bg-green-50 transition-colors shadow-sm"
+              disabled={testAlertSent}
+              className="w-full py-2 bg-white border border-[#25D366] text-[#25D366] rounded-lg text-xs font-bold hover:bg-green-50 transition-colors shadow-sm disabled:opacity-50"
             >
-              Send Test Alert
+              {testAlertSent ? "Alert Sent ✅" : "Send Test Alert"}
             </button>
           )}
         </div>
       </div>
 
       <div className="p-4 border-t border-[var(--border-subtle)] space-y-1">
-        <button className="flex items-center gap-3 px-3 py-2 text-[var(--text-secondary)] hover:text-black hover:bg-[var(--bg-secondary)] rounded-lg transition-colors w-full">
+        <button 
+          onClick={() => {
+            localStorage.removeItem("munim_auth_trader");
+            router.push("/");
+          }}
+          className="flex items-center gap-3 px-3 py-2 text-[var(--text-secondary)] hover:text-black hover:bg-[var(--bg-secondary)] rounded-lg transition-colors w-full"
+        >
           <div className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center font-bold text-[10px]">
-            N
+            {authName}
           </div>
           <span className="font-medium text-sm">Sign Out</span>
         </button>

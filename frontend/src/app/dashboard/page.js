@@ -9,6 +9,7 @@ import InvoiceFeed from "../components/InvoiceFeed";
 import GSTR2BUpload from "../components/GSTR2BUpload";
 import ReportsPanel from "../components/ReportsPanel";
 import GSTTimeline from "../components/GSTTimeline";
+import ITCTrendChart from "../components/ITCTrendChart";
 import { ChevronDown, Users, ToggleLeft, ToggleRight } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -27,23 +28,33 @@ export default function Home() {
   const [traderPhone, setTraderPhone] = useState(null);
 
   useEffect(() => {
-    fetchTraders();
+    const authUser = localStorage.getItem("munim_auth_trader");
+    if (!authUser) {
+      window.location.href = "/";
+      return;
+    }
+    const authTrader = JSON.parse(authUser);
+    fetchTraders(authTrader.id);
   }, []);
 
   useEffect(() => {
     if (traderId) fetchSummary(traderId);
   }, [traderId]);
 
-  async function fetchTraders() {
+  async function fetchTraders(defaultId = null) {
     try {
       const res = await fetch(`${API_BASE}/api/v1/dashboard/traders`);
       const data = await res.json();
       const list = data.traders || [];
       setTraders(list);
       if (list.length > 0) {
-        setTraderId(list[0].id);
-        setActiveTraderName(list[0].name || list[0].business_name || "Trader 1");
-        setTraderPhone(list[0].whatsapp_number || null);
+        const matched = defaultId ? list.find(t => t.id === defaultId) : null;
+        const selected = matched || list[0];
+        
+        setTraderId(selected.id);
+        setActiveTraderName(selected.name || selected.business_name || "Trader 1");
+        setTraderPhone(selected.whatsapp_number || null);
+        setIsComposition(selected.is_composition || false);
       } else {
         setTraderId("demo");
         setActiveTraderName("Demo Trader");
@@ -101,6 +112,7 @@ export default function Home() {
     setTraderId(trader.id);
     setActiveTraderName(trader.name || trader.business_name || trader.id.slice(0, 8));
     setTraderPhone(trader.whatsapp_number || null);
+    setIsComposition(trader.is_composition || false);
     setTraderDropdown(false);
   }
 
@@ -113,7 +125,7 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold">
-                <span className="gradient-text"></span>
+                <span className="gradient-text">{activeTraderName} Dashboard</span>
               </h1>
               <p className="text-[var(--text-secondary)] mt-1">
                 GST Compliance Dashboard — {new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" })}
@@ -193,8 +205,13 @@ export default function Home() {
               transition={{ delay: 0.1, duration: 0.3 }}
               className="col-span-2 flex flex-col gap-4 min-h-0"
             >
-              <div className="flex-none max-h-[400px] overflow-y-auto pr-2">
-                {activeTab === "money-meter" && <MoneyMeter summary={summary} apiBase={API_BASE} isComposition={isComposition} />}
+              <div className="flex-none max-h-[400px] overflow-y-auto pr-2 pb-4">
+                {activeTab === "money-meter" && (
+                  <>
+                    <MoneyMeter summary={summary} apiBase={API_BASE} isComposition={isComposition} />
+                    <ITCTrendChart traderId={traderId} apiBase={API_BASE} />
+                  </>
+                )}
                 {activeTab === "suppliers" && <SupplierHealth traderId={traderId} apiBase={API_BASE} />}
                 {activeTab === "actions" && <ActionQueue traderId={traderId} apiBase={API_BASE} traderPhone={traderPhone} />}
                 {activeTab === "reports" && <ReportsPanel traderId={traderId} apiBase={API_BASE} />}

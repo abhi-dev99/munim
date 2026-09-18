@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     app_name: str = "Munim.ai"
     app_version: str = "1.0.0"
     fastapi_port: int = 8000
-    debug: bool = True
+    debug: bool = False
 
     # --- Gemini (key pool: add up to 7 keys, system auto-rotates on 429) ---
     gemini_api_key: str = ""
