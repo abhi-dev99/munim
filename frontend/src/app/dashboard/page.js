@@ -8,6 +8,8 @@ import Sidebar from "../components/Sidebar";
 import InvoiceFeed from "../components/InvoiceFeed";
 import GSTR2BUpload from "../components/GSTR2BUpload";
 import ReportsPanel from "../components/ReportsPanel";
+import IMSPanel from "../components/IMSPanel";
+import GSTR3BPanel from "../components/GSTR3BPanel";
 import { useLanguage } from "../context/LanguageContext";
 import {
   ChevronDown,
@@ -309,9 +311,11 @@ export default function Home() {
 
   const tabLabels = {
     "money-meter": t("nav_money_meter"),
-    "suppliers": t("nav_supplier_trust"),
-    "actions": t("nav_action_queue"),
-    "reports": t("nav_monthly_reports"),
+    "suppliers":   t("nav_supplier_trust"),
+    "actions":     t("nav_action_queue"),
+    "ims":         "IMS",
+    "gstr3b":      "GSTR-3B",
+    "reports":     t("nav_monthly_reports"),
   };
 
   return (
@@ -455,6 +459,12 @@ export default function Home() {
               )}
               {activeTab === "actions" && (
                 <ActionQueue traderId={traderId} apiBase={API_BASE} traderPhone={traderPhone} />
+              )}
+              {activeTab === "ims" && (
+                <IMSPanel traderId={traderId} apiBase={API_BASE} />
+              )}
+              {activeTab === "gstr3b" && (
+                <GSTR3BPanel traderId={traderId} apiBase={API_BASE} />
               )}
               {activeTab === "reports" && (
                 <ReportsPanel traderId={traderId} apiBase={API_BASE} />

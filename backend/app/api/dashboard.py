@@ -368,3 +368,171 @@ async def check_deadlines():
     
     logger.info("Checked deadlines. Sent WhatsApp alerts to trader and CA.")
     return {"status": "success", "message": "Deadline alerts triggered successfully via WhatsApp."}
+
+
+@router.get("/gstr3b/{trader_id}")
+async def get_gstr3b_draft(trader_id: str, month: int = None, year: int = None):
+    """
+    Compute a GSTR-3B auto-draft from real invoice data.
+    Table 4 (ITC) is computed from actual reconciled invoices.
+    Table 3.1 (output liability) is omitted — outward supply data not yet available.
+    """
+    try:
+        now = date.today()
+        month = month or now.month
+        year = year or now.year
+
+        invoices = await get_invoices_for_trader(trader_id, month, year)
+
+        # Table 4: ITC Availability — from real engine verdicts
+        itc_igst = itc_cgst = itc_sgst = 0.0
+        itc_blocked_igst = itc_blocked_cgst = itc_blocked_sgst = 0.0
+        at_risk_total = 0.0
+        ineligible_total = 0.0
+        total_invoices = len(invoices)
+        confirmed_count = 0
+        at_risk_count = 0
+        blocked_count = 0
+
+        for inv in invoices:
+            status = inv.get("itc_status", "")
+            igst = float(inv.get("igst") or 0)
+            cgst = float(inv.get("cgst") or 0)
+            sgst = float(inv.get("sgst") or 0)
+            total_tax = igst + cgst + sgst
+
+            if status == "CONFIRMED":
+                itc_igst += igst
+                itc_cgst += cgst
+                itc_sgst += sgst
+                confirmed_count += 1
+            elif status in ("FIXABLE_BLOCKED", "FRAUD_FLAGGED"):
+                itc_blocked_igst += igst
+                itc_blocked_cgst += cgst
+                itc_blocked_sgst += sgst
+                blocked_count += 1
+            elif status == "AT_RISK":
+                at_risk_total += total_tax
+                at_risk_count += 1
+            elif status == "INELIGIBLE":
+                ineligible_total += total_tax
+
+        itc_available = itc_igst + itc_cgst + itc_sgst
+        itc_blocked = itc_blocked_igst + itc_blocked_cgst + itc_blocked_sgst
+
+        # GSTR-2B reconciliation summary
+        db = get_supabase()
+        from app.services.supabase_client import get_gstr2b_records
+        gstr2b_recs = await get_gstr2b_records(trader_id, month, year)
+        total_2b_igst = sum(float(r.get("igst") or 0) for r in gstr2b_recs if r.get("record_type", "B2B") == "B2B")
+        total_2b_cgst = sum(float(r.get("cgst") or 0) for r in gstr2b_recs if r.get("record_type", "B2B") == "B2B")
+        total_2b_sgst = sum(float(r.get("sgst") or 0) for r in gstr2b_recs if r.get("record_type", "B2B") == "B2B")
+
+        return {
+            "period": {"month": month, "year": year},
+            "total_invoices": total_invoices,
+            "table4": {
+                "description": "ITC Availability — computed from reconciled invoices",
+                "igst_available": round(itc_igst, 2),
+                "cgst_available": round(itc_cgst, 2),
+                "sgst_available": round(itc_sgst, 2),
+                "total_available": round(itc_available, 2),
+                "igst_blocked": round(itc_blocked_igst, 2),
+                "cgst_blocked": round(itc_blocked_cgst, 2),
+                "sgst_blocked": round(itc_blocked_sgst, 2),
+                "total_blocked": round(itc_blocked, 2),
+                "at_risk": round(at_risk_total, 2),
+                "ineligible": round(ineligible_total, 2),
+            },
+            "gstr2b_summary": {
+                "total_records": len(gstr2b_recs),
+                "total_igst": round(total_2b_igst, 2),
+                "total_cgst": round(total_2b_cgst, 2),
+                "total_sgst": round(total_2b_sgst, 2),
+                "total_tax": round(total_2b_igst + total_2b_cgst + total_2b_sgst, 2),
+            },
+            "invoice_summary": {
+                "confirmed": confirmed_count,
+                "at_risk": at_risk_count,
+                "blocked": blocked_count,
+            },
+            "table3_1": None,  # Outward supply data not available — output tax liability requires GSTR-1 data
+            "note": "Table 4 (ITC) computed from Munim.ai engine. Table 3.1 (output liability) requires outward supply data.",
+        }
+    except Exception as e:
+        logger.error(f"GSTR-3B draft failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/ims/{trader_id}")
+async def get_ims_invoices(trader_id: str, month: int = None, year: int = None):
+    """
+    Invoice Management System (IMS) data feed.
+    Returns all invoices with their Munim.ai verdict pre-mapped to an IMS action:
+      CONFIRMED       → Accept
+      FIXABLE_BLOCKED → Pending (needs CA review)
+      AT_RISK         → Pending
+      FRAUD_FLAGGED   → Reject
+      INELIGIBLE      → Reject
+    The CA can override any default in the UI before filing.
+    """
+    try:
+        now = date.today()
+        month = month or now.month
+        year = year or now.year
+
+        invoices = await get_invoices_for_trader(trader_id, month, year)
+
+        IMS_DEFAULT = {
+            "CONFIRMED": "accept",
+            "FIXABLE_BLOCKED": "pending",
+            "AT_RISK": "pending",
+            "FRAUD_FLAGGED": "reject",
+            "INELIGIBLE": "reject",
+        }
+
+        ims_rows = []
+        for inv in invoices:
+            status = inv.get("itc_status", "")
+            igst = float(inv.get("igst") or 0)
+            cgst = float(inv.get("cgst") or 0)
+            sgst = float(inv.get("sgst") or 0)
+            ims_rows.append({
+                "invoice_id": inv["id"],
+                "invoice_number": inv.get("invoice_number", ""),
+                "invoice_date": inv.get("invoice_date", ""),
+                "supplier_name": inv.get("supplier_name") or inv.get("gstin_supplier", "Unknown"),
+                "supplier_gstin": inv.get("gstin_supplier", ""),
+                "total_amount": float(inv.get("total_amount") or 0),
+                "taxable_value": float(inv.get("taxable_value") or 0),
+                "igst": igst,
+                "cgst": cgst,
+                "sgst": sgst,
+                "total_tax": igst + cgst + sgst,
+                "itc_status": status,
+                "itc_reason": inv.get("itc_block_reason") or inv.get("fraud_reason") or "",
+                "gstr2b_match": inv.get("gstr2b_match_status", "UNRECONCILED"),
+                "ims_action": IMS_DEFAULT.get(status, "pending"),  # pre-set from engine verdict
+                "ims_overridden": False,
+            })
+
+        accept_count = sum(1 for r in ims_rows if r["ims_action"] == "accept")
+        pending_count = sum(1 for r in ims_rows if r["ims_action"] == "pending")
+        reject_count = sum(1 for r in ims_rows if r["ims_action"] == "reject")
+        accepted_itc = sum(r["total_tax"] for r in ims_rows if r["ims_action"] == "accept")
+
+        return {
+            "period": {"month": month, "year": year},
+            "invoices": ims_rows,
+            "summary": {
+                "total": len(ims_rows),
+                "accept": accept_count,
+                "pending": pending_count,
+                "reject": reject_count,
+                "accepted_itc": round(accepted_itc, 2),
+            },
+        }
+    except Exception as e:
+        logger.error(f"IMS data failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
