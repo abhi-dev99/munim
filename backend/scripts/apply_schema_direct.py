@@ -2,8 +2,10 @@ import psycopg2
 import sys
 import os
 
-# Connect string using the password you provided earlier
-DB_URI = "postgresql://postgres.agxfxqwfnazwrtnfamiz:nW7C8WPKyYJD4bM7@aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres"
+DB_URI = os.environ.get("SUPABASE_DB_URI")
+if not DB_URI:
+    print("Set SUPABASE_DB_URI (Supabase → Project Settings → Database → Connection string).")
+    sys.exit(1)
 
 print("Connecting to Supabase Postgres...")
 try:
