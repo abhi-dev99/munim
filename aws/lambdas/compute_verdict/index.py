@@ -10,20 +10,40 @@ written in the original engine -- the actual GST logic below is
 unmodified.
 
 Deliberately NOT ported yet, because the supporting data doesn't exist in
-DynamoDB: HSN rate-mismatch validation (needs the 21,934-row HSN master),
-GSTIN registration/business-category lookup (needs the deepvue.tech
-integration), and GSTR-2B reconciliation (needs 2B upload data). Each is
-passed as an honest empty/None rather than faked -- the engine already
-handles "no data" gracefully (e.g. an unverified GSTIN just skips that
-check) because it has to for a real invoice with incomplete data anyway.
+DynamoDB: GSTIN registration/business-category lookup (needs the
+deepvue.tech integration), and GSTR-2B reconciliation (needs 2B upload
+data). Each is passed as an honest empty/None rather than faked -- the
+engine already handles "no data" gracefully (e.g. an unverified GSTIN just
+skips that check) because it has to for a real invoice with incomplete
+data anyway.
+
+HSN validation is now PARTIALLY wired, against a real 22,616-row
+munim-hsn-codes table (the actual HSN_SAC.xlsx government master, with GST
+rates assigned via the same chapter/override table as
+backend/scripts/fix_hsn_rates.py -- so this agrees with the real backend,
+not a re-guessed rate). It only checks HSN *existence*, not rate mismatch:
+Textract's AnalyzeExpense has no field for the tax rate actually applied
+on a line item (no CGST/SGST/IGST breakdown per line), so there is nothing
+to compare the master's correct rate against. Comparing "would-be-correct
+rate" alone, with no applied rate, would be a fabricated signal -- so this
+stays an existence check only, until that data exists.
 """
 
+import logging
 import math
 import os
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Optional
+
+import boto3
+from botocore.exceptions import ClientError
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+hsn_table = boto3.resource("dynamodb").Table("munim-hsn-codes")
 
 
 # ---- Minimal stand-ins for backend/app/models/invoice.py ----
@@ -296,6 +316,31 @@ class FraudScorer:
         )
 
 
+# ---- AWS-pipeline addition, not part of the ported engine above ----
+# HSN existence check: are the HSN/SAC codes this invoice cites real codes
+# in the government master list at all? A code Textract genuinely couldn't
+# read is not flagged (item.hsn_code is None) -- only a code that WAS
+# extracted but doesn't exist in the master is a real defect.
+
+def find_invalid_hsn_codes(line_items):
+    invalid = []
+    for item in line_items:
+        code = (item.hsn_code or "").strip()
+        if not code:
+            continue
+        try:
+            response = hsn_table.get_item(Key={"hsn_code": code})
+        except ClientError:
+            # Fail open here, deliberately -- unlike the WhatsApp trader
+            # gate, a lookup outage on our side must never manufacture a
+            # compliance defect on someone's real invoice.
+            logger.exception("HSN lookup failed for code %s -- not flagging.", code)
+            continue
+        if "Item" not in response:
+            invalid.append(code)
+    return invalid
+
+
 itc_engine = ITCRulesEngine()
 fraud_scorer = FraudScorer()
 
@@ -312,6 +357,8 @@ def handler(event, context):
         for item in event.get("line_items", [])
     ] or [LineItem(description="")]
 
+    invalid_hsn_codes = find_invalid_hsn_codes(line_items)
+
     total_amount = _to_float(field_value("TOTAL"))
     total_tax = _to_float(field_value("TAX"))
 
@@ -326,6 +373,20 @@ def handler(event, context):
     )
 
     verdict = itc_engine.compute_verdict(invoice)
+
+    if invalid_hsn_codes and verdict.status == "CONFIRMED":
+        # Only overrides a clean CONFIRMED verdict -- an invoice already
+        # blocked/ineligible for a different, more specific reason keeps
+        # that reason rather than being overwritten by this one.
+        verdict = ITCVerdict(
+            status="FIXABLE_BLOCKED",
+            itc_amount=0.0,
+            itc_blocked=verdict.itc_amount,
+            reason=f"Invoice cites HSN/SAC code(s) not found in the GST master list: {', '.join(invalid_hsn_codes)}.",
+            legal_section="16(2)(a)",
+            fix_action="Ask the supplier to confirm or correct the HSN code(s) -- likely a typo or an invalid classification.",
+        )
+
     fraud_result = fraud_scorer.compute_fraud_score(invoice)
 
     # A hard fraud flag overrides an otherwise-CONFIRMED verdict -- matches
