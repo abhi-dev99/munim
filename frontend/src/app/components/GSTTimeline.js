@@ -68,7 +68,7 @@ export default function GSTTimeline({ isComposition, traderId }) {
             const isGstr1 = step.label.includes("GSTR-1");
             
             const ItemWrapper = isGstr1 ? "div" : "a";
-            const wrapperProps = isGstr1 ? {} : { href: `/demo/index.html${traderId ? `?traderId=${traderId}` : ''}`, target: "_blank", rel: "noopener noreferrer" };
+            const wrapperProps = isGstr1 ? {} : { href: `https://services.gst.gov.in/services/login`, target: "_blank", rel: "noopener noreferrer" };
 
             return (
               <ItemWrapper 

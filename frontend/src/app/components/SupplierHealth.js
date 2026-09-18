@@ -38,12 +38,7 @@ export default function SupplierHealth({ traderId, apiBase }) {
         }
       } catch (err) {
         console.warn("Using demo supplier data", err);
-        setSuppliers([
-          { id: 1, name: "Reliance Retail Ltd", gstin: "27AABCR1234Q1Z5", health: 98, status: "GOOD", recentIssues: 0, total_amount: 450000 },
-          { id: 2, name: "Balaji Hardware", gstin: "27XXBBR4321R1Z9", health: 45, status: "RISK", recentIssues: 3, total_amount: 125000 },
-          { id: 3, name: "Surat Textiles", gstin: "24PPBBS9999S1Z1", health: 12, status: "CRITICAL", recentIssues: 5, total_amount: 85000 },
-          { id: 4, name: "Metro Wholesale", gstin: "27ZZBBM7777M1Z3", health: 100, status: "GOOD", recentIssues: 0, total_amount: 890000 },
-        ]);
+        setSuppliers([]);
       } finally {
         setLoading(false);
       }

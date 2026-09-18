@@ -82,6 +82,8 @@ Score ≥ 70 → `FRAUD_FLAGGED`. Score 40–69 → soft flag for CA review.
 
 ## Tech Stack
 
+![Tech Stack Infographic](docs/assets/tech_stack_infographic_1781916181832.png)
+
 | Layer | Technology |
 |---|---|
 | Backend | FastAPI, LangGraph, Python 3.12, Uvicorn |
@@ -99,6 +101,8 @@ Score ≥ 70 → `FRAUD_FLAGGED`. Score 40–69 → soft flag for CA review.
 ---
 
 ## Architecture
+
+![Architecture Diagram](docs/assets/architecture_final.png)
 
 ```
 Trader (WhatsApp / Email)

@@ -34,28 +34,19 @@ start "Munim.ai Frontend" cmd /k "title Munim.ai Frontend && set PATH=C:\Users\H
 cd ..
 
 echo.
-echo [4/4] Starting ngrok tunnel on port 8000...
-start "Munim.ai ngrok" cmd /k "title Munim.ai ngrok && ngrok http 8000"
+echo [4/4] Starting Cloudflare tunnel on port 8000...
+start "Munim.ai Tunnel" cmd /k "title Munim.ai Tunnel && .\cloudflared.exe tunnel --url http://localhost:8000"
 
 echo.
-echo Waiting for ngrok to initialise...
+echo Waiting for tunnel to initialise...
 timeout /t 4 /nobreak >nul
-
-echo.
-echo Fetching ngrok public URL...
-for /f "delims=" %%u in ('python -c "import urllib.request,json; d=json.loads(urllib.request.urlopen(\"http://127.0.0.1:4040/api/tunnels\").read()); print(d[\"tunnels\"][0][\"public_url\"])" 2^>nul') do set NGROK_URL=%%u
 
 echo.
 echo ====================================================
 echo  All set, son!
 echo  Frontend : http://localhost:3000
 echo  Backend  : http://localhost:8000
-if defined NGROK_URL (
-echo  ngrok    : %NGROK_URL%
-echo  Webhook  : %NGROK_URL%/api/v1/webhook
-) else (
-echo  ngrok    : still booting — check the ngrok window
-)
+echo  Tunnel   : check the 'Munim.ai Tunnel' window for your URL
 echo ====================================================
 echo.
 echo  Copy the Webhook URL above into Meta Developer Console
