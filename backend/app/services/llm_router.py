@@ -197,6 +197,7 @@ IMPORTANT rules:
                     return None
 
         last_err = None
+        saw_quota_error = False
         for model_name in model_chain:
             try:
                 logger.info(f"Attempting invoice extraction with model: {model_name}")
@@ -223,14 +224,15 @@ IMPORTANT rules:
                 last_err = err_str
                 if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower() or "all API keys rate-limited" in err_str:
                     logger.warning(f"Model {model_name} quota exhausted — trying next model in chain")
+                    saw_quota_error = True
                     continue
                 # Non-quota error — log and stop
                 logger.error(f"Gemini extraction exception with {model_name}: {err_str}")
                 return None
 
-        # All models exhausted
+        # All models exhausted or failed to parse
         logger.error(f"All models in fallback chain exhausted. Last error: {last_err}")
-        return {"__quota_exceeded__": True}
+        return {"__quota_exceeded__": True} if saw_quota_error else None
 
 llm_router = LLMRouter()
 
