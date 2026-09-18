@@ -256,6 +256,23 @@ async def handle_text_message(phone: str, text: str):
             await _answer_general_query(phone, text, trader)
 
 
+async def handle_voice_message(phone: str, msg: dict):
+    """Handle incoming voice messages."""
+    # For now, just reply with a generated voice note
+    from app.services.tts import generate_and_upload_tts
+    
+    await whatsapp.send_text_message(phone, "Voice note sun liya. Reply kar raha hun...")
+    
+    # Generate a voice response
+    reply_text = "Namaste! Aapka voice message mujhe mil gaya hai. Main abhi audio messages samajh nahi pata, par jaldi hi seekh jaunga. Kripya mujhe type karke bataiye."
+    audio_url = await generate_and_upload_tts(reply_text, lang="hi")
+    
+    if audio_url:
+        await whatsapp.send_audio_message(phone, audio_url)
+    else:
+        await whatsapp.send_text_message(phone, reply_text)
+
+
 async def handle_invoice_message(phone: str, msg: dict):
     """Handle image/document messages — process as invoice."""
     trader = await get_trader_by_phone(phone)
@@ -337,11 +354,21 @@ async def handle_invoice_message(phone: str, msg: dict):
         supplier_gstin = inv_json.gstin_supplier if inv_json else ""
         inv_number = inv_json.invoice_number if inv_json else ""
         if supplier_gstin:
-            invoice_data["invoice_hash"] = GSTR2BReconciler.compute_hash(
+            inv_hash = GSTR2BReconciler.compute_hash(
                 supplier_gstin,
                 inv_number or str(uuid.uuid4())[:8],
                 str(diagnosis.total_amount or 0),
             )
+            invoice_data["invoice_hash"] = inv_hash
+            
+            from app.services.supabase_client import check_duplicate_invoice
+            is_duplicate = await check_duplicate_invoice(inv_hash)
+            if is_duplicate:
+                invoice_data["itc_status"] = "DUPLICATE"
+                invoice_data["status"] = "flagged"
+                invoice_data["itc_amount_blocked"] = invoice_data.get("itc_amount_eligible", 0)
+                invoice_data["itc_amount_eligible"] = 0
+                invoice_data["itc_block_reason"] = "Duplicate invoice detected based on GSTIN, Invoice Number and Amount."
 
         # Add fraud score
         if diagnosis.fraud_result:
