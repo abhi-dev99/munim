@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, status
 from app.services.supabase_client import get_supabase
 from app.services import whatsapp
 
-from app.services.redis_cache import get_redis, _mem_set, _mem_get, _mem_delete
+from app.services.redis_cache import get_redis, _mem_set, _mem_get, _mem_delete, check_rate_limit
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
 logger = logging.getLogger(__name__)
@@ -53,14 +53,18 @@ class OTPVerify(BaseModel):
 @router.post("/request-otp")
 async def request_otp(data: OTPRequest):
     phone = data.mobile_number.strip().replace("+", "").replace(" ", "")
-    
-    # Optional: ensure number exists in DB
-    db = get_supabase()
-    
-    # Check if number belongs to a trader OR is listed as a CA for a trader
-    res_trader = db.table("traders").select("id, language_pref").eq("whatsapp_number", phone).execute()
-    res_ca = db.table("traders").select("id, language_pref").eq("ca_whatsapp_number", phone).execute()
-    
+
+    if not check_rate_limit(f"otp-req:{phone}", max_requests=3, window_seconds=300):
+        raise HTTPException(status_code=429, detail="Too many OTP requests. Please wait a few minutes and try again.")
+
+    try:
+        db = get_supabase()
+        res_trader = db.table("traders").select("id, language_pref").eq("whatsapp_number", phone).execute()
+        res_ca = db.table("traders").select("id, language_pref").eq("ca_whatsapp_number", phone).execute()
+    except Exception as e:
+        logger.error(f"DB Error: {e}")
+        raise HTTPException(status_code=404, detail="Mobile number not registered or DB offline.")
+
     if not res_trader.data and not res_ca.data:
         raise HTTPException(status_code=404, detail="Mobile number not registered.")
 
@@ -102,7 +106,10 @@ async def request_otp(data: OTPRequest):
 async def verify_otp(data: OTPVerify):
     phone = data.mobile_number.strip().replace("+", "").replace(" ", "")
     otp_submitted = data.otp.strip()
-    
+
+    if not check_rate_limit(f"otp-verify:{phone}", max_requests=5, window_seconds=300):
+        raise HTTPException(status_code=429, detail="Too many attempts. Please request a new OTP.")
+
     record = get_otp(phone)
 
     from app.config import get_settings
@@ -123,14 +130,17 @@ async def verify_otp(data: OTPVerify):
     delete_otp(phone)
     
     # Fetch user data to return
-    db = get_supabase()
-    res_trader = db.table("traders").select("*").eq("whatsapp_number", phone).execute()
-    
-    if res_trader.data:
-        trader = res_trader.data[0]
-    else:
-        res_ca = db.table("traders").select("*").eq("ca_whatsapp_number", phone).execute()
-        trader = res_ca.data[0] if res_ca.data else None
+    trader = None
+    try:
+        db = get_supabase()
+        res_trader = db.table("traders").select("*").eq("whatsapp_number", phone).execute()
+        if res_trader.data:
+            trader = res_trader.data[0]
+        else:
+            res_ca = db.table("traders").select("*").eq("ca_whatsapp_number", phone).execute()
+            trader = res_ca.data[0] if res_ca.data else None
+    except Exception as e:
+        pass
     
     import jwt
 
