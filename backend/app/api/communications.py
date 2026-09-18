@@ -122,7 +122,7 @@ async def email_vendor_warning(invoice_id: str):
 
 
 @router.post("/whatsapp-vendor/{invoice_id}")
-async def whatsapp_vendor_warning(invoice_id: str):
+async def whatsapp_vendor_warning(invoice_id: str, lang: str = "en"):
     """Send an automated WhatsApp warning to the vendor regarding missed GSTR-1 filing."""
     db = get_supabase()
     inv_resp = db.table("invoices").select("*, traders(business_name)").eq("id", invoice_id).execute()
@@ -147,16 +147,28 @@ async def whatsapp_vendor_warning(invoice_id: str):
     inv_number = invoice.get("invoice_number", "Unknown")
     total_amount = invoice.get("total_amount", 0)
 
-    message = (
-        f"📋 *Action Needed: GSTR-1 Filing*\n\n"
-        f"Dear {invoice.get('supplier_name', 'Vendor')},\n\n"
-        f"An invoice you issued to *{trader_name}* has not yet reflected in their GSTR-2B, which has put the Input Tax Credit on hold.\n\n"
-        f"📄 *Invoice No:* {inv_number}\n"
-        f"💰 *Amount:* ₹{total_amount}\n\n"
-        f"Kindly verify if this invoice was included in your GSTR-1 filing. If not, please file at your earliest convenience so the ITC can be released.\n"
-        f"🔗 Invoice copy: {invoice.get('image_url', '#')}\n\n"
-        f"Thank you,\nMunim AI (on behalf of {trader_name})"
-    )
+    if lang == "hi":
+        message = (
+            f"📋 *कार्रवाई आवश्यक: GSTR-1 फाइलिंग*\n\n"
+            f"प्रिय {invoice.get('supplier_name', 'Vendor')},\n\n"
+            f"आपके द्वारा *{trader_name}* को जारी किया गया एक चालान अभी तक उनके GSTR-2B में नहीं दिखा है, जिसके कारण इनपुट टैक्स क्रेडिट (ITC) रुका हुआ है।\n\n"
+            f"📄 *चालान संख्या:* {inv_number}\n"
+            f"💰 *राशि:* ₹{total_amount}\n\n"
+            f"कृपया जांचें कि क्या यह चालान आपकी GSTR-1 फाइलिंग में शामिल था। यदि नहीं, तो कृपया इसे जल्द से जल्द फाइल करें ताकि ITC जारी किया जा सके।\n"
+            f"🔗 चालान की प्रति: {invoice.get('image_url', '#')}\n\n"
+            f"धन्यवाद,\nMunim AI ({trader_name} की ओर से)"
+        )
+    else:
+        message = (
+            f"📋 *Action Needed: GSTR-1 Filing*\n\n"
+            f"Dear {invoice.get('supplier_name', 'Vendor')},\n\n"
+            f"An invoice you issued to *{trader_name}* has not yet reflected in their GSTR-2B, which has put the Input Tax Credit on hold.\n\n"
+            f"📄 *Invoice No:* {inv_number}\n"
+            f"💰 *Amount:* ₹{total_amount}\n\n"
+            f"Kindly verify if this invoice was included in your GSTR-1 filing. If not, please file at your earliest convenience so the ITC can be released.\n"
+            f"🔗 Invoice copy: {invoice.get('image_url', '#')}\n\n"
+            f"Thank you,\nMunim AI (on behalf of {trader_name})"
+        )
 
     try:
         await send_text_message(to=phone, message=message)
@@ -168,7 +180,7 @@ async def whatsapp_vendor_warning(invoice_id: str):
 
 
 @router.post("/test-alert/{trader_id}")
-async def send_test_alert(trader_id: str):
+async def send_test_alert(trader_id: str, lang: str = "en"):
     """Send a test WhatsApp alert to the trader (CA self-test)."""
     db = get_supabase()
     trader_resp = db.table("traders").select("whatsapp_number, business_name, name").eq("id", trader_id).execute()
@@ -185,16 +197,28 @@ async def send_test_alert(trader_id: str):
         phone = "91" + phone
 
     biz = trader.get("business_name") or trader.get("name") or "your business"
-    message = (
-        f"✅ *Munim.ai Alert Test*\n\n"
-        f"This is a test notification for *{biz}*.\n\n"
-        f"Your WhatsApp alerts are now active. You'll receive notifications here for:\n"
-        f"• 🗓️ Upcoming GST filing deadlines\n"
-        f"• ⚠️ ITC mismatches or blocked invoices\n"
-        f"• ✅ Newly confirmed ITC\n\n"
-        f"Reply STOP to unsubscribe at any time.\n"
-        f"— Munim AI"
-    )
+    if lang == "hi":
+        message = (
+            f"✅ *Munim.ai अलर्ट टेस्ट*\n\n"
+            f"यह *{biz}* के लिए एक परीक्षण अधिसूचना है।\n\n"
+            f"आपके WhatsApp अलर्ट अब सक्रिय हैं। आपको यहाँ सूचनाएं मिलेंगी:\n"
+            f"• 🗓️ आगामी GST फाइलिंग समय-सीमाएं\n"
+            f"• ⚠️ ITC बेमेल या अवरुद्ध चालान\n"
+            f"• ✅ नया पुष्ट ITC\n\n"
+            f"अनसब्सक्राइब करने के लिए किसी भी समय STOP का उत्तर दें।\n"
+            f"— Munim AI"
+        )
+    else:
+        message = (
+            f"✅ *Munim.ai Alert Test*\n\n"
+            f"This is a test notification for *{biz}*.\n\n"
+            f"Your WhatsApp alerts are now active. You'll receive notifications here for:\n"
+            f"• 🗓️ Upcoming GST filing deadlines\n"
+            f"• ⚠️ ITC mismatches or blocked invoices\n"
+            f"• ✅ Newly confirmed ITC\n\n"
+            f"Reply STOP to unsubscribe at any time.\n"
+            f"— Munim AI"
+        )
 
     try:
         await send_text_message(to=phone, message=message)
