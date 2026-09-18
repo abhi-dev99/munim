@@ -119,6 +119,15 @@ def _parse_line_items(response):
                     value = f.get("ValueDetection", {}).get("Text")
                     if ftype == "ITEM":
                         item["description"] = value or ""
+                    elif ftype == "PRODUCT_CODE":
+                        # Textract's AnalyzeExpense is a generic invoice
+                        # extractor with no concept of "HSN code" -- but on
+                        # a real Indian invoice with an HSN column, that's
+                        # exactly what lands in the generic PRODUCT_CODE
+                        # field. Confirmed against a real invoice: "2523"
+                        # for cement, "7214" for TMT bar, matching their
+                        # actual GST HSN chapters.
+                        item["hsn_code"] = (value or "").strip() or None
                 if item:
                     items.append(item)
     return items
