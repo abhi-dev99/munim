@@ -268,7 +268,7 @@ export default function SupplierHealth({ traderId, apiBase, onSwitchTab }) {
   const dragOverItem = React.useRef(null);
   const [cardOrder, setCardOrder] = useState(["ALL", "GOOD", "RISK", "CRITICAL"]);
 
-  const handleSort = () => {
+  const handleCardSort = () => {
     if (dragItem.current === null || dragOverItem.current === null) return;
     let _order = [...cardOrder];
     const draggedItemContent = _order.splice(dragItem.current, 1)[0];
@@ -291,7 +291,7 @@ export default function SupplierHealth({ traderId, apiBase, onSwitchTab }) {
               onDragStart={() => { dragItem.current = idx; }}
               onDragEnter={(e) => { dragOverItem.current = idx; e.preventDefault(); }}
               onDragOver={(e) => e.preventDefault()}
-              onDragEnd={handleSort}
+              onDragEnd={handleCardSort}
               onClick={() => setFilterStatus(f)}
               className={`text-left bg-white rounded-xl border p-3 transition-all hover:shadow-sm cursor-grab active:cursor-grabbing ${
                 filterStatus === f
