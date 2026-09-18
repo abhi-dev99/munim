@@ -458,6 +458,67 @@ async def handle_invoice_message(phone: str, msg: dict):
         # Send diagnosis to trader
         await whatsapp.send_text_message(phone, diagnosis.diagnosis_hi)
 
+        # Notify CA via Email
+        settings = get_settings()
+        ca_email = trader.get("ca_email")
+        resend_key = settings.resend_api_key
+        
+        if ca_email and resend_key:
+            import resend
+            
+            trader_name = trader.get("business_name") or trader.get("name") or "Unknown Trader"
+            supplier_name = diagnosis.supplier_name or "Unknown Supplier"
+            inv_no = inv_json.invoice_number if inv_json else "Unknown"
+            inv_date = inv_json.invoice_date if inv_json else "Unknown Date"
+            total_amount = inv_json.total_amount if inv_json else 0
+            itc_status = diagnosis.itc_verdict.status.value
+            
+            ca_msg = f"""*Invoice Alert: {trader_name}*
+
+Attached is the processed invoice via email webhook:
+
+  • Client: {trader_name}
+  • Supplier: {supplier_name}
+  • Invoice No.: {inv_no}
+  • Date: {inv_date}
+  • Amount: ₹{total_amount}
+  • ITC Status: {itc_status}
+
+Please review and confirm receipt."""
+            
+            # Send to CA WhatsApp
+            if trader.get("ca_whatsapp_number") and image_url:
+                try:
+                    await whatsapp.send_document(
+                        to=trader["ca_whatsapp_number"],
+                        document_url=image_url,
+                        caption=ca_msg,
+                        filename=f"Invoice_{inv_no}.{file_ext}"
+                    )
+                    logger.info(f"Sent formal alert to CA WhatsApp at {trader['ca_whatsapp_number']}")
+                except Exception as e:
+                    logger.error(f"Failed to send CA WhatsApp: {e}")
+            
+            resend.api_key = resend_key
+            try:
+                html_msg = ca_msg.replace("\n", "<br>")
+                params = {
+                    "from": "Munim AI <onboarding@resend.dev>",
+                    "to": [ca_email],
+                    "subject": f"⚠️ ITC Alert: Defective Invoice from {supplier_name}",
+                    "html": f"<p>{html_msg}</p><br><p><i>Attached: Original Invoice Image</i></p>",
+                    "attachments": [
+                        {
+                            "filename": f"Invoice_{inv_no}.{file_ext}",
+                            "content": list(image_bytes)
+                        }
+                    ]
+                }
+                resend.Emails.send(params)
+                logger.info(f"Sent formal alert to CA at {ca_email}")
+            except Exception as e:
+                logger.error(f"Failed to send CA email via Resend: {e}")
+
         logger.info(
             f"Invoice processed for {phone} in {diagnosis.processing_duration_ms}ms — "
             f"ITC: {diagnosis.itc_verdict.status.value}"
