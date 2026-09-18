@@ -565,6 +565,8 @@ from pydantic import BaseModel
 class PreferencesModel(BaseModel):
     dashboard: list[str]
     sidebar: list[str]
+    money_meter_top: list[str] | None = None
+    money_meter_bottom: list[str] | None = None
 
 PREF_FILE = "preferences.json"
 
