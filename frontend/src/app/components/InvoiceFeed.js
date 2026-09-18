@@ -8,8 +8,17 @@ export default function InvoiceFeed({ traderId, apiBase }) {
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedIndex, setSelectedIndex] = useState(null);
+  const [transitioning, setTransitioning] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+
+  function navigate(newIndex) {
+    setTransitioning(true);
+    setTimeout(() => {
+      setSelectedIndex(newIndex);
+      setTransitioning(false);
+    }, 160);
+  }
 
   useEffect(() => {
     if (!traderId) return;
@@ -84,7 +93,35 @@ export default function InvoiceFeed({ traderId, apiBase }) {
   });
 
   if (loading) {
-    return <div className="text-[var(--text-secondary)] text-sm animate-pulse">Loading invoice records...</div>;
+    return (
+      <div className="flex-1 min-h-0 bg-white border border-gray-200 overflow-hidden flex flex-col">
+        {/* Header skeleton */}
+        <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="h-4 w-28 bg-gray-200 rounded animate-pulse" />
+          <div className="h-3 w-16 bg-gray-100 rounded animate-pulse" />
+        </div>
+        {/* Search bar skeleton */}
+        <div className="px-4 py-2 border-b border-gray-100 flex gap-2">
+          <div className="flex-1 h-7 bg-gray-100 rounded animate-pulse" />
+          <div className="w-24 h-7 bg-gray-100 rounded animate-pulse" />
+        </div>
+        {/* Row skeletons */}
+        <div className="divide-y divide-gray-100 overflow-hidden">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="flex items-center justify-between px-4 py-3">
+              <div className="space-y-1.5">
+                <div className="h-3.5 bg-gray-200 rounded animate-pulse" style={{ width: `${100 + i * 20}px` }} />
+                <div className="h-2.5 bg-gray-100 rounded animate-pulse" style={{ width: `${60 + i * 10}px` }} />
+              </div>
+              <div className="flex flex-col items-end gap-1.5">
+                <div className="h-3.5 w-14 bg-gray-200 rounded animate-pulse" />
+                <div className="h-5 w-20 bg-gray-100 rounded animate-pulse" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -124,11 +161,12 @@ export default function InvoiceFeed({ traderId, apiBase }) {
           </div>
         </div>
         
+        {/* wrapper */}
         <div className="overflow-y-auto flex-1 p-2">
           {filteredInvoices.length === 0 ? (
-            <div className="p-4 text-center text-xs text-[var(--text-secondary)]">No records found.</div>
+            <div className="p-8 text-center text-xs text-gray-400">No records found.</div>
           ) : (
-            <div className="space-y-1">
+            <div className="space-y-0">
               {filteredInvoices.map((inv, index) => (
                 <div 
                   key={inv.id} 
@@ -166,14 +204,33 @@ export default function InvoiceFeed({ traderId, apiBase }) {
       </div>
       
       {selectedIndex !== null && (
-        <InvoiceDetailModal 
-          invoice={invoices[selectedIndex]} 
-          onClose={() => setSelectedIndex(null)} 
-          onNext={() => setSelectedIndex(selectedIndex < invoices.length - 1 ? selectedIndex + 1 : selectedIndex)}
-          onPrev={() => setSelectedIndex(selectedIndex > 0 ? selectedIndex - 1 : selectedIndex)}
-          hasNext={selectedIndex < invoices.length - 1}
-          hasPrev={selectedIndex > 0}
-        />
+        transitioning ? (
+          /* Skeleton flash while navigating between invoices */
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-md p-8">
+            <div className="bg-white w-full max-w-5xl max-h-[95vh] flex overflow-hidden">
+              {/* Left: image placeholder */}
+              <div className="w-1/2 bg-gray-100 animate-pulse" />
+              {/* Right: detail skeleton */}
+              <div className="w-1/2 p-8 space-y-5">
+                <div className="h-5 w-2/3 bg-gray-200 rounded animate-pulse" />
+                <div className="h-3 w-1/3 bg-gray-100 rounded animate-pulse" />
+                <div className="mt-6 space-y-3">
+                  {[1,2,3,4,5].map(i => <div key={i} className="h-3 bg-gray-100 rounded animate-pulse" style={{ width: `${80 - i * 8}%` }} />)}
+                </div>
+                <div className="mt-6 h-10 w-32 bg-gray-200 rounded animate-pulse" />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <InvoiceDetailModal
+            invoice={invoices[selectedIndex]}
+            onClose={() => setSelectedIndex(null)}
+            onNext={() => navigate(selectedIndex < invoices.length - 1 ? selectedIndex + 1 : selectedIndex)}
+            onPrev={() => navigate(selectedIndex > 0 ? selectedIndex - 1 : selectedIndex)}
+            hasNext={selectedIndex < invoices.length - 1}
+            hasPrev={selectedIndex > 0}
+          />
+        )
       )}
     </>
   );
