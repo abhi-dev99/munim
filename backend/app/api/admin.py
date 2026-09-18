@@ -1,10 +1,11 @@
+import hmac
 import logging
 import time
 import httpx
 import asyncio
 import os
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends, Header
 from pydantic import BaseModel
 from app.services.supabase_client import get_supabase
 from app.config import get_settings
@@ -12,7 +13,20 @@ from app.models.invoice import InvoiceJSON, LineItem
 from app.agents.invoice_agent import invoice_agent, InvoiceAgentState
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
+
+
+async def verify_admin_key(x_admin_key: str = Header(default="")) -> None:
+    """
+    Gates the whole admin router behind a shared secret header.
+    Fails closed: if ADMIN_API_KEY isn't configured, every request is denied
+    rather than silently allowed.
+    """
+    settings = get_settings()
+    if not settings.admin_api_key or not hmac.compare_digest(x_admin_key, settings.admin_api_key):
+        raise HTTPException(status_code=403, detail="Admin access denied")
+
+
+router = APIRouter(prefix="/api/v1/admin", tags=["admin"], dependencies=[Depends(verify_admin_key)])
 
 @router.delete("/invoices/{invoice_id}")
 async def delete_invoice(invoice_id: str):
