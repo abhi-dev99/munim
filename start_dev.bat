@@ -24,13 +24,13 @@ timeout /t 2 /nobreak >nul
 echo.
 echo [2/4] Starting Backend (FastAPI) on port 8000...
 cd backend
-start "Munim.ai Backend" cmd /k "title Munim.ai Backend && C:\Users\HP\AppData\Local\Programs\Python\Python312\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload"
+start "Munim.ai Backend" cmd /k "title Munim.ai Backend && C:\Users\HP\AppData\Local\Programs\Python\Python312\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 cd ..
 
 echo.
 echo [3/4] Starting Frontend (Next.js) on port 3000...
 cd frontend
-start "Munim.ai Frontend" cmd /k "title Munim.ai Frontend && set PATH=C:\Users\HP\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin;%PATH% && node node_modules\next\dist\bin\next dev"
+start "Munim.ai Frontend" cmd /k "title Munim.ai Frontend && npm.cmd run dev -- --port 3000"
 cd ..
 
 echo.
