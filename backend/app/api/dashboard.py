@@ -71,6 +71,18 @@ async def get_trader_suppliers(trader_id: str):
     """Get all suppliers for a trader with health scores and flags."""
     try:
         supplier_links = await get_all_suppliers_for_trader(trader_id)
+        invoices = await get_invoices_for_trader(trader_id)
+        
+        # Pre-compute ITC total per supplier
+        itc_by_supplier = {}
+        for inv in invoices:
+            gstin = inv.get("gstin_supplier")
+            if gstin:
+                igst = float(inv.get("igst_amount") or inv.get("igst") or 0)
+                cgst = float(inv.get("cgst_amount") or inv.get("cgst") or 0)
+                sgst = float(inv.get("sgst_amount") or inv.get("sgst") or 0)
+                itc_by_supplier[gstin] = itc_by_supplier.get(gstin, 0) + igst + cgst + sgst
+
         result = []
         for link in supplier_links:
             supplier = link.get("suppliers", {})
@@ -78,6 +90,7 @@ async def get_trader_suppliers(trader_id: str):
                 flags = await get_active_supplier_flags(supplier["id"])
                 supplier["flags"] = [f["flag_type"] for f in flags]
                 supplier["total_invoices"] = link.get("total_invoice_count", 0)
+                supplier["total_amount"] = itc_by_supplier.get(supplier.get("gstin"), 0)
                 result.append(supplier)
 
         # Sort by health score ascending (worst first)
