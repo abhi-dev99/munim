@@ -29,6 +29,7 @@ class GSTR2BRecordInput(BaseModel):
     cgst: float = 0.0
     sgst: float = 0.0
     itc_eligible: bool = True
+    record_type: str = "B2B"   # B2B | CDNR | CDNA | B2BA
 
 
 class GSTR2BBulkUpload(BaseModel):
@@ -58,7 +59,7 @@ async def upload_gstr2b_json(payload: GSTR2BBulkUpload):
 
     for rec in payload.records:
         try:
-            db.table("gstr2b_records").upsert({
+            row = {
                 "trader_id": payload.trader_id,
                 "month": payload.month,
                 "year": payload.year,
@@ -70,7 +71,18 @@ async def upload_gstr2b_json(payload: GSTR2BBulkUpload):
                 "cgst": rec.cgst,
                 "sgst": rec.sgst,
                 "itc_eligible": rec.itc_eligible,
-            }, on_conflict="trader_id,month,year,supplier_gstin,invoice_number").execute()
+                "record_type": rec.record_type,
+            }
+            # B2BA amendments supersede the original — delete old B2B row first
+            if rec.record_type == "B2BA":
+                db.table("gstr2b_records").delete().eq(
+                    "trader_id", payload.trader_id
+                ).eq("supplier_gstin", rec.supplier_gstin.upper().strip()
+                ).eq("invoice_number", rec.invoice_number.strip()
+                ).eq("record_type", "B2B").execute()
+            db.table("gstr2b_records").upsert(
+                row, on_conflict="trader_id,month,year,supplier_gstin,invoice_number"
+            ).execute()
             inserted += 1
         except Exception as e:
             logger.warning(f"Skipped GSTR-2B record {rec.invoice_number}: {e}")
@@ -133,12 +145,17 @@ async def upload_gstr2b_file(
 
     for rec in records:
         try:
-            db.table("gstr2b_records").upsert({
-                "trader_id": trader_id,
-                "month": month,
-                "year": year,
-                **rec,
-            }, on_conflict="trader_id,month,year,supplier_gstin,invoice_number").execute()
+            row = {"trader_id": trader_id, "month": month, "year": year, **rec}
+            # B2BA amendments supersede the original — delete old B2B row first
+            if rec.get("record_type") == "B2BA":
+                db.table("gstr2b_records").delete().eq(
+                    "trader_id", trader_id
+                ).eq("supplier_gstin", rec["supplier_gstin"]
+                ).eq("invoice_number", rec["invoice_number"]
+                ).eq("record_type", "B2B").execute()
+            db.table("gstr2b_records").upsert(
+                row, on_conflict="trader_id,month,year,supplier_gstin,invoice_number"
+            ).execute()
             inserted += 1
         except Exception as e:
             logger.warning(f"Skipped record: {e}")
@@ -272,60 +289,75 @@ async def clear_gstr2b_records(trader_id: str, month: int, year: int):
 def _parse_gst_portal_json(data: dict) -> list[dict]:
     """
     Parse the standard GST portal GSTR-2B JSON format.
-    The GST portal exports a nested structure under data.docdata.b2b / b2ba / cdnr etc.
+    Handles b2b (regular invoices), b2ba (amendments), cdnr (credit/debit notes).
     """
     records = []
 
     try:
-        # Standard GST portal format: data > docdata > b2b (B2B invoices)
         doc_data = data.get("data", data)  # handle both wrapped and raw
+        inner = doc_data.get("docdata", doc_data)
 
-        # B2B invoices (regular supplier invoices)
-        b2b_entries = (
-            doc_data.get("docdata", {}).get("b2b", [])
-            or doc_data.get("b2b", [])
-        )
-
-        for supplier_entry in b2b_entries:
+        # ── B2B: Regular supplier invoices ────────────────────────────────────
+        for supplier_entry in inner.get("b2b", []):
             supplier_gstin = supplier_entry.get("ctin", "")
-            invoices = supplier_entry.get("inv", [])
+            for inv in supplier_entry.get("inv", []):
+                rec = _extract_invoice_record(supplier_gstin, inv, "B2B")
+                if rec:
+                    records.append(rec)
 
-            for inv in invoices:
-                inv_number = inv.get("inum", "")
-                inv_date = _normalize_date(inv.get("dt", ""))
-                taxable_value = float(inv.get("val", 0))
+        # ── B2BA: Amended invoices (supersede their originals) ────────────────
+        for supplier_entry in inner.get("b2ba", []):
+            supplier_gstin = supplier_entry.get("ctin", "")
+            for inv in supplier_entry.get("inv", []):
+                rec = _extract_invoice_record(supplier_gstin, inv, "B2BA")
+                if rec:
+                    records.append(rec)
 
-                # Tax components
-                igst = 0.0
-                cgst = 0.0
-                sgst = 0.0
-
-                for item in inv.get("itms", []):
-                    det = item.get("itm_det", {})
-                    igst += float(det.get("iamt", 0))
-                    cgst += float(det.get("camt", 0))
-                    sgst += float(det.get("samt", 0))
-
-                    # Taxable value from line items if top-level missing
-                    if not taxable_value:
-                        taxable_value += float(det.get("txval", 0))
-
-                if supplier_gstin and inv_number and inv_date:
-                    records.append({
-                        "supplier_gstin": supplier_gstin.upper().strip(),
-                        "invoice_number": inv_number.strip(),
-                        "invoice_date": inv_date,
-                        "taxable_value": taxable_value,
-                        "igst": igst,
-                        "cgst": cgst,
-                        "sgst": sgst,
-                        "itc_eligible": True,
-                    })
+        # ── CDNR: Credit/Debit notes from suppliers ───────────────────────────
+        for supplier_entry in inner.get("cdnr", []):
+            supplier_gstin = supplier_entry.get("ctin", "")
+            for note in supplier_entry.get("nt", []):
+                rec = _extract_invoice_record(supplier_gstin, note, "CDNR")
+                if rec:
+                    # Credit notes have negative taxable value convention
+                    rec["itc_eligible"] = False  # CN reduces ITC, never adds it
+                    records.append(rec)
 
     except Exception as e:
         logger.error(f"GSTR-2B JSON parse error: {e}")
 
     return records
+
+
+def _extract_invoice_record(supplier_gstin: str, inv: dict, record_type: str) -> Optional[dict]:
+    """Extract a normalised record dict from a GST portal invoice/note object."""
+    inv_number = inv.get("inum", "") or inv.get("ntnum", "")  # nt = note number for CDNR
+    inv_date = _normalize_date(inv.get("dt", ""))
+    taxable_value = float(inv.get("val", 0))
+
+    igst = cgst = sgst = 0.0
+    for item in inv.get("itms", []):
+        det = item.get("itm_det", {})
+        igst += float(det.get("iamt", 0))
+        cgst += float(det.get("camt", 0))
+        sgst += float(det.get("samt", 0))
+        if not taxable_value:
+            taxable_value += float(det.get("txval", 0))
+
+    if not (supplier_gstin and inv_number and inv_date):
+        return None
+
+    return {
+        "supplier_gstin": supplier_gstin.upper().strip(),
+        "invoice_number": inv_number.strip(),
+        "invoice_date": inv_date,
+        "taxable_value": taxable_value,
+        "igst": igst,
+        "cgst": cgst,
+        "sgst": sgst,
+        "itc_eligible": True,
+        "record_type": record_type,
+    }
 
 
 def _normalize_date(date_str: str) -> Optional[str]:
@@ -389,7 +421,7 @@ async def trigger_reconciliation(trader_id: str, month: int = None, year: int = 
                     date_obj = datetime.strptime(r["invoice_date"], "%Y-%m-%d").date()
                 except ValueError:
                     pass
-            
+
             records_obj.append(
                 GSTR2BRecord(
                     record_id=str(r.get("id")),
@@ -400,11 +432,13 @@ async def trigger_reconciliation(trader_id: str, month: int = None, year: int = 
                     igst=float(r.get("igst") or 0),
                     cgst=float(r.get("cgst") or 0),
                     sgst=float(r.get("sgst") or 0),
+                    record_type=r.get("record_type", "B2B"),
                 )
             )
 
         matched_count = 0
         failed_invoices = []
+        consumed_ids: set[str] = set()  # match-exclusivity: each 2B record consumed once
         from app.api.communications import email_vendor_warning, whatsapp_vendor_warning
 
         for inv in unmatched:
@@ -414,6 +448,7 @@ async def trigger_reconciliation(trader_id: str, month: int = None, year: int = 
                 invoice_date_str=inv.get("invoice_date", ""),
                 total_amount=inv.get("total_amount", 0),
                 gstr2b_records=records_obj,
+                consumed_ids=consumed_ids,
             )
 
             # Update the invoice with match result
@@ -430,7 +465,6 @@ async def trigger_reconciliation(trader_id: str, month: int = None, year: int = 
                     "supplier_name": inv.get("supplier_name") or "Unknown Vendor",
                     "invoice_number": inv.get("invoice_number", "N/A"),
                 })
-                # If still unmatched and auto-warning is enabled, send warnings
                 if auto_warn_vendors:
                     inv_id = inv["id"]
                     try:
@@ -441,12 +475,29 @@ async def trigger_reconciliation(trader_id: str, month: int = None, year: int = 
                     except Exception as warn_err:
                         logger.error(f"Auto-warning failed for {inv_id}: {warn_err}")
 
+        # Apply credit note netting
+        cn_updates = reconciler.net_credit_notes(records_obj, unmatched)
+        for upd in cn_updates:
+            try:
+                existing = db.table("invoices").select("itc_amount_eligible").eq("id", upd["invoice_id"]).execute()
+                if existing.data:
+                    current_itc = float(existing.data[0].get("itc_amount_eligible") or 0)
+                    new_itc = max(0.0, current_itc + upd["itc_delta"])
+                    db.table("invoices").update({
+                        "itc_amount_eligible": new_itc,
+                        "credit_note_applied": True,
+                        "credit_note_reason": upd["reason"],
+                    }).eq("id", upd["invoice_id"]).execute()
+            except Exception as cn_err:
+                logger.warning(f"Credit note update failed: {cn_err}")
+
         return {
             "status": "complete",
             "period": f"{month}/{year}",
             "invoices_checked": len(unmatched),
             "newly_matched": matched_count,
             "gstr2b_records": len(gstr2b_records),
+            "credit_notes_applied": len(cn_updates),
             "failed_invoices": failed_invoices,
         }
 
