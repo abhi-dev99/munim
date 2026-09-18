@@ -20,8 +20,8 @@ router = APIRouter(prefix="/api/v1/reports", tags=["reports"])
 
 @router.post("/generate/{trader_id}")
 async def generate_report(
-    trader_id: str,
     background_tasks: BackgroundTasks,
+    trader_id: str = Depends(verify_trader_access),
     month: Optional[int] = None,
     year: Optional[int] = None,
     send_whatsapp: bool = False,
