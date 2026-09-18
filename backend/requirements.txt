@@ -8,7 +8,7 @@ httpx==0.28.1
 
 # === AI / LLM ===
 google-genai==1.16.1
-langgraph==0.4.7
+langgraph==0.2.70
 langchain-core==0.3.56
 
 # === Database ===
