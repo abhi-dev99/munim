@@ -71,6 +71,11 @@ function SupplierInvoiceOverlay({ supplier, apiBase, traderId, onClose }) {
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-gray-900/50 p-2 md:p-8 backdrop-blur-md transition-all duration-300 ease-in-out">
+      {/* Outside Navigation - Close */}
+      <button onClick={onClose} className="absolute top-4 right-4 md:top-8 md:right-8 z-[60] p-4 text-white/70 hover:text-white transition-all duration-300 ease-in-out">
+        <X size={32} />
+      </button>
+
       {/* Main Card (Sharp Corners to match InvoiceDetailModal) */}
       <div className="bg-white rounded-none w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col relative border border-[#E0E0E0] shadow-2xl">
         {/* Header */}
@@ -85,9 +90,6 @@ function SupplierInvoiceOverlay({ supplier, apiBase, traderId, onClose }) {
               {t(cfg.labelKey)}
             </span>
           </div>
-          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
-            <X size={18} className="text-gray-500" />
-          </button>
         </div>
 
         {/* Stats strip */}
