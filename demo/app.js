@@ -436,17 +436,21 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('credit-sgst').innerText = `₹${acceptedSGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
         document.getElementById('credit-cess').innerText = '₹0.00';
 
-        // Reset offset table display to reflect new inputs
+        // Calculate dynamic liabilities (Mocked proportional to accepted ITC for simulation)
+        const igstLiab = Math.max(0, acceptedIGST - 500); 
+        const cgstLiab = Math.max(0, acceptedCGST - 500);
+        const sgstLiab = Math.max(0, acceptedSGST - 500);
+
         document.getElementById('offset-igst-itc').innerText = '₹0.00';
-        document.getElementById('offset-igst-bal').innerText = '₹12,000.00';
+        document.getElementById('offset-igst-bal').innerText = `₹${igstLiab.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
         document.getElementById('offset-igst-bal').style.color = 'red';
 
         document.getElementById('offset-cgst-itc').innerText = '₹0.00';
-        document.getElementById('offset-cgst-bal').innerText = '₹6,000.00';
+        document.getElementById('offset-cgst-bal').innerText = `₹${cgstLiab.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
         document.getElementById('offset-cgst-bal').style.color = 'red';
 
         document.getElementById('offset-sgst-itc').innerText = '₹0.00';
-        document.getElementById('offset-sgst-bal').innerText = '₹6,000.00';
+        document.getElementById('offset-sgst-bal').innerText = `₹${sgstLiab.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
         document.getElementById('offset-sgst-bal').style.color = 'red';
 
         document.getElementById('offset-cess-itc').innerText = '₹0.00';
@@ -559,6 +563,22 @@ document.addEventListener('DOMContentLoaded', () => {
                         type: inv.igst_amount > 0 ? 'IGST' : 'CGST_SGST',
                         action: 'pending'
                     }));
+
+                    // Initialize GSTR-3B auto-drafted totals from all invoices
+                    let draftIGST = 0;
+                    let draftCGST = 0;
+                    let draftSGST = 0;
+                    inwardSupplies.forEach(inv => {
+                        if (inv.type === 'IGST') {
+                            draftIGST += inv.tax;
+                        } else {
+                            draftCGST += inv.tax / 2;
+                            draftSGST += inv.tax / 2;
+                        }
+                    });
+                    document.getElementById('gstr3b-itc-igst').innerText = `₹${draftIGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+                    document.getElementById('gstr3b-itc-cgst').innerText = `₹${draftCGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+                    document.getElementById('gstr3b-itc-sgst').innerText = `₹${draftSGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
                 }
                 renderImsTable();
             })
@@ -591,6 +611,18 @@ document.addEventListener('DOMContentLoaded', () => {
             { id: '2', gstin: '29UATYY9012A1Z8', name: 'Surat Textiles', invNo: 'TX-9988', date: '12/04/2026', taxable: 33333.33, tax: 6000.00, type: 'CGST_SGST', action: 'pending' },
             { id: '3', gstin: '29UATYY9012A1Z8', name: 'Surat Textiles', invNo: 'TX-9989', date: '15/04/2026', taxable: 33333.33, tax: 6000.00, type: 'CGST_SGST', action: 'pending' }
         ];
+        
+        let draftIGST = 0;
+        let draftCGST = 0;
+        let draftSGST = 0;
+        inwardSupplies.forEach(inv => {
+            if (inv.type === 'IGST') draftIGST += inv.tax;
+            else { draftCGST += inv.tax / 2; draftSGST += inv.tax / 2; }
+        });
+        document.getElementById('gstr3b-itc-igst').innerText = `₹${draftIGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+        document.getElementById('gstr3b-itc-cgst').innerText = `₹${draftCGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+        document.getElementById('gstr3b-itc-sgst').innerText = `₹${draftSGST.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+
         renderImsTable();
     }
 });
