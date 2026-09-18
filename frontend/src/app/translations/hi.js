@@ -52,6 +52,12 @@ const hi = {
   inv_no_records: "Koi record nahi mila.",
 
   // Supplier Trust
+  sup_risk_title: "Supplier Risk",
+  sup_good_short: "Sahi",
+  sup_at_risk_short: "Khatre mein",
+  sup_blocked_short: "Blocked",
+  sup_needs_attention: "Dhyan De",
+  sup_no_data_short: "Koi supplier data nahi mila.",
   sup_good_standing: "Good Standing",
   sup_at_risk: "At Risk",
   sup_blocked: "Blocked",
