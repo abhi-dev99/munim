@@ -683,28 +683,6 @@ export default function Home() {
           </div>
         </header>
 
-        {/* Live Warning Banner if any API Keys hit rate limits */}
-        {geminiStatus && geminiStatus.rate_limited_count > 0 && (
-          <div className={`px-6 py-2 flex items-center justify-between text-xs font-semibold ${
-            geminiStatus.all_exhausted ? "bg-red-500 text-white" : "bg-amber-500 text-white"
-          }`}>
-            <div className="flex items-center gap-2">
-              <AlertTriangle size={15} className={geminiStatus.all_exhausted ? "animate-pulse" : ""} />
-              <span>
-                {geminiStatus.all_exhausted
-                  ? "🚨 CRITICAL: All Gemini API keys hit rate limits (429/Quota Exceeded). Pipeline is running on inference fallback."
-                  : `⚠️ AI Pipeline Alert: ${geminiStatus.rate_limited_count} of ${geminiStatus.total_keys} Gemini API keys hit rate limits and rotated.`}
-              </span>
-            </div>
-            <button
-              onClick={() => setShowGeminiModal(true)}
-              className="px-3 py-0.5 bg-white/20 hover:bg-white/30 rounded text-white transition-colors"
-            >
-              Manage Keys
-            </button>
-          </div>
-        )}
-
         {loading ? (
           <div className="flex-1 grid grid-cols-3 gap-4 p-4">
             {/* Skeleton wireframe */}
