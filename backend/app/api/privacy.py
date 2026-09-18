@@ -1,8 +1,9 @@
 import json
 import logging
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 
+from app.api.deps import get_current_trader_id
 from app.services.privacy_layer import AUDIT_LOG_PATH
 
 logger = logging.getLogger(__name__)
@@ -10,7 +11,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/privacy", tags=["privacy"])
 
 @router.get("/last-llm-calls")
-async def get_last_llm_calls(limit: int = 10) -> dict:
+async def get_last_llm_calls(limit: int = 10, _caller: str = Depends(get_current_trader_id)) -> dict:
     """
     Returns the last N audit log entries showing exactly what was anonymized and sent to LLMs.
     This provides transparency for CA firms on data privacy.
