@@ -2,7 +2,7 @@
 import { authFetch } from "@/src/app/utils/api";
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AlertTriangle, CheckCircle2, XCircle, Search, ChevronUp, ChevronDown, ArrowUpRight, X, FileText, ShieldAlert, ChevronRight } from "lucide-react";
 import InvoiceDetailModal from "./InvoiceDetailModal";
 import { useLanguage } from "../context/LanguageContext";
@@ -264,8 +264,8 @@ export default function SupplierHealth({ traderId, apiBase, onSwitchTab }) {
     </div>
   );
 
-  const dragItem = React.useRef(null);
-  const dragOverItem = React.useRef(null);
+  const dragItem = useRef(null);
+  const dragOverItem = useRef(null);
   const [cardOrder, setCardOrder] = useState(["ALL", "GOOD", "RISK", "CRITICAL"]);
 
   const handleCardSort = () => {
