@@ -15,7 +15,8 @@
           ["AWS/Lambda", "Invocations", "FunctionName", "munim-extract-invoice"],
           ["AWS/Lambda", "Invocations", "FunctionName", "munim-compute-verdict"],
           ["AWS/Lambda", "Invocations", "FunctionName", "munim-explain-verdict"],
-          ["AWS/Lambda", "Invocations", "FunctionName", "munim-finalize-invoice"]
+          ["AWS/Lambda", "Invocations", "FunctionName", "munim-finalize-invoice"],
+          ["AWS/Lambda", "Invocations", "FunctionName", "munim-deadline-alerts"]
         ]
       }
     },
@@ -30,7 +31,8 @@
           ["AWS/Lambda", "Errors", "FunctionName", "munim-extract-invoice"],
           ["AWS/Lambda", "Errors", "FunctionName", "munim-compute-verdict"],
           ["AWS/Lambda", "Errors", "FunctionName", "munim-explain-verdict"],
-          ["AWS/Lambda", "Errors", "FunctionName", "munim-finalize-invoice"]
+          ["AWS/Lambda", "Errors", "FunctionName", "munim-finalize-invoice"],
+          ["AWS/Lambda", "Errors", "FunctionName", "munim-deadline-alerts"]
         ]
       }
     },
