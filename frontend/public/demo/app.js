@@ -295,12 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Inward Supplies State for IMS
-    const inwardSupplies = [
-        { id: 1, gstin: '24AAFCK2304M1ZP', name: 'Balaji Hardware', invNo: 'INV-2024-001', date: '05/04/2026', taxable: 66666.67, tax: 12000.00, type: 'IGST', action: 'pending' },
-        { id: 2, gstin: '29UATYY9012A1Z8', name: 'Surat Textiles', invNo: 'TX-9988', date: '12/04/2026', taxable: 33333.33, tax: 6000.00, type: 'CGST_SGST', action: 'pending' },
-        { id: 3, gstin: '29UATYY9012A1Z8', name: 'Surat Textiles', invNo: 'TX-9989', date: '15/04/2026', taxable: 33333.33, tax: 6000.00, type: 'CGST_SGST', action: 'pending' }
-    ];
-
+    let inwardSupplies = [];
     let activeGstr2bSubTab = 'ITC available';
 
     // IMS elements
@@ -476,18 +471,128 @@ document.addEventListener('DOMContentLoaded', () => {
         showView(imsView, gstr2bView, 'Dashboard > Returns > <strong>GSTR-2B</strong>');
     });
 
+    // Render IMS Table Rows
+    function renderImsTable() {
+        const tbody = document.getElementById('ims-invoice-table-body');
+        tbody.innerHTML = '';
+        inwardSupplies.forEach((inv, index) => {
+            const tr = document.createElement('tr');
+            tr.id = `ims-row-${inv.id}`;
+            tr.setAttribute('data-tax', inv.tax);
+            tr.innerHTML = `
+                <td>${inv.gstin || '-'}</td>
+                <td>${inv.name || 'Unknown Supplier'}</td>
+                <td>${inv.invNo || '-'}</td>
+                <td>${inv.date || '-'}</td>
+                <td class="amount">₹${(inv.taxable || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                <td class="amount" style="font-weight: bold;">₹${(inv.tax || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                <td style="text-align: center; vertical-align: middle;">
+                    <div style="display: flex; gap: 8px; justify-content: center;">
+                        <button class="btn-ims-action btn-accept" data-row="${inv.id}" data-action="accept">ACCEPT</button>
+                        <button class="btn-ims-action btn-reject" data-row="${inv.id}" data-action="reject">REJECT</button>
+                        <button class="btn-ims-action btn-pending active" data-row="${inv.id}" data-action="pending">PENDING</button>
+                    </div>
+                </td>
+                <td class="ims-status-text" id="ims-status-${inv.id}" style="text-align: center; font-weight: bold;">Pending</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // Re-attach event listeners for newly created buttons
+        document.querySelectorAll('.btn-ims-action').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const rowId = e.target.getAttribute('data-row'); // string ID
+                const action = e.target.getAttribute('data-action');
+                
+                const invoice = inwardSupplies.find(i => i.id === rowId);
+                if (invoice) {
+                    invoice.action = action;
+                }
+
+                const row = document.getElementById(`ims-row-${rowId}`);
+                const buttons = row.querySelectorAll('.btn-ims-action');
+                buttons.forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+
+                const statusTextEl = document.getElementById(`ims-status-${rowId}`);
+                statusTextEl.className = 'ims-status-text';
+                
+                if (action === 'accept') {
+                    statusTextEl.innerText = 'Accepted';
+                    statusTextEl.classList.add('status-accepted');
+                } else if (action === 'reject') {
+                    statusTextEl.innerText = 'Rejected';
+                    statusTextEl.classList.add('status-rejected');
+                } else {
+                    statusTextEl.innerText = 'Pending';
+                    statusTextEl.classList.add('status-pending');
+                }
+                updateImsCounters();
+            });
+        });
+
+        inwardSupplies.forEach(inv => {
+            const statusTextEl = document.getElementById(`ims-status-${inv.id}`);
+            statusTextEl.classList.add('status-pending');
+        });
+        updateImsCounters();
+        updateGstr2bTable();
+    }
+
     // Initialize IMS state colors
-    inwardSupplies.forEach(inv => {
-        const statusTextEl = document.getElementById(`ims-status-${inv.id}`);
-        statusTextEl.classList.add('status-pending');
-        
-        // Find default active pending buttons and style them
-        const row = document.getElementById(`ims-row-${inv.id}`);
-        const pendBtn = row.querySelector('.btn-pending');
-        if (pendBtn) pendBtn.classList.add('active');
-    });
-    updateImsCounters();
-    updateGstr2bTable();
+    const urlParams = new URLSearchParams(window.location.search);
+    const traderId = urlParams.get('traderId');
+    if (traderId) {
+        // Fetch actual data
+        fetch(`http://localhost:8000/api/v1/dashboard/invoices/${traderId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.invoices) {
+                    inwardSupplies = data.invoices.map(inv => ({
+                        id: inv.id,
+                        gstin: inv.gstin_supplier,
+                        name: inv.supplier_name,
+                        invNo: inv.invoice_number,
+                        date: inv.invoice_date,
+                        taxable: inv.taxable_amount || 0,
+                        tax: (inv.igst_amount || 0) + (inv.cgst_amount || 0) + (inv.sgst_amount || 0),
+                        type: inv.igst_amount > 0 ? 'IGST' : 'CGST_SGST',
+                        action: 'pending'
+                    }));
+                }
+                renderImsTable();
+            })
+            .catch(err => {
+                console.error("Failed to load invoices", err);
+                renderImsTable();
+            });
+
+        // Optional: fetch trader info to update the header
+        fetch(`http://localhost:8000/api/v1/dashboard/summary/${traderId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.trader) {
+                    const trader = data.trader;
+                    document.querySelectorAll('.info-grid div p').forEach(p => {
+                        if (p.innerText.includes('GSTIN-')) p.innerHTML = `GSTIN- ${trader.gstin || '-'}`;
+                        if (p.innerText.includes('Legal Name -')) p.innerHTML = `Legal Name - ${trader.business_name || trader.name || '-'}`;
+                        if (p.innerText.includes('Trade Name -')) p.innerHTML = `Trade Name - ${trader.name || '-'}`;
+                    });
+                    document.querySelector('.user-info span').innerText = trader.business_name || trader.name || 'User';
+                    document.querySelector('.user-info .gstin').innerText = trader.gstin || '-';
+                }
+            })
+            .catch(console.error);
+
+    } else {
+        // Fallback to static dummy data if opened without URL parameter
+        inwardSupplies = [
+            { id: '1', gstin: '24AAFCK2304M1ZP', name: 'Balaji Hardware', invNo: 'INV-2024-001', date: '05/04/2026', taxable: 66666.67, tax: 12000.00, type: 'IGST', action: 'pending' },
+            { id: '2', gstin: '29UATYY9012A1Z8', name: 'Surat Textiles', invNo: 'TX-9988', date: '12/04/2026', taxable: 33333.33, tax: 6000.00, type: 'CGST_SGST', action: 'pending' },
+            { id: '3', gstin: '29UATYY9012A1Z8', name: 'Surat Textiles', invNo: 'TX-9989', date: '15/04/2026', taxable: 33333.33, tax: 6000.00, type: 'CGST_SGST', action: 'pending' }
+        ];
+        renderImsTable();
+    }
 });
 
 
