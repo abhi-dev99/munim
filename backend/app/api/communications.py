@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 import logging
+from datetime import datetime, timedelta, timezone
 from app.services.supabase_client import get_supabase
 import resend
 from app.config import get_settings
@@ -9,8 +10,39 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 resend.api_key = settings.resend_api_key
 
-router = APIRouter(prefix="/api/v1/communicate", tags=["communications"])
+ROUTE_PREFIX = "/api/v1/communicate"
+VENDOR_ALERT_COOLDOWN_DAYS = 7  # Don't re-alert same vendor on same invoice within this window
 
+router = APIRouter(prefix=ROUTE_PREFIX, tags=["communications"])
+
+
+def _check_rate_limit(invoice: dict) -> None:
+    """Raise 429 if this invoice was already notified within the cooldown window."""
+    last_notified = invoice.get("last_vendor_notified_at")
+    if last_notified:
+        try:
+            sent_at = datetime.fromisoformat(last_notified.replace("Z", "+00:00"))
+            if datetime.now(timezone.utc) - sent_at < timedelta(days=VENDOR_ALERT_COOLDOWN_DAYS):
+                days_left = VENDOR_ALERT_COOLDOWN_DAYS - (datetime.now(timezone.utc) - sent_at).days
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"Vendor was already notified {(datetime.now(timezone.utc) - sent_at).days} day(s) ago. "
+                           f"Wait {days_left} more day(s) before sending another alert to avoid harassing this supplier."
+                )
+        except HTTPException:
+            raise
+        except Exception:
+            pass  # If timestamp parsing fails, allow the send
+
+
+def _stamp_notified(db, invoice_id: str) -> None:
+    """Record the notification timestamp on the invoice row."""
+    try:
+        db.table("invoices").update(
+            {"last_vendor_notified_at": datetime.now(timezone.utc).isoformat()}
+        ).eq("id", invoice_id).execute()
+    except Exception as e:
+        logger.warning(f"Could not stamp last_vendor_notified_at on invoice {invoice_id}: {e}")
 
 @router.post("/email-vendor/{invoice_id}")
 async def email_vendor_warning(invoice_id: str):
@@ -22,6 +54,10 @@ async def email_vendor_warning(invoice_id: str):
         raise HTTPException(status_code=404, detail="Invoice not found")
     
     invoice = inv_resp.data[0]
+
+    # Rate-limit guard: don't spam the same supplier
+    _check_rate_limit(invoice)
+
     supplier_email = invoice.get("supplier_email")
     if not supplier_email:
         raise HTTPException(status_code=400, detail="No supplier email available for this invoice")
@@ -76,7 +112,10 @@ async def email_vendor_warning(invoice_id: str):
         }
         resend.Emails.send(params)
         logger.info(f"Warning email sent to vendor {supplier_email} for invoice {invoice_id}")
+        _stamp_notified(db, invoice_id)
         return {"status": "success", "message": "Email sent to vendor"}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to send vendor warning email: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -91,6 +130,10 @@ async def whatsapp_vendor_warning(invoice_id: str):
         raise HTTPException(status_code=404, detail="Invoice not found")
     
     invoice = inv_resp.data[0]
+
+    # Rate-limit guard: don't spam the same supplier
+    _check_rate_limit(invoice)
+
     supplier_phone = invoice.get("supplier_phone")
     if not supplier_phone:
         raise HTTPException(status_code=400, detail="No supplier phone available for this invoice")
