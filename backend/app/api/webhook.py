@@ -510,11 +510,9 @@ async def _process_registration_step(phone: str, text: str, trader: dict, state:
         language=current_lang,
     )
 
-    # If Gemini detected a language switch, honor it immediately
-    detected_lang = result.get("detected_language", current_lang)
-    if detected_lang != current_lang and detected_lang in ("hi", "en", "mr", "gu"):
-        await update_trader(trader["id"], {"language_pref": detected_lang})
-        current_lang = detected_lang
+    # Removed auto-language switching here because simple names (e.g. 'Aayush') 
+    # were aggressively triggering an English language switch. We will strictly 
+    # honor the language they picked in step 1.
 
     if result.get("status") == "reprompt":
         # Gemini determined the input was invalid — send its friendly reply and stay on this step
