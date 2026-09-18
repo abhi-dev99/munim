@@ -8,6 +8,7 @@ import Sidebar from "../components/Sidebar";
 import InvoiceFeed from "../components/InvoiceFeed";
 import GSTR2BUpload from "../components/GSTR2BUpload";
 import ReportsPanel from "../components/ReportsPanel";
+import { useLanguage } from "../context/LanguageContext";
 import {
   ChevronDown,
   Users,
@@ -17,6 +18,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   PieChart,
+  Globe,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -188,6 +190,7 @@ function FilingReadinessCard({ traderId, summary, onSwitchTab }) {
 }
 
 export default function Home() {
+  const { t, lang, changeLanguage } = useLanguage();
   const [activeTab, setActiveTab] = useState("money-meter");
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -311,10 +314,10 @@ export default function Home() {
   };
 
   const tabLabels = {
-    "money-meter": "Money Meter",
-    "suppliers": "Supplier Trust",
-    "actions": "Action Queue",
-    "reports": "Monthly Reports",
+    "money-meter": t("nav_money_meter"),
+    "suppliers": t("nav_supplier_trust"),
+    "actions": t("nav_action_queue"),
+    "reports": t("nav_monthly_reports"),
   };
 
   return (
@@ -358,11 +361,11 @@ export default function Home() {
                   <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
                     <div className="p-2 border-b border-gray-100">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-2">
-                        Switch Trader
+                        {t("hdr_switch_trader")}
                       </p>
                     </div>
                     {traders.length === 0 ? (
-                      <div className="px-4 py-3 text-sm text-gray-400">No traders found</div>
+                      <div className="px-4 py-3 text-sm text-gray-400">{t("hdr_no_traders")}</div>
                     ) : (
                       traders.map((t) => (
                         <button
@@ -383,6 +386,18 @@ export default function Home() {
                 )}
               </div>
 
+              {/* Language toggle */}
+              <button
+                onClick={() => changeLanguage(lang === "en" ? "hi" : "en")}
+                className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 hover:bg-gray-50 transition-colors shadow-sm"
+                title="Toggle Language"
+              >
+                <Globe size={15} className="text-gray-400" />
+                <span className="text-sm font-semibold text-gray-800">
+                  {lang === "en" ? "हिंदी" : "English"}
+                </span>
+              </button>
+
               {/* Composition toggle */}
               <button
                 onClick={() => setIsComposition(!isComposition)}
@@ -393,13 +408,13 @@ export default function Home() {
                 ) : (
                   <ToggleLeft size={18} className="text-gray-400" />
                 )}
-                <span className="text-sm font-semibold text-gray-800">Composition</span>
+                <span className="text-sm font-semibold text-gray-800">{t("hdr_composition")}</span>
               </button>
 
               {/* Live indicator */}
               <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-sm text-gray-600">Live</span>
+                <div className="w-2 h-2 rounded-full bg-[#10b981] animate-pulse" />
+                <span className="text-sm font-semibold text-gray-800">{t("hdr_live")}</span>
               </div>
             </div>
           </div>
