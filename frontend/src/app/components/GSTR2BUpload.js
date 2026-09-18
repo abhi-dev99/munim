@@ -200,9 +200,21 @@ export default function GSTR2BUpload({ traderId, apiBase, onUploadComplete }) {
                 {result.reconciliation.detail ? (
                   <>❌ Error: Reconciliation failed (backend error).</>
                 ) : (
-                  <>
-                    {result.reconciliation.newly_matched > 0 ? '✅' : '⚠️'} <strong className="text-black">{result.reconciliation.newly_matched}</strong> invoices matched out of {result.reconciliation.invoices_checked} checked
-                  </>
+                  <div className="flex flex-col gap-2">
+                    <div>
+                      {result.reconciliation.newly_matched > 0 ? '✅' : '⚠️'} <strong className="text-black">{result.reconciliation.newly_matched}</strong> invoices matched out of {result.reconciliation.invoices_checked} checked
+                    </div>
+                    {result.reconciliation.failed_invoices && result.reconciliation.failed_invoices.length > 0 && (
+                      <div className="mt-1 pt-2 border-t border-red-200/50">
+                        <p className="text-red-700 font-bold mb-1">Failed to match in GSTR-2B:</p>
+                        <ul className="list-disc pl-4 text-red-600/80 space-y-0.5 text-[11px]">
+                          {result.reconciliation.failed_invoices.map((inv, idx) => (
+                            <li key={idx}>{inv.supplier_name} (Inv: {inv.invoice_number})</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
                 )}
               </motion.div>
             )}
