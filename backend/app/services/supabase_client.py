@@ -339,6 +339,18 @@ async def get_itc_summary(trader_id: str) -> dict:
             elif status == "INELIGIBLE":
                 buckets["ineligible"] += blocked
 
+        # Compute Missed ITC from unmatched GSTR-2B records
+        try:
+            unmatched = await get_gstr2b_records(trader_id, unmatched_only=True)
+            for rec in unmatched:
+                if rec.get("record_type", "B2B") in ("B2B", "B2BA"):
+                    tax_val = (rec.get("igst") or 0.0) + (rec.get("cgst") or 0.0) + (rec.get("sgst") or 0.0)
+                    if tax_val == 0.0 and rec.get("total_tax"):
+                        tax_val = rec.get("total_tax") or 0.0
+                    buckets["missed"] += tax_val
+        except Exception as e:
+            logger.warning(f"Could not compute unmatched GSTR-2B missed ITC: {e}")
+
         return buckets
     except Exception as e:
         logger.error(f"Failed to compute ITC summary: {e}")
