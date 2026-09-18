@@ -588,18 +588,26 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
         // Optional: fetch trader info to update the header
-        fetch(`http://localhost:8000/api/v1/dashboard/summary/${traderId}`)
+        fetch(`http://localhost:8000/api/v1/dashboard/traders`)
             .then(res => res.json())
             .then(data => {
-                if (data.trader) {
-                    const trader = data.trader;
-                    document.querySelectorAll('.info-grid div p').forEach(p => {
-                        if (p.innerText.includes('GSTIN-')) p.innerHTML = `GSTIN- ${trader.gstin || '-'}`;
-                        if (p.innerText.includes('Legal Name -')) p.innerHTML = `Legal Name - ${trader.business_name || trader.name || '-'}`;
-                        if (p.innerText.includes('Trade Name -')) p.innerHTML = `Trade Name - ${trader.name || '-'}`;
-                    });
-                    document.querySelector('.user-info span').innerText = trader.business_name || trader.name || 'User';
-                    document.querySelector('.user-info .gstin').innerText = trader.gstin || '-';
+                if (data.traders) {
+                    const trader = data.traders.find(t => t.id === traderId);
+                    if (trader) {
+                        document.querySelectorAll('.info-grid div p').forEach(p => {
+                            if (p.innerText.includes('GSTIN-')) p.innerHTML = `GSTIN- ${trader.gstin || '-'}`;
+                            if (p.innerText.includes('Legal Name -')) p.innerHTML = `Legal Name - ${trader.business_name || trader.name || '-'}`;
+                            if (p.innerText.includes('Trade Name -')) p.innerHTML = `Trade Name - ${trader.name || '-'}`;
+                        });
+                        document.querySelector('.user-info span').innerText = trader.business_name || trader.name || 'User';
+                        document.querySelector('.user-info .gstin').innerText = trader.gstin || '-';
+                        
+                        // Also update the signatory dropdown if present
+                        const signOption = document.querySelector('#signatory-select option[value="sign"]');
+                        if (signOption) {
+                            signOption.innerText = `${trader.name || trader.business_name} (Authorized Signatory)`;
+                        }
+                    }
                 }
             })
             .catch(console.error);
