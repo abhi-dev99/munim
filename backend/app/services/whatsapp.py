@@ -5,6 +5,7 @@ Handles: sending messages, receiving webhook events, downloading media.
 
 import hashlib
 import hmac
+import io
 import logging
 from typing import Optional
 
@@ -109,6 +110,41 @@ async def send_audio_message(to: str, audio_url: str) -> bool:
         return False
 
 
+
+def _normalize_image_to_jpeg(raw_bytes: bytes, reported_mime: str) -> tuple[bytes, str]:
+    """
+    Detect actual image format from magic bytes and convert to JPEG.
+    WhatsApp often sends WebP images while reporting image/jpeg, which breaks Gemini.
+    """
+    # Detect format from magic bytes
+    if raw_bytes[:4] == b'RIFF' and raw_bytes[8:12] == b'WEBP':
+        actual_mime = "image/webp"
+    elif raw_bytes[:8] == b'\x89PNG\r\n\x1a\n':
+        actual_mime = "image/png"
+    elif raw_bytes[:2] in (b'\xff\xd8', b'\xff\xe0', b'\xff\xe1'):
+        actual_mime = "image/jpeg"
+    elif raw_bytes[:4] == b'%PDF':
+        return raw_bytes, "application/pdf"
+    else:
+        actual_mime = reported_mime or "image/jpeg"
+
+    if actual_mime == "image/jpeg":
+        return raw_bytes, "image/jpeg"
+
+    # Convert non-JPEG formats to JPEG for Gemini compatibility
+    try:
+        from PIL import Image
+        img = Image.open(io.BytesIO(raw_bytes)).convert("RGB")
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=92)
+        converted = buf.getvalue()
+        logger.info(f"Converted {actual_mime} ({len(raw_bytes)}B) → JPEG ({len(converted)}B)")
+        return converted, "image/jpeg"
+    except Exception as e:
+        logger.warning(f"Image conversion failed ({actual_mime}): {e}, passing raw bytes with {actual_mime}")
+        return raw_bytes, actual_mime
+
+
 async def download_media(media_id: str) -> tuple[Optional[bytes], Optional[str]]:
     """
     Download media from WhatsApp (two-step: get URL, then download).
@@ -138,9 +174,12 @@ async def download_media(media_id: str) -> tuple[Optional[bytes], Optional[str]]
                 download_url, headers=headers, timeout=60
             )
             if file_response.status_code == 200:
-                return file_response.content, mime_type
+                raw_bytes = file_response.content
+                # Detect actual format from magic bytes
+                normalized, detected_mime = _normalize_image_to_jpeg(raw_bytes, mime_type)
+                return normalized, detected_mime
             else:
-                logger.error(f"Failed to download media: {file_response.status_code}")
+                logger.error(f"Failed to download media: {file_response.status_code} — {file_response.text[:200]}")
                 return None, None
 
     except Exception as e:
