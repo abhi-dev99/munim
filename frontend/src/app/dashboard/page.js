@@ -8,8 +8,6 @@ import Sidebar from "../components/Sidebar";
 import InvoiceFeed from "../components/InvoiceFeed";
 import GSTR2BUpload from "../components/GSTR2BUpload";
 import ReportsPanel from "../components/ReportsPanel";
-import IMSPanel from "../components/IMSPanel";
-import GSTR3BPanel from "../components/GSTR3BPanel";
 import { useLanguage } from "../context/LanguageContext";
 import {
   ChevronDown,
@@ -313,8 +311,6 @@ export default function Home() {
     "money-meter": t("nav_money_meter"),
     "suppliers":   t("nav_supplier_trust"),
     "actions":     t("nav_action_queue"),
-    "ims":         "IMS",
-    "gstr3b":      "GSTR-3B",
     "reports":     t("nav_monthly_reports"),
   };
 
@@ -409,11 +405,17 @@ export default function Home() {
                 <span className="text-sm font-semibold text-gray-800">{t("hdr_composition")}</span>
               </button>
 
-              {/* Live indicator */}
-              <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm">
-                <div className="w-2 h-2 rounded-full bg-[#10b981] animate-pulse" />
-                <span className="text-sm font-semibold text-gray-800">{t("hdr_live")}</span>
-              </div>
+              {/* GST Portal button — opens the GST portal mockup for IMS + GSTR-3B filing */}
+              <a
+                href={`/demo/index.html${traderId && traderId !== 'demo' ? `?traderId=${traderId}` : ''}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 bg-[#1a3a6c] text-white border border-[#1a3a6c] rounded-lg px-3 py-2 hover:bg-[#15306e] transition-colors shadow-sm text-sm font-semibold"
+                title="Open GST Portal — IMS, GSTR-2B & GSTR-3B filing"
+              >
+                <Globe size={15} />
+                GST Portal
+              </a>
             </div>
           </div>
         </header>
@@ -459,12 +461,6 @@ export default function Home() {
               )}
               {activeTab === "actions" && (
                 <ActionQueue traderId={traderId} apiBase={API_BASE} traderPhone={traderPhone} />
-              )}
-              {activeTab === "ims" && (
-                <IMSPanel traderId={traderId} apiBase={API_BASE} />
-              )}
-              {activeTab === "gstr3b" && (
-                <GSTR3BPanel traderId={traderId} apiBase={API_BASE} />
               )}
               {activeTab === "reports" && (
                 <ReportsPanel traderId={traderId} apiBase={API_BASE} />
