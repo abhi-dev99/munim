@@ -15,7 +15,6 @@ class ITCStatus(str, Enum):
     MISSED = "MISSED"
     INELIGIBLE = "INELIGIBLE"
     FRAUD_FLAGGED = "FRAUD_FLAGGED"
-    DUPLICATE = "DUPLICATE"
 
 
 class GSTR2BMatchStatus(str, Enum):
