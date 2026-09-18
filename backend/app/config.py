@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     fastapi_port: int = 8000
     debug: bool = False
     jwt_secret: str = "default_secret_key_change_in_prod"
-    allowed_origins: str = "http://localhost:3000,https://moaning-thwarting-dinginess.ngrok-free.dev"
+    allowed_origins: str = "http://localhost:3000,http://localhost:3002,https://moaning-thwarting-dinginess.ngrok-free.dev"
 
     # --- Gemini (key pool: add up to 7 keys, system auto-rotates on 429) ---
     gemini_api_key: str = ""
@@ -58,10 +58,13 @@ class Settings(BaseSettings):
     upstash_redis_token: str = ""
 
     # --- GSTIN Verification API (Sandbox.co.in + Dubey fallback) ---
-    sandbox_api_key: str = "key_live_256e9f85478d432394339ec5b1076d23"
-    sandbox_api_secret: str = "secret_live_0d162ec6f768454bac63c28fd756cda2"
-    gstin_api_key: str = "gk_4nGXN4cDcAQ8OZ4IixguSz1ZgeHoTLVHfgJTehGaTTKdtVTj"
+    sandbox_api_key: str = ""
+    sandbox_api_secret: str = ""
+    gstin_api_key: str = ""
     gstin_api_base_url: str = "https://api.gstverify.dubey.app"
+
+    # --- Admin API (gates backend/app/api/admin.py) ---
+    admin_api_key: str = ""
 
     # --- Resend API ---
     resend_api_key: str = ""
