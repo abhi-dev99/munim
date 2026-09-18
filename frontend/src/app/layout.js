@@ -14,11 +14,15 @@ export const metadata = {
   description: "AI-powered GST compliance agent for India's MSME traders. Track ITC, monitor suppliers, and recover lost credits.",
 };
 
+import { LanguageProvider } from "./context/LanguageContext";
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className={inter.variable}>
       <body className={`antialiased ${inter.className}`}>
-        {children}
+        <LanguageProvider>
+          {children}
+        </LanguageProvider>
       </body>
     </html>
   );
