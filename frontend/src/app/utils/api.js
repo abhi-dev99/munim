@@ -12,8 +12,8 @@ export const authFetch = async (url, options = {}) => {
   const res = await fetch(url, options);
   
   if (res.status === 401 && typeof window !== 'undefined') {
-    // Prevent redirect loop if already on login page
-    if (window.location.pathname !== "/") {
+    // Prevent redirect loop if already on login page or dev portal
+    if (window.location.pathname !== "/" && window.location.pathname !== "/dev") {
       localStorage.removeItem('munim_auth_token');
       localStorage.removeItem('munim_auth_trader');
       window.location.href = "/";
