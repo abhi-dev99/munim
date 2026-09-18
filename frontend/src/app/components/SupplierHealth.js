@@ -132,7 +132,8 @@ export default function SupplierHealth({ traderId, apiBase, onSwitchTab }) {
 
       {/* Table */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <table className="w-full text-sm border-collapse">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[680px] text-sm border-collapse">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50">
               {[
@@ -238,6 +239,7 @@ export default function SupplierHealth({ traderId, apiBase, onSwitchTab }) {
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
