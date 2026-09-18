@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, ShieldCheck, Zap, Smartphone } from "lucide-react";
 
@@ -13,6 +13,14 @@ export default function LoginPage() {
   const [step, setStep] = useState(1); // 1 = mobile, 2 = otp
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    // Auto-redirect if already logged in
+    const token = localStorage.getItem("munim_auth_token");
+    if (token) {
+      router.push("/dashboard");
+    }
+  }, [router]);
 
   const handleRequestOtp = async (e) => {
     e.preventDefault();
