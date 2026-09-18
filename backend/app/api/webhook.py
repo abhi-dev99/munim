@@ -578,7 +578,19 @@ async def _process_registration_step(phone: str, text: str, trader: dict, state:
             await whatsapp.send_text_message(phone, error_msgs.get(current_lang, error_msgs["hi"]))
             return
 
-        await update_trader(trader["id"], {"gstin": gstin})
+        updated = await update_trader(trader["id"], {"gstin": gstin})
+        
+        if not updated:
+            # If update fails (e.g. Unique constraint violation because they used the dummy example GSTIN)
+            fail_msgs = {
+                "en": f"⚠️ This GSTIN ({gstin}) is already registered to another user or an error occurred. Please enter YOUR unique GSTIN.",
+                "mr": f"⚠️ हा GSTIN ({gstin}) आधीच दुसऱ्या वापरकर्त्याकडे नोंदणीकृत आहे. कृपया तुमचा स्वतःचा GSTIN एंटर करा.",
+                "gu": f"⚠️ આ GSTIN ({gstin}) પહેલેથી જ બીજા વપરાશકર્તા સાથે નોંધાયેલ છે. કૃપા કરીને તમારો પોતાનો GSTIN દાખલ કરો.",
+                "hi": f"⚠️ Yeh GSTIN ({gstin}) pehle se kisi aur user ke paas registered hai. Kripya apna real GSTIN enter karein.",
+            }
+            await whatsapp.send_text_message(phone, fail_msgs.get(current_lang, fail_msgs["hi"]))
+            return
+
         set_conversation_state(phone, "idle")
 
         name = trader.get("name") or "dost"
