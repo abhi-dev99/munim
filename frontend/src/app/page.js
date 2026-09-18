@@ -206,10 +206,10 @@ export default function LoginPage() {
                     disabled={loading}
                     className="w-full py-2.5 bg-[#10b981] hover:bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 shadow-md"
                   >
-                    ⚡ Quick Demo Login (Admin / Judge)
+                    ⚡ Quick Demo Login (Raju&apos;s Kirana Store)
                   </button>
                   <p className="text-[11px] text-gray-500 text-center font-mono">
-                    ID: 919876543210 &bull; OTP: 123456
+                    Demo Trader Account &bull; ID: 919876543210 &bull; OTP: 123456
                   </p>
                 </div>
               </form>

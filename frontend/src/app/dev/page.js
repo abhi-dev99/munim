@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect } from "react";
-import Sidebar from "../components/Sidebar";
 import { 
   Activity, Database, Server, Link as LinkIcon, RefreshCw, 
   MessageSquare, Cpu, HardDrive, ShieldCheck, Play, 
@@ -152,44 +151,49 @@ export default function DevDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] flex font-sans text-gray-900">
-      {/* Sidebar navigation matching actual site */}
-      <Sidebar 
-        activeTab="dev" 
-        onTabChange={(id) => { 
-          if (id !== "dev") window.location.href = "/dashboard"; 
-        }} 
-        traderId="demo" 
-        traders={[]} 
-        apiBase={API_BASE} 
-      />
-
-      <div className="flex-1 flex flex-col pl-64">
-        {/* Sticky Header matching actual dashboard site */}
-        <header className="flex-none h-[65px] px-8 border-b border-gray-200 bg-white flex items-center justify-between sticky top-0 z-10 shadow-xs">
-          <div className="flex items-center gap-3">
-            <h1 className="text-base font-bold text-gray-900">System Diagnostics & Test Bench</h1>
-            <span className="text-xs text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+    <div className="min-h-screen bg-[#f8fafc] flex flex-col font-sans text-gray-900">
+      {/* Dev Portal Dedicated Topbar (No Trader Auth / No Sidebar) */}
+      <header className="flex-none h-[65px] px-8 border-b border-gray-200 bg-white flex items-center justify-between sticky top-0 z-10 shadow-xs">
+        <div className="flex items-center gap-3">
+          <a href="/dev" className="flex items-center gap-2.5 text-gray-900 font-extrabold text-lg tracking-tight no-underline">
+            <span>Munim.ai</span>
+            <span className="text-xs text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
               DEV TELEMETRY
             </span>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-xs text-gray-400 font-mono">
-              Last check: {lastUpdated || "Never"}
-            </span>
-            <button 
-              onClick={() => fetchStatus(null)}
-              disabled={loading}
-              className="flex items-center gap-2 bg-[#10b981] text-white font-bold px-4 py-2 rounded-lg hover:bg-emerald-600 disabled:opacity-50 transition-all text-xs shadow-sm"
-            >
-              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-              {loading ? "Checking..." : "Ping All Services"}
-            </button>
-          </div>
-        </header>
+          </a>
+        </div>
+        <div className="flex items-center gap-3">
+          <a 
+            href="http://localhost:8000/docs" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-xs font-bold text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 no-underline"
+          >
+            <FileText size={13} className="text-blue-600" />
+            <span>API Swagger Reference</span>
+          </a>
+          <a 
+            href="/" 
+            className="text-xs font-bold text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 no-underline"
+          >
+            <span>Trader Portal Login</span>
+          </a>
+          <span className="text-xs text-gray-400 font-mono hidden sm:inline ml-2">
+            Last check: {lastUpdated || "Never"}
+          </span>
+          <button 
+            onClick={() => fetchStatus(null)}
+            disabled={loading}
+            className="flex items-center gap-2 bg-[#10b981] text-white font-bold px-4 py-2 rounded-lg hover:bg-emerald-600 disabled:opacity-50 transition-all text-xs shadow-sm"
+          >
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+            {loading ? "Checking..." : "Ping All Services"}
+          </button>
+        </div>
+      </header>
 
-        {/* Main Content Area */}
-        <main className="flex-1 p-8 overflow-y-auto space-y-8 max-w-7xl">
+      {/* Main Content Area */}
+      <main className="flex-1 p-8 overflow-y-auto space-y-8 max-w-7xl mx-auto w-full">
           {/* Error State */}
           {status?.error && (
             <div className="bg-red-50 text-red-800 p-4 rounded-2xl border border-red-200 font-mono text-sm flex items-center gap-3">
