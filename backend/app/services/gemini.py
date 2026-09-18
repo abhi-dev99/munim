@@ -199,7 +199,24 @@ async def generate_hindi_diagnosis(
     else:
         lang_str = "Hindi (in Hinglish/Roman script. No Devanagari)"
         
-    prompt = f"Generate a WhatsApp message in {lang_str} explaining this invoice diagnosis. Emojis: ✅⚠️🚨🚫. Provide response on single lines separated by double newlines. DO NOT write paragraphs. Keep it extremely SHORT, crisp, and to the point. End with a single clear Call to Action (CTA)."
+    prompt = f"""Generate a SHORT WhatsApp invoice diagnosis in {lang_str}.
+
+STRICT FORMAT (exactly like this, no extra lines):
+✅ or ⚠️ or 🚨 Invoice process ho gayi! / Invoice issue hai!
+
+*<supplier_name>* — Bill #<invoice_number>
+Taxable: ₹X | Total: ₹Y
+
+💰 *ITC <STATUS>: ₹Z*
+<one line: GSTR-2B status | GSTIN status | fraud status>
+
+<ONE short action sentence if needed, else skip>
+
+Rules:
+- Max 6-7 lines total
+- No bullet points, no headers, no horizontal lines
+- Hinglish is fine (mix Hindi + English naturally)
+- No URLs"""
     context = {
         "supplier_name": supplier_name or "Unknown",
         "total_amount": total_amount or 0,
