@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { CheckCircle2, Clock, CalendarDays } from "lucide-react";
 
-export default function GSTTimeline({ isComposition }) {
+export default function GSTTimeline({ isComposition, traderId }) {
   const today = new Date().getDate();
 
   const regularSteps = [
@@ -68,7 +68,7 @@ export default function GSTTimeline({ isComposition }) {
             const isGstr1 = step.label.includes("GSTR-1");
             
             const ItemWrapper = isGstr1 ? "div" : "a";
-            const wrapperProps = isGstr1 ? {} : { href: "/demo/index.html", target: "_blank", rel: "noopener noreferrer" };
+            const wrapperProps = isGstr1 ? {} : { href: `/demo/index.html${traderId ? `?traderId=${traderId}` : ''}`, target: "_blank", rel: "noopener noreferrer" };
 
             return (
               <ItemWrapper 
