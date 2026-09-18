@@ -172,20 +172,14 @@ export default function ReportsPanel({ traderId, apiBase }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-black">Monthly Reports</h2>
-          <p className="text-[var(--text-secondary)] mt-1">Munim Report — full ITC, supplier health & CA handoff</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <input 
-            type="text" 
-            placeholder="Search period..." 
-            value={reportsSearch}
-            onChange={(e) => setReportsSearch(e.target.value)}
-            className="px-3 py-2 border border-[var(--border-subtle)] rounded-lg text-sm focus:outline-none focus:border-black"
-          />
-        </div>
+      <div className="flex items-center justify-between gap-4 pb-1">
+        <input
+          type="text"
+          placeholder="Search period..."
+          value={reportsSearch}
+          onChange={(e) => setReportsSearch(e.target.value)}
+          className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-400 w-48"
+        />
       </div>
 
       {generating && (
