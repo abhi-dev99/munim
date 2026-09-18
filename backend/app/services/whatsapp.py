@@ -68,9 +68,44 @@ async def send_document(to: str, document_url: str, caption: str = "", filename:
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(url, json=payload, headers=headers, timeout=30)
-            return response.status_code == 200
+            if response.status_code == 200:
+                logger.info(f"Document sent to {to}")
+                return True
+            else:
+                logger.error(f"WhatsApp send document failed: {response.status_code} — {response.text}")
+                return False
     except Exception as e:
-        logger.error(f"WhatsApp document send error: {e}")
+        logger.error(f"WhatsApp send document error: {e}")
+        return False
+
+
+async def send_audio_message(to: str, audio_url: str) -> bool:
+    """Send an audio/voice message via WhatsApp."""
+    url = f"{BASE_URL}/{settings.meta_phone_number_id}/messages"
+    headers = {
+        "Authorization": f"Bearer {settings.meta_whatsapp_token}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": to,
+        "type": "audio",
+        "audio": {
+            "link": audio_url
+        },
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, json=payload, headers=headers, timeout=30)
+            if response.status_code == 200:
+                logger.info(f"Audio sent to {to}")
+                return True
+            else:
+                logger.error(f"WhatsApp send audio failed: {response.status_code} — {response.text}")
+                return False
+    except Exception as e:
+        logger.error(f"WhatsApp audio send error: {e}")
         return False
 
 
@@ -190,6 +225,14 @@ def parse_webhook_message(body: dict) -> Optional[dict]:
             audio = msg.get("audio", {})
             result["media_id"] = audio.get("id")
             result["mime_type"] = audio.get("mime_type", "audio/ogg")
+        elif msg["type"] == "reaction":
+            reaction = msg.get("reaction", {})
+            result["reaction_emoji"] = reaction.get("emoji", "")
+            result["reaction_message_id"] = reaction.get("message_id", "")
+
+        # Extract context if it's a reply
+        if "context" in msg:
+            result["reply_to_message_id"] = msg["context"].get("id", "")
 
         return result
 
