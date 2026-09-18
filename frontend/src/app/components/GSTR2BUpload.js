@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { Upload, FileText, CheckCircle2, AlertCircle, X, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useLanguage } from "../context/LanguageContext";
 
 export default function GSTR2BUpload({ traderId, apiBase, onUploadComplete }) {
+  const { t } = useLanguage();
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState(null);
@@ -91,12 +93,12 @@ export default function GSTR2BUpload({ traderId, apiBase, onUploadComplete }) {
 
   return (
     <div className="flex-none bg-white border border-[var(--border-subtle)]">
-      <div className="px-4 py-2.5 border-b border-[var(--border-subtle)] flex items-center gap-2">
+      <div className="px-4 py-2 border-b border-[var(--border-subtle)] flex items-center gap-2">
         <FileText size={14} className="text-[var(--text-muted)]" />
-        <span className="font-bold text-xs uppercase tracking-wider text-black flex-1 text-left">Upload GSTR-2B</span>
-        <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest">JSON / Excel from GST Portal</span>
+        <span className="font-bold text-[11px] uppercase tracking-wider text-black flex-1 text-left">{t("fr_upload_gstr2b")}</span>
+        <span className="text-[9px] text-[var(--text-muted)] uppercase tracking-widest">{t("fr_json_excel")}</span>
       </div>
-      <div className="p-4">
+      <div className="p-3">
       {/* Drop zone */}
       <div
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -110,7 +112,7 @@ export default function GSTR2BUpload({ traderId, apiBase, onUploadComplete }) {
             borderColor: dragOver ? "#10b981" : "#e5e7eb",
           }}
           transition={{ duration: 0.15 }}
-          className="border-2 border-dashed rounded-lg p-3 text-center cursor-pointer group hover:border-[#10b981] hover:bg-emerald-50/50 transition-all"
+          className="border border-dashed rounded-lg p-2 text-center cursor-pointer group hover:border-[#10b981] hover:bg-emerald-50/50 transition-all"
           onClick={() => document.getElementById("gstr2b-file-input").click()}
         >
           <input
@@ -122,14 +124,14 @@ export default function GSTR2BUpload({ traderId, apiBase, onUploadComplete }) {
           />
           {uploading ? (
             <div className="flex items-center justify-center gap-2">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#10b981]" />
-              <p className="text-xs font-semibold text-gray-700">Uploading...</p>
+              <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-[#10b981]" />
+              <p className="text-[11px] font-semibold text-gray-700">{t("loading")}</p>
             </div>
           ) : (
             <div className="flex items-center justify-center gap-2">
-              <Upload size={14} className="text-gray-400 group-hover:text-[#10b981] transition-colors" />
-              <p className="text-xs font-medium text-gray-500 group-hover:text-[#10b981] transition-colors">
-                Drop GSTR-2B JSON/Excel · or click
+              <Upload size={13} className="text-gray-400 group-hover:text-[#10b981] transition-colors" />
+              <p className="text-[11px] font-medium text-gray-500 group-hover:text-[#10b981] transition-colors">
+                {t("fr_drop_or_click")}
               </p>
             </div>
           )}
