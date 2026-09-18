@@ -185,6 +185,55 @@ class ITCRulesEngine:
 
         total_tax = invoice.total_tax_amount or 0.0
 
+        # --- Check 0: URD & Defective Invoice Logic ---
+        if not invoice.gstin_supplier or invoice.gstin_supplier.strip().upper() == "URD" or invoice.gstin_supplier == "MISSING_BUT_REGISTERED":
+            if invoice.total_tax_amount and invoice.total_tax_amount > 0:
+                return ITCVerdict(
+                    status=ITCStatus.FIXABLE_BLOCKED,
+                    itc_amount=0.0,
+                    itc_blocked=total_tax,
+                    reason="Defective Invoice: GST charged but supplier GSTIN is missing.",
+                    legal_section="16(2)(a)",
+                    fix_action="Ask supplier for a revised invoice containing their GSTIN."
+                )
+            
+            if invoice.gstin_supplier == "MISSING_BUT_REGISTERED":
+                return ITCVerdict(
+                    status=ITCStatus.FIXABLE_BLOCKED,
+                    itc_amount=0.0,
+                    itc_blocked=total_tax,
+                    reason=f"Defective Invoice: Missing GSTIN, but supplier '{invoice.supplier_name}' is known to be registered.",
+                    legal_section="16(2)(a)",
+                    fix_action="Ask supplier for a revised invoice containing their GSTIN."
+                )
+            
+            # True URD Purchase
+            # Check for RCM liability based on known RCM HSN codes (e.g. GTA, Legal)
+            rcm_applicable = False
+            for item in invoice.line_items:
+                if item.hsn_code and (item.hsn_code.startswith("9965") or item.hsn_code.startswith("9967") or item.hsn_code.startswith("9982")):
+                    rcm_applicable = True
+                    break
+            
+            if rcm_applicable:
+                return ITCVerdict(
+                    status=ITCStatus.CONFIRMED,
+                    itc_amount=total_tax,
+                    itc_blocked=0.0,
+                    reason="URD Purchase with RCM Liability: You must pay GST on reverse charge and then claim it as ITC.",
+                    legal_section="9(3) / 9(4)",
+                    fix_action="Pay RCM tax in GSTR-3B and claim equivalent ITC."
+                )
+            else:
+                return ITCVerdict(
+                    status=ITCStatus.INELIGIBLE,
+                    itc_amount=0.0,
+                    itc_blocked=0.0,
+                    reason="Unregistered Dealer (URD) Purchase: Exempt/Non-GST.",
+                    legal_section="Exempt",
+                    fix_action="No action needed. Logged as URD expense."
+                )
+
         # --- Check 1: Section 17(5) hard blocks ---
         for item in invoice.line_items:
             blocked, reason = self.is_blocked_category(item.hsn_code, item.description)
