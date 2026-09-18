@@ -68,7 +68,7 @@ export default function GSTTimeline({ isComposition }) {
             const isGstr1 = step.label.includes("GSTR-1");
             
             const ItemWrapper = isGstr1 ? "div" : "a";
-            const wrapperProps = isGstr1 ? {} : { href: "file:///D:/hackathob/kleos-4.0/demo/index.html", target: "_blank", rel: "noopener noreferrer" };
+            const wrapperProps = isGstr1 ? {} : { href: "/demo/index.html", target: "_blank", rel: "noopener noreferrer" };
 
             return (
               <ItemWrapper 
