@@ -8,7 +8,6 @@ import Sidebar from "../components/Sidebar";
 import InvoiceFeed from "../components/InvoiceFeed";
 import GSTR2BUpload from "../components/GSTR2BUpload";
 import ReportsPanel from "../components/ReportsPanel";
-import ITCTrendChart from "../components/ITCTrendChart";
 import {
   ChevronDown,
   Users,
@@ -432,10 +431,7 @@ export default function Home() {
               className="col-span-2 flex flex-col gap-4 min-h-0 overflow-y-auto pr-1"
             >
               {activeTab === "money-meter" && (
-                <>
-                  <MoneyMeter summary={summary} apiBase={API_BASE} isComposition={isComposition} />
-                  <ITCTrendChart traderId={traderId} apiBase={API_BASE} compact />
-                </>
+                <MoneyMeter summary={summary} apiBase={API_BASE} isComposition={isComposition} />
               )}
               {activeTab === "suppliers" && (
                 <SupplierHealth traderId={traderId} apiBase={API_BASE} onSwitchTab={setActiveTab} />
@@ -449,7 +445,7 @@ export default function Home() {
 
               {/* Invoice feed — always visible on money-meter tab */}
               {activeTab === "money-meter" && (
-                <div className="flex-1 min-h-[200px] overflow-hidden flex flex-col border border-gray-200 bg-white rounded-xl">
+                <div className="flex-1 min-h-0 overflow-hidden flex flex-col border border-gray-200 bg-white rounded-xl" style={{ minHeight: 280 }}>
                   <InvoiceFeed traderId={traderId} apiBase={API_BASE} />
                 </div>
               )}
