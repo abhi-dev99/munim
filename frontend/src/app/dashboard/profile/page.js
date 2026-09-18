@@ -20,6 +20,7 @@ import {
   ArrowDown,
   Eye,
   EyeOff,
+  AlertTriangle,
 } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
 
