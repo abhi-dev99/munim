@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { CheckCircle2, Clock, CalendarDays } from "lucide-react";
 
 export default function GSTTimeline({ isComposition }) {
