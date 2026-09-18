@@ -443,10 +443,11 @@ async def trigger_reconciliation(trader_id: str = Depends(verify_trader_access),
         failed_invoices = []
         consumed_ids: set[str] = set()  # match-exclusivity: each 2B record consumed once
         from app.api.communications import email_vendor_warning, whatsapp_vendor_warning
+        from app.services.supabase_client import mark_gstr2b_record_matched
 
         for inv in unmatched:
             match_result = reconciler.match_invoice(
-                supplier_gstin=inv.get("gstin_supplier", ""),
+                supplier_gstin=(inv.get("gstin_supplier") or "").upper().strip(),
                 invoice_number=inv.get("invoice_number", ""),
                 invoice_date_str=inv.get("invoice_date", ""),
                 total_amount=inv.get("total_amount", 0),
@@ -463,6 +464,8 @@ async def trigger_reconciliation(trader_id: str = Depends(verify_trader_access),
 
             if is_matched:
                 matched_count += 1
+                if match_result.matched_record_id:
+                    await mark_gstr2b_record_matched(match_result.matched_record_id, inv["id"])
             else:
                 failed_invoices.append({
                     "supplier_name": inv.get("supplier_name") or "Unknown Vendor",
