@@ -115,7 +115,7 @@ export default function GSTR3BPanel({ traderId, apiBase }) {
           </div>
 
           {/* Table 4: ITC */}
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
             <div className="px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold text-gray-900">Table 4 — ITC Availability</h3>
