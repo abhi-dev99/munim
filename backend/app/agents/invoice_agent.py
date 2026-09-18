@@ -432,10 +432,7 @@ def route_after_extraction(state: InvoiceAgentState) -> str:
 
 
 def route_after_gstin(state: InvoiceAgentState) -> str:
-    """Route after GSTIN: invalid GSTIN → generate_diagnosis (short-circuit), else → validate_hsn."""
-    gstin_val = state.get("gstin_validation")
-    if gstin_val and not gstin_val.is_valid:
-        return "generate_diagnosis"
+    """Route after GSTIN: always proceed to validate_hsn."""
     return "validate_hsn"
 
 
