@@ -37,6 +37,8 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, trade
   const router = useRouter();
   const [isWhatsappEnabled, setIsWhatsappEnabled] = useState(false);
   const [testAlertSent, setTestAlertSent] = useState(false);
+  const [testAlertLoading, setTestAlertLoading] = useState(false);
+  const [testAlertError, setTestAlertError] = useState(null);
   const [authName, setAuthName] = useState("N");
   const [itcData, setItcData] = useState([]);
 
@@ -194,13 +196,36 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, trade
             {isWhatsappEnabled ? "You'll get deadline & mismatch alerts." : "Turn on for instant compliance reminders."}
           </p>
           {isWhatsappEnabled && (
-            <button
-              onClick={() => { setTestAlertSent(true); setTimeout(() => setTestAlertSent(false), 3000); }}
-              disabled={testAlertSent}
-              className="w-full py-1.5 bg-white border border-[#25D366] text-[#25D366] rounded-lg text-[11px] font-bold hover:bg-green-50 transition-colors disabled:opacity-50"
-            >
-              {testAlertSent ? "Alert Sent ✅" : "Send Test Alert"}
-            </button>
+            <div className="space-y-1.5">
+              <button
+                onClick={async () => {
+                  if (!traderId) { setTestAlertError("No trader loaded"); return; }
+                  setTestAlertLoading(true);
+                  setTestAlertError(null);
+                  try {
+                    const res = await fetch(`${apiBase}/api/v1/communicate/test-alert/${traderId}`, { method: "POST" });
+                    if (res.ok) {
+                      setTestAlertSent(true);
+                      setTimeout(() => setTestAlertSent(false), 4000);
+                    } else {
+                      const d = await res.json().catch(() => ({}));
+                      setTestAlertError(d.detail || "Failed");
+                    }
+                  } catch {
+                    setTestAlertError("Network error");
+                  } finally {
+                    setTestAlertLoading(false);
+                  }
+                }}
+                disabled={testAlertSent || testAlertLoading}
+                className="w-full py-1.5 bg-white border border-[#25D366] text-[#25D366] rounded-lg text-[11px] font-bold hover:bg-green-50 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                {testAlertLoading ? (
+                  <><div className="animate-spin rounded-full h-3 w-3 border-b-2 border-[#25D366]" />Sending…</>
+                ) : testAlertSent ? "Sent ✅" : "Send Test Alert"}
+              </button>
+              {testAlertError && <p className="text-[10px] text-red-500 text-center">{testAlertError}</p>}
+            </div>
           )}
         </div>
       </div>

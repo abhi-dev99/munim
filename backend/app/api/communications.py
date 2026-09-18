@@ -31,7 +31,7 @@ async def email_vendor_warning(invoice_id: str):
     inv_date = invoice.get("invoice_date", "Unknown")
     image_url = invoice.get("image_url", "#")
 
-    subject = f"System Test: Invoice {inv_number} Check"
+    subject = f"ITC Alert: Invoice {inv_number} Requires Your Attention"
     
     html_content = f"""
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -105,14 +105,14 @@ async def whatsapp_vendor_warning(invoice_id: str):
     total_amount = invoice.get("total_amount", 0)
 
     message = (
-        f"🚨 *URGENT: Missing GSTR-1 Filing*\n\n"
+        f"📋 *Action Needed: GSTR-1 Filing*\n\n"
         f"Dear {invoice.get('supplier_name', 'Vendor')},\n\n"
-        f"An invoice issued to *{trader_name}* has not reflected in their GSTR-2B, leading to blocked ITC.\n\n"
-        f"📄 *Inv No:* {inv_number}\n"
+        f"An invoice you issued to *{trader_name}* has not yet reflected in their GSTR-2B, which has put the Input Tax Credit on hold.\n\n"
+        f"📄 *Invoice No:* {inv_number}\n"
         f"💰 *Amount:* ₹{total_amount}\n\n"
-        f"Please upload this in your GSTR-1 to release the Input Tax Credit.\n"
-        f"🔗 Invoice Image: {invoice.get('image_url', '#')}\n\n"
-        f"Regards,\nMunim AI System"
+        f"Kindly verify if this invoice was included in your GSTR-1 filing. If not, please file at your earliest convenience so the ITC can be released.\n"
+        f"🔗 Invoice copy: {invoice.get('image_url', '#')}\n\n"
+        f"Thank you,\nMunim AI (on behalf of {trader_name})"
     )
 
     try:
@@ -121,4 +121,42 @@ async def whatsapp_vendor_warning(invoice_id: str):
         return {"status": "success", "message": "WhatsApp sent to vendor"}
     except Exception as e:
         logger.error(f"Failed to send vendor WhatsApp: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/test-alert/{trader_id}")
+async def send_test_alert(trader_id: str):
+    """Send a test WhatsApp alert to the trader (CA self-test)."""
+    db = get_supabase()
+    trader_resp = db.table("traders").select("whatsapp_number, business_name, name").eq("id", trader_id).execute()
+    if not trader_resp.data:
+        raise HTTPException(status_code=404, detail="Trader not found")
+
+    trader = trader_resp.data[0]
+    phone_raw = trader.get("whatsapp_number") or ""
+    if not phone_raw:
+        raise HTTPException(status_code=400, detail="No WhatsApp number on file for this trader")
+
+    phone = "".join(filter(str.isdigit, phone_raw))
+    if len(phone) == 10:
+        phone = "91" + phone
+
+    biz = trader.get("business_name") or trader.get("name") or "your business"
+    message = (
+        f"✅ *Munim.ai Alert Test*\n\n"
+        f"This is a test notification for *{biz}*.\n\n"
+        f"Your WhatsApp alerts are now active. You'll receive notifications here for:\n"
+        f"• 🗓️ Upcoming GST filing deadlines\n"
+        f"• ⚠️ ITC mismatches or blocked invoices\n"
+        f"• ✅ Newly confirmed ITC\n\n"
+        f"Reply STOP to unsubscribe at any time.\n"
+        f"— Munim AI"
+    )
+
+    try:
+        await send_text_message(to=phone, message=message)
+        logger.info(f"Test alert sent to trader {trader_id} at {phone}")
+        return {"status": "success", "message": f"Test alert sent to {phone}"}
+    except Exception as e:
+        logger.error(f"Failed to send test alert: {e}")
         raise HTTPException(status_code=500, detail=str(e))
