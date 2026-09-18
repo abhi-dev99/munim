@@ -42,7 +42,7 @@ export default function Home() {
       setTraders(list);
       if (list.length > 0) {
         setTraderId(list[0].id);
-        setActiveTraderName(list[0].business_name || list[0].name || "Trader 1");
+        setActiveTraderName(list[0].name || list[0].business_name || "Trader 1");
         setTraderPhone(list[0].whatsapp_number || null);
       } else {
         setTraderId("demo");
@@ -99,7 +99,7 @@ export default function Home() {
 
   function switchTrader(trader) {
     setTraderId(trader.id);
-    setActiveTraderName(trader.business_name || trader.name || trader.id.slice(0, 8));
+    setActiveTraderName(trader.name || trader.business_name || trader.id.slice(0, 8));
     setTraderPhone(trader.whatsapp_number || null);
     setTraderDropdown(false);
   }
@@ -148,8 +148,8 @@ export default function Home() {
                             t.id === traderId ? "font-bold text-black" : "text-[var(--text-secondary)]"
                           }`}
                         >
-                          <span>{t.business_name || t.name || t.id.slice(0, 8)}</span>
-                          <span className="text-[10px] text-[var(--text-muted)] font-mono">{(t.gstin || "").slice(0, 10)}</span>
+                          <span>{t.name || t.business_name || t.id.slice(0, 8)}</span>
+                          <span className="text-[10px] text-[var(--text-muted)] font-mono">{t.gstin ? t.gstin.slice(0, 10) : "Setup Incomplete"}</span>
                         </button>
                       ))
                     )}
