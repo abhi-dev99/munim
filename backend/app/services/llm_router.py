@@ -1,4 +1,3 @@
-import asyncio
 import json
 import logging
 import base64
@@ -47,8 +46,7 @@ class LLMRouter:
         full_prompt = f"{prompt}\n\nContext:\n{json.dumps(anon_ctx, indent=2)}"
 
         try:
-            response = await asyncio.to_thread(
-                gemini_client.models.generate_content,
+            response = gemini_client.models.generate_content(
                 model=gemini_settings.gemini_model,
                 contents=full_prompt,
                 config=types.GenerateContentConfig(temperature=temperature)
@@ -203,8 +201,7 @@ IMPORTANT rules:
         for model_name in model_chain:
             try:
                 logger.info(f"Attempting invoice extraction with model: {model_name}")
-                gemini_response = await asyncio.to_thread(
-                    gemini_client.models.generate_content,
+                gemini_response = gemini_client.models.generate_content(
                     model=model_name,
                     contents=[
                         types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
