@@ -14,6 +14,7 @@ the one step that already has the finished verdict in hand.
 import json
 import logging
 import os
+import re
 import urllib.error
 import urllib.request
 import uuid
@@ -77,11 +78,11 @@ _SIMPLE_MESSAGES = {
         "gu": "આ દુકાનદાર જીએસટીમાં નોંધાયેલ નથી, તેથી આ બિલ પર કોઈ ટેક્સ ક્રેડિટ નહીં મળે.",
     },
     "missing_fields": {
-        "hi": "Bill mein kuch zaroori jaankari missing hai. Dukaandar se poora bill mangwao.",
-        "hi_dev": "बिल में कुछ ज़रूरी जानकारी नहीं है। दुकानदार से पूरा बिल मंगवाएं।",
-        "en": "This bill is missing some required details. Ask the seller for a complete bill.",
-        "mr": "बिलावर काही आवश्यक माहिती नाही. दुकानदाराकडून पूर्ण बिल मागवा.",
-        "gu": "બિલ પર કેટલીક જરૂરી માહિતી નથી. દુકાનદાર પાસેથી પૂરું બિલ મંગાવો.",
+        "hi": "Bill mein {fields} nahi hai. Dukaandar se poora bill mangwao.",
+        "hi_dev": "बिल में {fields} नहीं है। दुकानदार से पूरा बिल मंगवाएं।",
+        "en": "This bill is missing {fields}. Ask the seller for a complete bill.",
+        "mr": "बिलावर {fields} नाही. दुकानदाराकडून पूर्ण बिल मागवा.",
+        "gu": "બિલ પર {fields} નથી. દુકાનદાર પાસેથી પૂરું બિલ મંગાવો.",
     },
     "time_expired": {
         "hi": "Is bill ka time nikal gaya hai, ab iska tax credit nahi le sakte.",
@@ -128,6 +129,33 @@ _SIMPLE_MESSAGES = {
 }
 
 
+# compute-verdict's "missing required fields: invoice_number, ..." now
+# names the actual field keys (fixed alongside this) -- translate those
+# into simple words instead of leaving the trader to guess "kya hai".
+_MISSING_FIELD_NAMES = {
+    "invoice_number": {"hi": "bill number", "hi_dev": "बिल नंबर", "en": "invoice number", "mr": "बिल नंबर", "gu": "બિલ નંબર"},
+    "invoice_date": {"hi": "date", "hi_dev": "तारीख", "en": "date", "mr": "तारीख", "gu": "તારીખ"},
+    "gstin_supplier": {"hi": "GST number", "hi_dev": "जीएसटी नंबर", "en": "GST number", "mr": "जीएसटी नंबर", "gu": "જીએસટી નંબર"},
+    "total_amount": {"hi": "total amount", "hi_dev": "कुल राशि", "en": "total amount", "mr": "एकूण रक्कम", "gu": "કુલ રકમ"},
+    "invoice_date_future": {"hi": "sahi tareekh", "hi_dev": "सही तारीख", "en": "a valid date", "mr": "योग्य तारीख", "gu": "યોગ્ય તારીખ"},
+}
+_AND_WORD = {"hi": "aur", "hi_dev": "और", "en": "and", "mr": "आणि", "gu": "અને"}
+_MISSING_FIELDS_RE = re.compile(r"missing required fields:\s*(.+)")
+
+
+def _named_missing_fields(reason, lang):
+    match = _MISSING_FIELDS_RE.search(reason)
+    if not match:
+        return None
+    keys = [k.strip() for k in match.group(1).split(",") if k.strip()]
+    names = [_MISSING_FIELD_NAMES.get(k, {}).get(lang, k) for k in keys]
+    if not names:
+        return None
+    if len(names) == 1:
+        return names[0]
+    return f"{', '.join(names[:-1])} {_AND_WORD.get(lang, _AND_WORD['hi'])} {names[-1]}"
+
+
 def _simple_message(status, reason, lang):
     """Picks a genuinely simple, pre-written sentence for the trader --
     never the rules engine's own English text, in any language."""
@@ -140,7 +168,10 @@ def _simple_message(status, reason, lang):
         elif "Unregistered Dealer" in reason:
             key = "unregistered_dealer"
         elif "missing required fields" in reason:
-            key = "missing_fields"
+            fields = _named_missing_fields(reason, lang)
+            if fields:
+                return _SIMPLE_MESSAGES["missing_fields"].get(lang, _SIMPLE_MESSAGES["missing_fields"]["hi"]).format(fields=fields)
+            key = "generic"
         elif "time limit expired" in reason:
             key = "time_expired"
         elif ">180 days old" in reason:
@@ -170,6 +201,27 @@ _VERDICT_ISSUE_TEMPLATE = {
     "mr": "इनव्हॉइसमध्ये समस्या आहे ⚠️\n\n{message}",
     "gu": "ઇનવોઇસમાં સમસ્યા છે ⚠️\n\n{message}",
 }
+
+# Polly reads emoji characters out loud verbatim (literally vocalizes
+# "warning sign") if they're left in the Text= input -- WhatsApp's
+# display text and Polly's spoken text are NOT the same string, this
+# strips visual-only characters before synthesis. Covers the emoji
+# blocks actually used in this file's templates (warning sign, check
+# mark, their variation selectors) plus the general pictograph range for
+# safety against anything added later.
+_EMOJI_RE = re.compile(
+    "["
+    "\U0001F300-\U0001FAFF"
+    "\U00002600-\U000027BF"
+    "\U0001F1E6-\U0001F1FF"
+    "️"
+    "]+",
+    flags=re.UNICODE,
+)
+
+
+def _strip_emoji(text):
+    return _EMOJI_RE.sub("", text).strip()
 
 
 def _to_dynamo_safe(value):
@@ -256,7 +308,7 @@ def _notify_trader(trader_id, verdict):
     # wording is. Best-effort: text has already gone out above, so a
     # voice failure here never leaves the trader with nothing.
     if lang in VOICE_CAPABLE_LANGUAGES and VOICE_BUCKET:
-        _send_voice(trader_id, lang, text)
+        _send_voice(trader_id, lang, _strip_emoji(text))
 
 
 def _send_text(trader_id, text):
