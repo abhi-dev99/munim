@@ -1,3 +1,4 @@
+// CI/CD Pipeline Active — Auto-deploys on push to main
 import { Inter } from "next/font/google";
 import "./globals.css";
 import "./design-system.css";

@@ -2,13 +2,68 @@
 
 import { ArrowUpRight, IndianRupee, ShieldAlert, CheckCircle2, TrendingUp, FileText, Users, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import PanelState from "./PanelState";
 
-export default function MoneyMeter({ summary, apiBase, isComposition = false, onSwitchTab, prefs, onSortTop, onSortBottom }) {
+export default function MoneyMeter({
+  summary,
+  apiBase,
+  isComposition = false,
+  onSwitchTab,
+  prefs,
+  onSortTop,
+  onSortBottom,
+  loading = false,
+  error = null,
+  onRetry,
+}) {
   const dragItem = useRef(null);
   const dragOverItem = useRef(null);
 
-  if (!summary) return null;
+  // The parent owns the fetch, so a failure reaches this component only as a
+  // summary that never arrives. Rendering null for that was the worst of the
+  // options: the trader sees an empty screen and reads it as "nothing was ever
+  // built here" rather than "the server is down." Parents that track the error
+  // themselves should pass `error`; this timer is the backstop for the ones
+  // that don't, so the skeleton can never spin forever.
+  const [stalled, setStalled] = useState(false);
+  useEffect(() => {
+    if (summary || error) {
+      setStalled(false);
+      return undefined;
+    }
+    const timer = setTimeout(() => setStalled(true), 12000);
+    return () => clearTimeout(timer);
+  }, [summary, error]);
+
+  if (error || (stalled && !summary)) {
+    return (
+      <PanelState
+        state="error"
+        error={error}
+        title="Money Meter unavailable"
+        message={
+          error
+            ? undefined
+            : "The ITC summary has not come back from the server. Nothing has been lost — every figure here is computed on the backend and recomputed on each load."
+        }
+        onRetry={onRetry}
+      />
+    );
+  }
+
+  if (loading || !summary) {
+    return (
+      <div className="space-y-3" id="money-meter-container">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[0, 1, 2, 3].map((i) => (
+            <PanelState key={i} state="loading" rows={2} compact />
+          ))}
+        </div>
+        <PanelState state="loading" rows={1} compact />
+      </div>
+    );
+  }
 
   const { itc_buckets, total_recovery_possible } = summary;
   const mockTotalSales  = (summary.invoices_processed || 0) * 12500;
@@ -17,6 +72,26 @@ export default function MoneyMeter({ summary, apiBase, isComposition = false, on
   const atRisk          = (itc_buckets?.fixable_blocked || 0) + (itc_buckets?.at_risk || 0);
   const missed          = itc_buckets?.missed || 0;
   const totalITC        = confirmed + atRisk + missed;
+
+  // A brand-new trader has a valid summary full of zeroes. Four ₹0 cards look
+  // identical to a broken panel, so say plainly that nothing has arrived yet
+  // and point at the one action that fills it.
+  const nothingYet =
+    !isComposition &&
+    totalITC === 0 &&
+    !(total_recovery_possible > 0) &&
+    !(summary.invoices_processed > 0);
+
+  if (nothingYet) {
+    return (
+      <PanelState
+        state="empty"
+        icon={FileText}
+        title="No invoices yet"
+        message="Send your first invoice photo to Munim on WhatsApp. Your eligible, blocked and at-risk ITC appear here the moment it is processed."
+      />
+    );
+  }
 
   const v = { hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } };
 
@@ -57,12 +132,12 @@ export default function MoneyMeter({ summary, apiBase, isComposition = false, on
     switch (id) {
       case "confirmed":
         content = (
-          <div className="bg-white border border-gray-200 rounded-xl p-4 h-full">
+          <div className="bg-white border border-gray-200 rounded-xl p-3 sm:p-4 h-full">
             <div className="flex items-center gap-1.5 mb-2">
               <CheckCircle2 size={13} className="text-emerald-500" />
               <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Confirmed ITC</span>
             </div>
-            <p className="text-2xl font-black text-gray-900">₹{confirmed.toLocaleString("en-IN")}</p>
+            <p className="text-xl sm:text-2xl font-black text-gray-900 break-words">₹{confirmed.toLocaleString("en-IN")}</p>
             <p className="text-xs text-emerald-600 font-medium mt-2 flex items-center gap-1">
               <ArrowUpRight size={11} />This month · live
             </p>
@@ -76,29 +151,30 @@ export default function MoneyMeter({ summary, apiBase, isComposition = false, on
         break;
       case "at_risk":
         content = (
-          <div className="bg-white border border-gray-200 rounded-xl p-4 h-full">
+          <div className="bg-white border border-gray-200 rounded-xl p-3 sm:p-4 h-full">
             <div className="flex items-center gap-1.5 mb-2">
               <ShieldAlert size={13} className="text-amber-500" />
               <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">At Risk / Blocked</span>
             </div>
-            <p className="text-2xl font-black text-gray-900">₹{atRisk.toLocaleString("en-IN")}</p>
+            <p className="text-xl sm:text-2xl font-black text-gray-900 break-words">₹{atRisk.toLocaleString("en-IN")}</p>
             <button
               onClick={() => onSwitchTab?.("actions")}
+              aria-label={`₹${atRisk.toLocaleString("en-IN")} of input tax credit is at risk or blocked. Open the action queue.`}
               className="text-xs text-amber-600 font-semibold mt-2 flex items-center gap-1 hover:underline"
             >
-              <ArrowUpRight size={11} />Requires action by 18th →
+              <ArrowUpRight size={11} aria-hidden="true" />Requires action by 18th →
             </button>
           </div>
         );
         break;
       case "missed":
         content = (
-          <div className="bg-white border border-gray-200 rounded-xl p-4 h-full">
+          <div className="bg-white border border-gray-200 rounded-xl p-3 sm:p-4 h-full">
             <div className="flex items-center gap-1.5 mb-2">
               <AlertCircle size={13} className="text-purple-500" />
               <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Missed ITC (GSTR-2B)</span>
             </div>
-            <p className="text-2xl font-black text-purple-700">₹{missed.toLocaleString("en-IN")}</p>
+            <p className="text-xl sm:text-2xl font-black text-purple-700 break-words">₹{missed.toLocaleString("en-IN")}</p>
             <p className="text-xs text-purple-600 font-medium mt-2 flex items-center gap-1">
               <ArrowUpRight size={11} />Unclaimed in portal
             </p>
@@ -107,12 +183,12 @@ export default function MoneyMeter({ summary, apiBase, isComposition = false, on
         break;
       case "recovery":
         content = (
-          <div className="bg-white border border-gray-200 rounded-xl p-4 h-full">
+          <div className="bg-white border border-gray-200 rounded-xl p-3 sm:p-4 h-full">
             <div className="flex items-center gap-1.5 mb-2">
               <IndianRupee size={13} className="text-blue-500" />
               <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Potential Recovery</span>
             </div>
-            <p className="text-2xl font-black text-blue-700">₹{(total_recovery_possible || 0).toLocaleString("en-IN")}</p>
+            <p className="text-xl sm:text-2xl font-black text-blue-700 break-words">₹{(total_recovery_possible || 0).toLocaleString("en-IN")}</p>
             <p className="text-xs text-gray-400 font-medium mt-2">Fix supplier issues to unlock</p>
           </div>
         );
@@ -132,7 +208,7 @@ export default function MoneyMeter({ summary, apiBase, isComposition = false, on
         title="Drag to reorder"
       >
         <div className="absolute top-2 right-2 opacity-0 hover:opacity-100 z-10 p-1 bg-white/80 rounded backdrop-blur-sm pointer-events-none transition-opacity">
-           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>
+           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400" aria-hidden="true" focusable="false"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>
         </div>
         {content}
       </motion.div>
@@ -198,7 +274,7 @@ export default function MoneyMeter({ summary, apiBase, isComposition = false, on
         title="Drag to reorder"
       >
         <div className="absolute top-1/2 -translate-y-1/2 right-2 opacity-0 hover:opacity-100 z-10 p-1 bg-white/80 rounded backdrop-blur-sm pointer-events-none transition-opacity">
-           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>
+           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400" aria-hidden="true" focusable="false"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>
         </div>
         {content}
       </motion.div>

@@ -18,8 +18,12 @@ import {
   Edit3,
   AlertTriangle,
   MessageCircle,
+  ToggleLeft,
+  ToggleRight,
 } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
+import ToastStack, { useToasts } from "../../components/Toast";
+import { describeError } from "../../components/PanelState";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -71,14 +75,46 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [traders, setTraders] = useState([]);
+  const [reminding, setReminding] = useState(null);
+  const { toasts, toast, dismissToast } = useToasts();
 
-  const handleSendReminder = async (traderId) => {
+  const handleSendReminder = async (traderId, traderName) => {
+    setReminding(traderId);
     try {
       const res = await authFetch(`${API_BASE}/api/v1/communications/remind-gstin/${traderId}`, { method: "POST" });
-      if (res.ok) alert("WhatsApp reminder sent to client!");
-      else alert("Failed to send reminder. Check client's phone number.");
+      if (res.ok) {
+        toast(`WhatsApp reminder sent to ${traderName || "the client"}.`, { variant: "success", title: "Reminder sent" });
+      } else {
+        toast("The reminder was not sent. Check that the client has a WhatsApp number on record.", {
+          variant: "error",
+          title: "Reminder failed",
+        });
+      }
     } catch (e) {
-      alert("Failed to send reminder.");
+      toast(describeError(e) || "The reminder could not be sent.", { variant: "error", title: "Reminder failed" });
+    } finally {
+      setReminding(null);
+    }
+  };
+
+  const handleToggleComposition = async (traderId, current) => {
+    const next = !current;
+    setTraders((prev) => prev.map((t) => (t.id === traderId ? { ...t, is_composition: next } : t)));
+    try {
+      const res = await authFetch(`${API_BASE}/api/v1/dashboard/traders/${traderId}/composition`, {
+        method: "PATCH",
+        body: JSON.stringify({ is_composition: next }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      setTraders((prev) => prev.map((t) => (t.id === traderId ? { ...t, is_composition: current } : t)));
+      // The optimistic toggle used to snap back with no explanation, which
+      // reads as a broken switch. Composition status gates ITC entirely, so a
+      // silent revert is the last thing this control should do.
+      toast("Composition status was not saved — the switch has been put back.", {
+        variant: "error",
+        title: "Not saved",
+      });
     }
   };
 
@@ -157,11 +193,11 @@ export default function ProfilePage() {
           <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">CA Dashboard</span>
         </header>
 
-        <div className="p-8 max-w-4xl mx-auto w-full space-y-8">
+        <div className="p-4 sm:p-8 max-w-4xl mx-auto w-full space-y-8">
           {/* Portfolio Overview */}
           <section>
             <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">{t("pro_portfolio")}</h2>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <StatCard icon={Users}       label={t("pro_total_clients")}     value={totalClients || "—"}        color="gray"  />
               <StatCard icon={AlertTriangle} label={t("pro_clients_with_issues")}     value={withIssues || "0"}          color={withIssues > 0 ? "amber" : "green"} sub={withIssues > 0 ? "Click Action Queue to review" : "All clients are compliant"} />
               <StatCard icon={CheckCircle2}  label="Avg Compliance"  value={avgCompliance ? `${avgCompliance}%` : "—"} color={avgCompliance >= 80 ? "green" : avgCompliance >= 50 ? "amber" : "red"} />
@@ -179,6 +215,7 @@ export default function ProfilePage() {
                       <th className="text-left px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-gray-500">Business Name</th>
                       <th className="text-left px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-gray-500">GSTIN</th>
                       <th className="text-left px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-gray-500">Phone</th>
+                      <th className="text-center px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-gray-500">Composition</th>
                       <th className="text-right px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-gray-500">Status</th>
                     </tr>
                   </thead>
@@ -190,13 +227,35 @@ export default function ProfilePage() {
                           <div className="flex items-center justify-between">
                             <span>{t.gstin || "Not set"}</span>
                             {!t.gstin && (
-                              <button onClick={() => handleSendReminder(t.id)} className="ml-2 p-1 text-green-600 hover:bg-green-100 rounded" title="Send WhatsApp Reminder">
-                                <MessageCircle size={14} />
+                              <button
+                                onClick={() => handleSendReminder(t.id, t.name || t.business_name)}
+                                disabled={reminding === t.id}
+                                aria-label={`Send a WhatsApp reminder to ${t.name || t.business_name || "this client"} to share their GSTIN`}
+                                className="ml-2 p-1 text-green-600 hover:bg-green-100 rounded disabled:opacity-50"
+                                title="Send WhatsApp Reminder"
+                              >
+                                <MessageCircle size={14} aria-hidden="true" />
                               </button>
                             )}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-gray-600">{t.whatsapp_number || "—"}</td>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => handleToggleComposition(t.id, t.is_composition)}
+                            role="switch"
+                            aria-checked={!!t.is_composition}
+                            aria-label={`${t.name || t.business_name || "This client"} is a composition dealer`}
+                            className="flex items-center gap-1.5 mx-auto text-gray-600 hover:text-gray-900 transition-colors"
+                            title="Composition dealers can't claim ITC"
+                          >
+                            {t.is_composition ? (
+                              <ToggleRight size={20} className="text-[#10b981]" aria-hidden="true" />
+                            ) : (
+                              <ToggleLeft size={20} className="text-gray-400" aria-hidden="true" />
+                            )}
+                          </button>
+                        </td>
                         <td className="px-4 py-3 text-right">
                           {(t.open_issues || 0) > 0 ? (
                             <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
@@ -270,6 +329,8 @@ export default function ProfilePage() {
           </section>
         </div>
       </main>
+
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

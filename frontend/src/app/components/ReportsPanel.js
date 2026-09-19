@@ -204,8 +204,8 @@ export default function ReportsPanel({ traderId, apiBase }) {
           <a href={genSuccess} target="_blank" rel="noopener noreferrer" className="px-3 py-1 bg-white text-[var(--green-primary)] rounded font-bold text-xs hover:bg-green-50 transition-colors">
             Download PDF
           </a>
-          <button onClick={() => setGenSuccess(null)} className="ml-2 hover:bg-white/20 p-1 rounded">
-            <XCircle size={16} />
+          <button onClick={() => setGenSuccess(null)} aria-label="Dismiss this message" className="ml-2 hover:bg-white/20 p-1 rounded">
+            <XCircle size={16} aria-hidden="true" />
           </button>
         </div>
       )}
@@ -214,8 +214,8 @@ export default function ReportsPanel({ traderId, apiBase }) {
         <div className="p-4 bg-[var(--red-primary)] text-white rounded-lg flex items-center gap-3 shadow-lg fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5">
           <AlertCircle size={20} />
           <p className="text-sm">{genError}</p>
-          <button onClick={() => setGenError(null)} className="ml-2 hover:bg-white/20 p-1 rounded">
-            <XCircle size={16} />
+          <button onClick={() => setGenError(null)} aria-label="Dismiss this error" className="ml-2 hover:bg-white/20 p-1 rounded">
+            <XCircle size={16} aria-hidden="true" />
           </button>
         </div>
       )}

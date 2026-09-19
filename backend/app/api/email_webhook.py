@@ -10,7 +10,7 @@ from app.services.supabase_client import (
     upload_file,
     store_invoice,
 )
-from app.agents.invoice_agent import process_invoice
+from app.agents.invoice_agent import process_invoice, persist_gstr2b_backlink
 from app.models.invoice import ITCStatus
 from app.services import whatsapp
 from app.services.llm_router import llm_router, LLMTask
@@ -183,6 +183,15 @@ async def receive_email_webhook(request: Request):
             }
 
         stored_invoice = await store_invoice(invoice_data)
+
+        # Close the match-exclusivity loop: the back-link is an FK to
+        # invoices(id), so it can only be written once the row exists.
+        # reconcile_gstr2b seeds consumed_ids from this column, so without
+        # it a later invoice can re-claim the same GSTR-2B record.
+        await persist_gstr2b_backlink(
+            stored_invoice["id"] if stored_invoice else None,
+            diagnosis.gstr2b_match,
+        )
 
         if stored_invoice and inv_json and inv_json.line_items:
             from app.services.supabase_client import store_invoice_line_items

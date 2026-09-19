@@ -207,7 +207,8 @@ async def _call_gstin_api(gstin: str) -> GSTINValidation:
                             timeout=10,
                         )
                         if verify_res.status_code == 200:
-                            data_wrap = verify_res.json().get("data", {}).get("data", {})
+                            outer_data = verify_res.json().get("data", {})
+                            data_wrap = outer_data.get("data", {}) if isinstance(outer_data, dict) else {}
                             if isinstance(data_wrap, dict) and data_wrap.get("validGstin") is True:
                                 status_str = str(data_wrap.get("status", "Active"))
                                 is_active = status_str.lower() == "active"
@@ -223,6 +224,25 @@ async def _call_gstin_api(gstin: str) -> GSTINValidation:
                                     is_active=is_active,
                                     is_einvoice_mandated=False,
                                     filing_status=status_str,
+                                )
+                            # Sandbox.co.in's actual "this GSTIN isn't registered"
+                            # response is HTTP 200 with {"data": {"message": "No
+                            # records found", "error_cd": "FO8000"}} -- confirmed
+                            # live, not documented anywhere obvious. Previously
+                            # this fell through the two branches below silently
+                            # (no log, no early return) all the way to
+                            # _demo_mode_response, which marks ANY
+                            # checksum-valid-but-unregistered GSTIN as
+                            # VERIFIED_VALID -- masking a real "does not exist"
+                            # result as valid. Must return definitively invalid
+                            # here instead.
+                            elif isinstance(outer_data, dict) and outer_data.get("error_cd") == "FO8000":
+                                logger.info(f"Sandbox.co.in: GSTIN {gstin} not found in GST records (FO8000)")
+                                return GSTINValidation(
+                                    gstin=gstin,
+                                    verification_status="VERIFIED_INVALID",
+                                    is_valid=False,
+                                    is_active=False,
                                 )
                         elif verify_res.status_code in [400, 404]:
                             logger.info(f"Sandbox.co.in returned {verify_res.status_code} for {gstin} (not a test sample GSTIN); trying secondary provider")

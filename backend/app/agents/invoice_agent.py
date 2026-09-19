@@ -215,6 +215,13 @@ async def reconcile_gstr2b(state: InvoiceAgentState) -> dict:
             except (ValueError, KeyError):
                 continue
 
+        # Match-exclusivity has to survive across pipeline runs: every invoice
+        # arrives in its own invocation, so the fresh empty set this used to
+        # pass let two invoices claim the same GSTR-2B record. The authoritative
+        # consumed set is the persisted back-link, which get_gstr2b_records
+        # already returns for this trader — no extra round trip.
+        consumed_ids = {r.record_id for r in records if r.matched_invoice_id}
+
         reconciler = GSTR2BReconciler()
         result = reconciler.match_invoice(
             supplier_gstin=(invoice.gstin_supplier or "").upper().strip(),
@@ -222,7 +229,7 @@ async def reconcile_gstr2b(state: InvoiceAgentState) -> dict:
             invoice_date_str=invoice.invoice_date,
             total_amount=invoice.total_amount or 0,
             gstr2b_records=records,
-            consumed_ids=set(),
+            consumed_ids=consumed_ids,
         )
 
         return {"gstr2b_match": result}
@@ -254,7 +261,13 @@ async def score_fraud(state: InvoiceAgentState) -> dict:
     if not invoice:
         return {"fraud_result": FraudResult()}
 
-    # Pull historical data from DB for this supplier
+    # Pull historical data from DB for this supplier, scoped to this trader.
+    # Without the trader filter the Benford distribution, velocity baseline and
+    # sequential-serial check were computed over other traders' invoices
+    # whenever a supplier was shared — a cross-tenant read that also produced
+    # a baseline this trader never transacted. Some traders will now fall below
+    # Benford's min_sample_size and report "insufficient data"; that is the
+    # honest answer, not a regression.
     historical_amounts: list[float] = []
     supplier_invoice_numbers: list[str] = []
     try:
@@ -262,7 +275,9 @@ async def score_fraud(state: InvoiceAgentState) -> dict:
         if invoice.gstin_supplier:
             hist = db.table("invoices").select(
                 "total_amount, invoice_number"
-            ).eq("gstin_supplier", invoice.gstin_supplier).limit(100).execute()
+            ).eq("trader_id", state["trader_id"]).eq(
+                "gstin_supplier", invoice.gstin_supplier
+            ).limit(100).execute()
             for row in (hist.data or []):
                 if row.get("total_amount"):
                     historical_amounts.append(float(row["total_amount"]))
@@ -493,6 +508,34 @@ def build_invoice_agent() -> StateGraph:
 invoice_agent = build_invoice_agent()
 
 
+async def persist_gstr2b_backlink(
+    invoice_id: Optional[str],
+    match: Optional[GSTR2BMatchResult],
+) -> None:
+    """
+    Write the gstr2b_records.matched_invoice_id back-link for a pipeline match.
+
+    This cannot live inside reconcile_gstr2b: matched_invoice_id is a real FK
+    to invoices(id) and the invoice row is not created until after
+    process_invoice returns, so at match time there is no id to point at.
+    Callers must invoke this immediately after store_invoice(), which is what
+    closes the match-exclusivity loop — reconcile_gstr2b seeds consumed_ids
+    from exactly this column on the next invoice.
+    """
+    if not invoice_id or not match or not match.matched_record_id:
+        return
+    if match.status not in (
+        GSTR2BMatchStatus.MATCHED,
+        GSTR2BMatchStatus.PROBABLE_MATCH,
+        GSTR2BMatchStatus.POSSIBLE_MATCH,
+    ):
+        return
+
+    from app.services.supabase_client import mark_gstr2b_record_matched
+
+    await mark_gstr2b_record_matched(match.matched_record_id, invoice_id)
+
+
 async def process_invoice(
     trader_id: str,
     image_bytes: bytes,
@@ -501,6 +544,10 @@ async def process_invoice(
     """
     Main entry point: process an invoice image through the full pipeline.
     Returns an InvoiceDiagnosis with all results.
+
+    Callers that store the resulting invoice must then call
+    persist_gstr2b_backlink(stored_invoice["id"], diagnosis.gstr2b_match) —
+    see that function for why the pipeline cannot do it itself.
     """
     initial_state: InvoiceAgentState = {
         "trader_id": trader_id,
