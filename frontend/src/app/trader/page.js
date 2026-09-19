@@ -1,5 +1,6 @@
 "use client";
 import { authFetch } from "@/src/app/utils/api";
+import { assessPhotoQuality } from "@/src/app/utils/imageQuality";
 
 
 import { useState, useEffect, useRef } from "react";
@@ -8,9 +9,62 @@ import MoneyMeter from "../components/MoneyMeter";
 import ActionQueue from "../components/ActionQueue";
 import InvoiceDetailModal from "../components/InvoiceDetailModal";
 import ReportsPanel from "../components/ReportsPanel";
-import ListenButton from "../components/ListenButton";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+// Longest-edge size (px) a captured photo is downscaled to before the
+// on-device quality analysis runs. Keeps the Laplacian-variance pass fast
+// even for a multi-megapixel phone camera capture — only the analysis frame
+// is downscaled, the original full-resolution file is still what gets
+// uploaded when the photo passes (or the user overrides a warning).
+const QUALITY_ANALYSIS_MAX_DIMENSION = 800;
+
+/**
+ * On-device blur/glare check: draws the captured file to an off-screen
+ * canvas, extracts ImageData, and runs the pure imageQuality assessment —
+ * entirely client-side, before any network request. Resolves to null for
+ * non-image files (e.g. PDF) or if analysis fails for any reason, so the
+ * upload flow always has a safe fallback and is never blocked by this check.
+ */
+function analyzeImageFile(file) {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined" || !file?.type?.startsWith("image/")) {
+      resolve(null);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    const img = new window.Image();
+
+    const cleanup = () => URL.revokeObjectURL(objectUrl);
+
+    img.onload = () => {
+      try {
+        const scale = Math.min(1, QUALITY_ANALYSIS_MAX_DIMENSION / Math.max(img.width, img.height));
+        const width = Math.max(1, Math.round(img.width * scale));
+        const height = Math.max(1, Math.round(img.height * scale));
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0, width, height);
+        const imageData = ctx.getImageData(0, 0, width, height);
+        resolve(assessPhotoQuality(imageData));
+      } catch (err) {
+        console.warn("On-device photo quality check failed, skipping check.", err);
+        resolve(null);
+      } finally {
+        cleanup();
+      }
+    };
+    img.onerror = () => {
+      cleanup();
+      resolve(null);
+    };
+    img.src = objectUrl;
+  });
+}
 
 export default function TraderApp() {
   const [summary, setSummary] = useState(null);
@@ -24,6 +78,8 @@ export default function TraderApp() {
   const [invoiceHistory, setInvoiceHistory] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [checkingPhoto, setCheckingPhoto] = useState(false);
+  const [retakePrompt, setRetakePrompt] = useState(null); // { file, verdict } | null
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -92,9 +148,6 @@ export default function TraderApp() {
           status: data.itc_verdict?.status || "PROCESSING",
           itc_amount: data.itc_verdict?.itc_amount || 0,
           message: data.diagnosis_hi || data.diagnosis_en || "Invoice processed!",
-          // Hint the TTS voice picker toward Hindi only when we actually got
-          // Hindi text back — otherwise fall back to English.
-          lang: data.diagnosis_hi ? "hi-IN" : "en-IN",
         });
         setTimeout(() => {
           setScanState("idle");
@@ -119,6 +172,29 @@ export default function TraderApp() {
 
   function triggerScan() {
     fileInputRef.current?.click();
+  }
+
+  // Gate: run the on-device blur/glare check before this file ever reaches
+  // handleInvoiceUpload (i.e. before the network round-trip + paid Gemini
+  // Vision OCR call). A bad photo shows a retake prompt with the specific
+  // reason instead of silently uploading and burning an API call on a scan
+  // that's going to come back garbled anyway. Not a hard block — the user
+  // can always choose "Upload Anyway", since some real invoices are
+  // genuinely hard to photograph cleanly and a false positive shouldn't
+  // trap them.
+  async function handleFileSelected(file) {
+    if (!file) return;
+
+    setCheckingPhoto(true);
+    const verdict = await analyzeImageFile(file);
+    setCheckingPhoto(false);
+
+    if (verdict && !verdict.isAcceptable) {
+      setRetakePrompt({ file, verdict });
+      return;
+    }
+
+    handleInvoiceUpload(file);
   }
 
   const statusColors = {
@@ -150,8 +226,8 @@ export default function TraderApp() {
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];
-          if (file) handleInvoiceUpload(file);
           e.target.value = "";
+          if (file) handleFileSelected(file);
         }}
       />
 
@@ -219,6 +295,14 @@ export default function TraderApp() {
         </div>
       )}
 
+      {/* On-device photo quality check — runs before any upload/network call */}
+      {checkingPhoto && (
+        <div className="mx-4 mt-4 p-4 rounded-none border border-[var(--border-subtle)] bg-white flex items-center gap-3">
+          <Loader2 size={18} className="animate-spin text-black flex-shrink-0" />
+          <p className="font-bold text-black text-sm">Checking photo quality on your device...</p>
+        </div>
+      )}
+
       {/* Scan Result Toast */}
       {scanState !== "idle" && (
         <div className="mx-4 mt-4 p-4 rounded-none border border-[var(--border-subtle)] bg-white flex items-start gap-3">
@@ -242,7 +326,6 @@ export default function TraderApp() {
                   <p className="text-xs font-bold text-black">ITC: ₹{scanResult.itc_amount.toLocaleString("en-IN")}</p>
                 )}
                 <p className="text-xs text-[var(--text-secondary)] mt-1">{scanResult.message}</p>
-                <ListenButton text={scanResult.message} lang={scanResult.lang} className="mt-1.5" />
               </>
             )}
             {scanState === "error" && scanResult && (
@@ -332,30 +415,72 @@ export default function TraderApp() {
         {/* Massive Scan Button */}
         <button
           onClick={() => { setActiveTab("home"); triggerScan(); }}
-          disabled={scanState === "uploading"}
+          disabled={scanState === "uploading" || checkingPhoto}
           className="flex-2 flex items-center justify-center gap-2 px-6 py-3 rounded-none bg-black text-white  hover:bg-gray-900 transition-all transform hover:scale-105 w-full disabled:opacity-60 disabled:scale-100"
         >
-          {scanState === "uploading" ? (
+          {scanState === "uploading" || checkingPhoto ? (
             <Loader2 size={20} className="animate-spin" />
           ) : (
             <Camera size={20} />
           )}
           <span className="font-bold text-sm">
-            {scanState === "uploading" ? "Processing..." : "Scan Invoice"}
+            {checkingPhoto ? "Checking Photo..." : scanState === "uploading" ? "Processing..." : "Scan Invoice"}
           </span>
         </button>
       </div>
 
       {/* Modal */}
       {selectedIndex !== null && (
-        <InvoiceDetailModal 
-          invoice={invoiceHistory[selectedIndex]} 
-          onClose={() => setSelectedIndex(null)} 
+        <InvoiceDetailModal
+          invoice={invoiceHistory[selectedIndex]}
+          onClose={() => setSelectedIndex(null)}
           onNext={() => setSelectedIndex(selectedIndex < invoiceHistory.length - 1 ? selectedIndex + 1 : selectedIndex)}
           onPrev={() => setSelectedIndex(selectedIndex > 0 ? selectedIndex - 1 : selectedIndex)}
           hasNext={selectedIndex < invoiceHistory.length - 1}
           hasPrev={selectedIndex > 0}
         />
+      )}
+
+      {/* Retake prompt — on-device blur/glare check failed. Not a hard
+          block: the trader can override and upload anyway, since a false
+          positive on a genuinely hard-to-photograph invoice shouldn't trap
+          them. */}
+      {retakePrompt && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-sm bg-white rounded-none border border-[var(--border-subtle)] p-6 shadow-2xl">
+            <div className="flex items-center gap-2 mb-3">
+              <ShieldAlert size={20} className="text-[var(--orange-primary)] flex-shrink-0" />
+              <h2 className="font-bold text-black text-base">Photo may not scan well</h2>
+            </div>
+            <p className="text-sm text-[var(--text-secondary)] mb-6">{retakePrompt.verdict.reason}</p>
+
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => {
+                  setRetakePrompt(null);
+                  fileInputRef.current?.click();
+                }}
+                className="w-full py-3 rounded-none bg-black text-white font-bold text-sm hover:bg-gray-800 transition-colors"
+              >
+                Retake Photo
+              </button>
+              <button
+                onClick={() => {
+                  const file = retakePrompt.file;
+                  setRetakePrompt(null);
+                  handleInvoiceUpload(file);
+                }}
+                className="w-full py-3 rounded-none border border-[var(--border-subtle)] text-[var(--text-secondary)] font-bold text-sm hover:bg-[var(--bg-primary)] transition-colors"
+              >
+                Upload Anyway
+              </button>
+            </div>
+
+            <p className="text-[10px] text-[var(--text-muted)] mt-4 text-center">
+              Checked on your device — no data was uploaded for this check.
+            </p>
+          </div>
+        </div>
       )}
     </div>
   );
