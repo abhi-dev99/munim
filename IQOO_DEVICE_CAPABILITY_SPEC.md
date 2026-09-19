@@ -28,6 +28,21 @@ Each entry: **ID · name** — mechanism → why → effort (S/M/L) → tags →
 
 **OCV-1 · Photo quality gate** — small in-browser/on-device model (TFLite via MediaPipe, or ONNX Runtime Web if PWA-only) flags blur/glare/bad-crop on a scanned invoice *before* it's sent to Gemini, with instant "retake" feedback in the `/trader` scanner. → Bad WhatsApp photos are the #1 cause of OCR failure in the field per existing pipeline behavior (confirmed: Gemini extraction fallback chain exists specifically to survive garbled output) — this fixes the actual failure mode instead of papering over it downstream. → **M** → `PRODUCT` + `SCORE` (camera + on-device AI) → **BUILD — this is the anchor feature.**
 
+  **Status: BUILT** (branch `munim/photo-quality-gate`). Shipped as pure JS
+  Laplacian-variance sharpness + overexposure-ratio analysis rather than a
+  loaded TFLite/ONNX model — same on-device, zero-network guarantee, no
+  model-loading risk under a 30-hour clock, and it is unit-tested (Vitest)
+  since it's plain math over `ImageData`. Also corrects this entry's
+  original assumption: the real `capture="environment"` file input and
+  upload call live in `frontend/src/app/trader/page.js`
+  (`handleInvoiceUpload`), not `/trader/scanner`, which is unwired demo
+  code with no link pointing to it and no backend call. The gate runs in
+  `handleFileSelected` before `handleInvoiceUpload`, with a non-blocking
+  retake prompt ("Upload Anyway" override). Core logic:
+  `frontend/src/app/utils/imageQuality.js`; tests:
+  `frontend/src/app/utils/imageQuality.test.js`. Auto-crop (OCV-2) was not
+  attempted — out of scope for this pass.
+
 **OCV-2 · On-device edge-detect + auto-crop** — real-time document-boundary detection (OpenCV.js or a lightweight on-device segmentation model) auto-crops/deskews before OCR, same pipeline stage as OCV-1. → Directly improves Gemini extraction accuracy (cleaner input = fewer OCR retries = fewer wasted paid API calls) and is a natural pairing with OCV-1 in the same camera-capture moment. → **S–M** (can share OCV-1's model-loading scaffolding) → `PRODUCT` + `SCORE` → **BUILD if OCV-1 lands with time to spare, same commit surface.**
 
 **OCV-3 · On-device OCR triage for offline capture** — Android's on-device text-recognition (or a tiny local OCR pass) does a first read when network is unavailable, queues the raw text + image locally, and defers full structured Gemini extraction until connectivity returns. → This is the *only* item in this catalog that's a genuine architectural extension of Munim's own positioning ("checks invoices while there's still time to fix a filing," built for low-connectivity Bharat MSMEs) rather than a bolt-on — it's the on-device story the product already claims to need. → **L** (requires an offline queue + sync-on-reconnect flow that doesn't exist today) → `PRODUCT` + `SCORE` → **catalog for Grand Finale, too large for this weekend.**
@@ -39,7 +54,6 @@ Each entry: **ID · name** — mechanism → why → effort (S/M/L) → tags →
 **VOI-1 · Voice GST queries** — on-device speech-to-text (Web Speech API where offline-capable, or a small local Whisper variant) for typed-vs-spoken parity in the trader PWA ("mera ITC kitna bacha hai?"). → Matches the MSME persona directly — many traders are more comfortable speaking than typing, and this is stated as differentiator-adjacent in existing positioning. → **M** → `PRODUCT` + `SCORE` (voice + on-device AI) → **BUILD if OCV-1 lands early and time remains — second priority, not first.**
 
 **VOI-2 · On-device TTS for the Hindi diagnosis** — read the existing `diagnosis_hi` text aloud via the phone's built-in on-device TTS instead of (or alongside) the WhatsApp text bubble. → Directly serves literacy-accessibility for the exact user this product targets, and is nearly free to build (TTS engines are OS-native, no model integration needed) — a very high value-to-effort ratio. → **S** → `PRODUCT` + `SCORE` (voice/on-device AI, arguably the cheapest genuine on-device AI touchpoint in this entire catalog) → **BUILD — cheapest real win here, do this even if nothing else voice-related lands.**
-  - **Status: BUILT** (branch `munim/on-device-tts`). `frontend/src/app/utils/speech.js` wraps `window.speechSynthesis`; `frontend/src/app/components/ListenButton.js` is the Listen/Stop control; wired into the post-upload scan-result toast in `frontend/src/app/trader/page.js`. Not yet wired into invoice history / `InvoiceDetailModal.js` — good follow-up, same utility already covers it.
 
 **VOI-3 · Voice-note context capture** — trader adds a short voice memo alongside a photo ("cash payment, Ramesh Traders") transcribed on-device to enrich extraction context (e.g. payment method for the 180-day reversal rule). → Nice-to-have, addresses a real gap (payment status is currently manual), but adds a new data-capture UX mid-project with no existing hook to hang it on. → **M–L** → `PRODUCT` → **catalog.**
 
