@@ -76,6 +76,7 @@ s3 = boto3.client("s3")
 dynamodb = boto3.resource("dynamodb")
 traders_table = dynamodb.Table("munim-traders")
 invoices_table = dynamodb.Table("munim-invoices")
+status_table = dynamodb.Table("munim-system-status")
 bedrock = boto3.client("bedrock-runtime")
 lambda_client = boto3.client("lambda")
 
@@ -678,15 +679,34 @@ def _gemini_generate(prompt):
     return ""
 
 
+def _bedrock_is_available():
+    """Reads munim-bedrock-healthcheck's cached verdict (refreshed every
+    30 min by EventBridge Scheduler) instead of guessing. Bedrock is
+    currently gated account-wide -- see local-notes/AWS_ROADMAP.md,
+    2026-09-19 -- so calling it directly on every message just burns a
+    guaranteed-fail round-trip; this lets Gemini answer immediately
+    while Bedrock's still down, and switches back to it automatically
+    the moment the health-check confirms it's open again, with no
+    redeploy needed either way."""
+    try:
+        response = status_table.get_item(Key={"component": "bedrock"})
+        return bool(response.get("Item", {}).get("available"))
+    except ClientError:
+        logger.warning("Couldn't read Bedrock health status, assuming unavailable.")
+        return False
+
+
 def _generate_reply(prompt, temperature=0.3):
-    """Bedrock first (AWS-native, primary path); Gemini only as a last
-    resort when Bedrock itself is unavailable. Used exclusively for
-    open-ended GST questions -- every other reply in this Lambda
-    (onboarding, ITC status, help, language-switch) is already
-    deterministic and never reaches this function at all."""
-    answer = _bedrock_generate(prompt, temperature=temperature)
-    if answer:
-        return answer
+    """Gemini-primary while Bedrock's account-level gate is open;
+    switches to Bedrock-primary automatically once the health-check
+    confirms it's available -- see _bedrock_is_available. Used
+    exclusively for open-ended GST questions -- every other reply in
+    this Lambda (onboarding, ITC status, help, language-switch) is
+    already deterministic and never reaches this function at all."""
+    if _bedrock_is_available():
+        answer = _bedrock_generate(prompt, temperature=temperature)
+        if answer:
+            return answer
     return _gemini_generate(prompt)
 
 
