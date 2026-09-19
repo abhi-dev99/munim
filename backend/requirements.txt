@@ -27,9 +27,6 @@ fpdf2==2.8.7
 # === Scheduling ===
 APScheduler==3.11.0
 
-# === Testing ===
-pytest==8.3.4
-
 # === Utilities ===
 python-dotenv==1.1.0
 python-Levenshtein==0.27.1
@@ -40,3 +37,6 @@ groq==1.6.0
 mcp>=1.0.0
 PyJWT
 resend==2.2.0
+
+# === Testing ===
+pytest==9.1.1
