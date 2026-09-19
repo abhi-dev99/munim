@@ -3,6 +3,7 @@ Munim.ai — Gemini AI Service
 Handles: Vision extraction, Hindi text generation, embeddings.
 """
 
+import asyncio
 import json
 import logging
 import time
@@ -321,7 +322,8 @@ async def transcribe_voice_note(audio_bytes: bytes, mime_type: str = "audio/ogg"
         mime_type = "audio/ogg;codecs=opus"
 
     try:
-        response = client.models.generate_content(
+        response = await asyncio.to_thread(
+            client.models.generate_content,
             model=settings.gemini_model,
             contents=[
                 types.Content(
@@ -358,7 +360,8 @@ async def transcribe_voice_note(audio_bytes: bytes, mime_type: str = "audio/ogg"
 async def embed_text(text: str) -> list[float]:
     """Generate embedding for a text using Gemini."""
     try:
-        response = client.models.embed_content(
+        response = await asyncio.to_thread(
+            client.models.embed_content,
             model=settings.gemini_embedding_model,
             contents=text,
             config=types.EmbedContentConfig(
