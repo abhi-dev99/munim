@@ -38,6 +38,7 @@ s3 = boto3.client("s3")
 dynamodb = boto3.resource("dynamodb")
 traders_table = dynamodb.Table("munim-traders")
 invoices_table = dynamodb.Table("munim-invoices")
+status_table = dynamodb.Table("munim-system-status")
 bedrock = boto3.client("bedrock-runtime")
 transcribe = boto3.client("transcribe")
 polly = boto3.client("polly")
@@ -391,10 +392,22 @@ def _gemini_generate(prompt):
     return ""
 
 
+def _bedrock_is_available():
+    """See munim-meta-webhook for the full reasoning -- reads the same
+    munim-system-status item both Lambdas share."""
+    try:
+        response = status_table.get_item(Key={"component": "bedrock"})
+        return bool(response.get("Item", {}).get("available"))
+    except ClientError:
+        logger.warning("Couldn't read Bedrock health status, assuming unavailable.")
+        return False
+
+
 def _generate_reply(prompt, temperature=0.3):
-    answer = _bedrock_generate(prompt, temperature=temperature)
-    if answer:
-        return answer
+    if _bedrock_is_available():
+        answer = _bedrock_generate(prompt, temperature=temperature)
+        if answer:
+            return answer
     return _gemini_generate(prompt)
 
 
