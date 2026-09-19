@@ -38,7 +38,12 @@ class Settings(BaseSettings):
 
     # --- Groq ---
     groq_api_key: str = ""
-    groq_model: str = "llama-3.1-8b-instant"
+    # llama-3.1-8b-instant (and Groq's whole Llama lineup) has been removed
+    # from Groq's model catalog -- confirmed live via GET /openai/v1/models,
+    # which returned 404 model_not_found for it and no llama-3.x model at
+    # all. openai/gpt-oss-20b is the closest current equivalent: fast,
+    # general-purpose, open-weight.
+    groq_model: str = "openai/gpt-oss-20b"
 
     # --- Meta WhatsApp ---
     meta_whatsapp_token: str = ""
@@ -47,6 +52,9 @@ class Settings(BaseSettings):
     meta_verify_token: str = "munim_verify_2026"
     meta_app_secret: str = ""
     meta_api_version: str = "v21.0"
+    # Dialable WhatsApp number behind meta_phone_number_id, used to build
+    # wa.me deep links (the Graph API phone_number_id itself isn't dialable).
+    whatsapp_business_number: str = ""
 
     # --- Supabase ---
     supabase_url: str = ""
@@ -81,6 +89,19 @@ class Settings(BaseSettings):
 
     # --- ngrok / Public URL ---
     public_url: str = ""  # ngrok or server URL
+
+    # Where the browser-facing app is served from. Used to build links that
+    # leave the system and are opened by someone who is not a user -- today
+    # that is the vendor fix link (app/api/vendor.py), which a supplier opens
+    # from WhatsApp. Getting this wrong in production does not fail loudly: it
+    # produces a link to localhost that the supplier simply cannot open, so
+    # `frontend_base_url` refuses to guess and falls back to `public_url`
+    # before the localhost default.
+    frontend_url: str = ""
+
+    @property
+    def frontend_base_url(self) -> str:
+        return (self.frontend_url or self.public_url or "http://localhost:3000").rstrip("/")
 
     class Config:
         env_file = ".env"

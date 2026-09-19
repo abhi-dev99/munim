@@ -8,6 +8,7 @@ import {
   ChevronDown, ChevronUp, Search, RotateCcw
 } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext";
+import PanelState, { PanelStateRow } from "./PanelState";
 
 const MONTHS = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -36,6 +37,7 @@ export default function IMSPanel({ traderId, apiBase }) {
   const { t } = useLanguage();
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
   const [actions, setActions] = useState({});  // invoice_id → "accept"|"pending"|"reject"
   const [search, setSearch]   = useState("");
   const [filter, setFilter]   = useState("ALL");
@@ -49,16 +51,19 @@ export default function IMSPanel({ traderId, apiBase }) {
 
   async function load() {
     setLoading(true);
+    setError(null);
     try {
       const res = await authFetch(`${apiBase}/api/v1/dashboard/ims/${traderId}?month=${month}&year=${year}`);
+      if (!res.ok) throw new Error(`Server returned ${res.status} while loading IMS data.`);
       const json = await res.json();
       setData(json);
       // Seed local overrides from engine defaults
       const init = {};
       (json.invoices || []).forEach(inv => { init[inv.invoice_id] = inv.ims_action; });
       setActions(init);
-    } catch {
+    } catch (err) {
       setData(null);
+      setError(err);
     } finally {
       setLoading(false);
     }
@@ -109,6 +114,7 @@ export default function IMSPanel({ traderId, apiBase }) {
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <select
+            aria-label="Filing period"
             value={`${year}-${month}`}
             onChange={e => {
               const [y, m] = e.target.value.split("-");
@@ -124,14 +130,24 @@ export default function IMSPanel({ traderId, apiBase }) {
               return <option key={`${y}-${m}`} value={`${y}-${m}`}>{MONTHS[m]} {y}</option>;
             })}
           </select>
-          <button onClick={resetAll} className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-2 transition-colors bg-white">
-            <RotateCcw size={13} /> Reset
+          <button onClick={resetAll} aria-label="Reset all IMS decisions to the engine defaults" className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-2 transition-colors bg-white">
+            <RotateCcw size={13} aria-hidden="true" /> Reset
           </button>
         </div>
       </div>
 
+      {error ? (
+        <PanelState
+          state="error"
+          error={error}
+          title="IMS data unavailable"
+          message="The invoice management view could not be loaded for this period. Your saved accept/reject decisions are untouched."
+          onRetry={load}
+        />
+      ) : (
+      <>
       {/* Summary stat strip */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: "Accepted", value: liveAccept,  color: "emerald", filter: "accept"  },
           { label: "Pending",  value: livePending, color: "amber",   filter: "pending" },
@@ -141,6 +157,8 @@ export default function IMSPanel({ traderId, apiBase }) {
           <button
             key={stat.filter}
             onClick={() => setFilter(f => f === stat.filter ? "ALL" : stat.filter)}
+            aria-pressed={filter === stat.filter}
+            aria-label={`Filter by ${stat.label}`}
             className={`text-left bg-white rounded-xl border p-3 transition-all hover:shadow-sm ${
               filter === stat.filter ? "border-[#10b981] ring-1 ring-[#10b981]" : "border-gray-200"
             }`}
@@ -192,11 +210,15 @@ export default function IMSPanel({ traderId, apiBase }) {
                   </tr>
                 ))
               ) : invoices.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-gray-400 text-sm">
-                    {data ? "No invoices match the selected filters." : "No invoice data available for this period."}
-                  </td>
-                </tr>
+                <PanelStateRow
+                  colSpan={7}
+                  state="empty"
+                  compact
+                  title={data ? "No matching invoices" : "No invoices this period"}
+                  message={data
+                    ? "No invoices match the current search or filter. Clear them to see everything."
+                    : "Nothing has been filed or scanned for this month yet."}
+                />
               ) : (
                 invoices.map(inv => {
                   const currentAction = actions[inv.invoice_id] || "pending";
@@ -250,11 +272,13 @@ export default function IMSPanel({ traderId, apiBase }) {
                                 key={act}
                                 onClick={() => setAction(inv.invoice_id, act)}
                                 title={cfg.label}
+                                aria-label={`${cfg.label} invoice ${inv.invoice_number || ""} from ${inv.supplier_name || "unknown supplier"}`}
+                                aria-pressed={isActive}
                                 className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border transition-all ${
                                   isActive ? cfg.chip : "bg-white text-gray-400 border-gray-100 hover:border-gray-300"
                                 }`}
                               >
-                                <Icon size={11} />
+                                <Icon size={11} aria-hidden="true" />
                                 <span className="hidden sm:inline">{cfg.label}</span>
                               </button>
                             );
@@ -272,6 +296,8 @@ export default function IMSPanel({ traderId, apiBase }) {
           </table>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

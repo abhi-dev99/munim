@@ -5,6 +5,7 @@ import { authFetch } from "@/src/app/utils/api";
 import { useState, useEffect } from "react";
 import { CheckCircle2, AlertTriangle, XCircle, ShieldAlert, FileText, RefreshCw } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext";
+import PanelState from "./PanelState";
 
 const MONTHS = ["", "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"];
@@ -22,6 +23,7 @@ export default function GSTR3BPanel({ traderId, apiBase }) {
   const { t } = useLanguage();
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
   const [month, setMonth]     = useState(new Date().getMonth() + 1);
   const [year, setYear]       = useState(new Date().getFullYear());
 
@@ -32,12 +34,15 @@ export default function GSTR3BPanel({ traderId, apiBase }) {
 
   async function load() {
     setLoading(true);
+    setError(null);
     try {
       const res = await authFetch(`${apiBase}/api/v1/dashboard/gstr3b/${traderId}?month=${month}&year=${year}`);
+      if (!res.ok) throw new Error(`Server returned ${res.status} while building the GSTR-3B draft.`);
       const json = await res.json();
       setData(json);
-    } catch {
+    } catch (err) {
       setData(null);
+      setError(err);
     } finally {
       setLoading(false);
     }
@@ -59,6 +64,7 @@ export default function GSTR3BPanel({ traderId, apiBase }) {
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <select
+            aria-label="Return period"
             value={`${year}-${month}`}
             onChange={e => {
               const [y, m] = e.target.value.split("-");
@@ -74,8 +80,8 @@ export default function GSTR3BPanel({ traderId, apiBase }) {
               return <option key={`${y}-${m}`} value={`${y}-${m}`}>{MONTHS[m]} {y}</option>;
             })}
           </select>
-          <button onClick={load} className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-2 transition-colors bg-white">
-            <RefreshCw size={13} /> Refresh
+          <button onClick={load} aria-label="Refresh the GSTR-3B draft" className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-2 transition-colors bg-white">
+            <RefreshCw size={13} aria-hidden="true" /> Refresh
           </button>
         </div>
       </div>
@@ -86,15 +92,25 @@ export default function GSTR3BPanel({ traderId, apiBase }) {
             <div key={i} className="h-36 bg-white border border-gray-200 rounded-xl animate-pulse" />
           ))}
         </div>
+      ) : error ? (
+        <PanelState
+          state="error"
+          error={error}
+          title="GSTR-3B draft unavailable"
+          message="The ITC figures for this period could not be computed. Nothing has been filed or changed."
+          onRetry={load}
+        />
       ) : !data ? (
-        <div className="bg-white border border-gray-200 rounded-xl p-12 text-center text-gray-400">
-          <FileText size={32} className="mx-auto mb-3 opacity-30" />
-          <p className="text-sm">No invoice data for this period. Upload invoices to generate GSTR-3B draft.</p>
-        </div>
+        <PanelState
+          state="empty"
+          icon={FileText}
+          title="No invoice data for this period"
+          message="Upload invoices or a GSTR-2B for this month and the Table 4 draft will compute itself."
+        />
       ) : (
         <>
           {/* Invoice Summary Strip */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
               { label: "Confirmed ITC", value: inv?.confirmed || 0, color: "emerald", icon: CheckCircle2 },
               { label: "At Risk",       value: inv?.at_risk   || 0, color: "amber",   icon: AlertTriangle },
@@ -186,7 +202,7 @@ export default function GSTR3BPanel({ traderId, apiBase }) {
                 <h3 className="text-sm font-bold text-gray-900">GSTR-2B Auto-Population Summary</h3>
                 <p className="text-[10px] text-gray-400">{g2b.total_records} records from portal</p>
               </div>
-              <div className="grid grid-cols-4 divide-x divide-gray-100">
+              <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-gray-100">
                 {[
                   { label: "IGST in 2B", value: fmt(g2b.total_igst) },
                   { label: "CGST in 2B", value: fmt(g2b.total_cgst) },

@@ -105,4 +105,8 @@ class ActionItem(BaseModel):
     impact_amount: float
     fix_action: str
     deadline: Optional[str] = None
+    # Days left to chase the supplier before their GSTR-1 for this invoice's
+    # period is due. Negative once that date has passed. Only set where the fix
+    # genuinely depends on someone else filing, i.e. AT_RISK.
+    days_to_fix: Optional[int] = None
     priority: int = 0  # lower = higher priority

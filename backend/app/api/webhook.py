@@ -3,14 +3,16 @@ Munim.ai — WhatsApp Webhook API
 Receives Meta webhook events and dispatches invoice processing.
 """
 
+import math
 import re
 import logging
 import uuid
+from typing import Optional
 
 from fastapi import APIRouter, Request, Response, HTTPException, UploadFile, File, Form, Depends
 import asyncio
 
-from app.api.deps import get_current_trader_id
+from app.api.deps import get_current_trader_id, verify_trader_access
 from app.config import get_settings
 from app.services import whatsapp
 from app.services.redis_cache import (
@@ -18,17 +20,21 @@ from app.services.redis_cache import (
     set_conversation_state,
     check_rate_limit,
     mark_message_processed,
+    acquire_phone_lock,
+    release_phone_lock,
 )
 from app.services.supabase_client import (
     get_supabase,
     get_trader_by_phone,
+    get_trader_by_short_code,
     create_trader,
     update_trader,
     upload_file,
     store_invoice,
+    get_recent_invoice_locations,
 )
 from app.services.gstin import is_valid_gstin_format
-from app.agents.invoice_agent import process_invoice
+from app.agents.invoice_agent import process_invoice, persist_gstr2b_backlink
 from app.models.invoice import ITCStatus
 from app.domain.reconciler import GSTR2BReconciler
 from app.utils.errors import safe_http_error
@@ -42,19 +48,84 @@ router = APIRouter(prefix="/api/v1", tags=["webhook"])
 # GSTIN regex: 2 digits + 5 alpha + 4 digits + 1 alpha + 1 alphanumeric + Z + 1 alphanumeric
 GSTIN_REGEX = re.compile(r"^\d{2}[A-Z]{5}\d{4}[A-Z]\d[Z][A-Z\d]$")
 
+# First message from a QR scan of a CA's onboarding link (wa.me/...?text=JOIN-<short_code>)
+JOIN_CODE_REGEX = re.compile(r"^JOIN-([A-Za-z0-9]+)$", re.IGNORECASE)
+
+# --- Scan-location anomaly (soft signal, not a fraud score input) ----------
+#
+# The same statistical-signal philosophy as app/domain/fraud.py's six
+# signals (real math, no LLM, no invented judgment) but kept out of
+# FraudScorer on purpose: FraudScorer.WEIGHTS "must sum to 100", and this
+# needs this trader's *own* invoice history including the row that was just
+# inserted, which fraud.py's signals never touch. A soft distance-from-usual
+# number, not a score, so it doesn't imply more precision than a first-pass
+# guess deserves.
+#
+# 50km and "3 prior scans" are first-pass guesses (small Indian towns/cities,
+# not continent-scale), same as SteadyCameraCapture.tsx's motion thresholds —
+# the first things to tune against real usage, not a measured calibration.
+LOCATION_ANOMALY_THRESHOLD_KM = 50.0
+LOCATION_ANOMALY_MIN_PRIOR_SCANS = 3
+
+
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Great-circle distance between two lat/lon points, in kilometers."""
+    r = 6371.0  # mean Earth radius, km
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    d_phi = math.radians(lat2 - lat1)
+    d_lambda = math.radians(lon2 - lon1)
+    a = math.sin(d_phi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2) ** 2
+    return 2 * r * math.asin(min(1.0, math.sqrt(a)))
+
+
+async def _check_location_anomaly(
+    trader_id: str, latitude: float, longitude: float, exclude_invoice_id: Optional[str]
+) -> Optional[dict]:
+    """
+    Is this scan unusually far from where this trader's recent scans have
+    come from? Compares against the plain centroid of their last (up to) 20
+    geotagged invoices — deliberately simple, deliberately not a fraud
+    verdict. Returns None (no signal at all) rather than a low-confidence
+    guess when there isn't enough history yet to mean anything.
+    """
+    prior = await get_recent_invoice_locations(trader_id, limit=20, exclude_invoice_id=exclude_invoice_id)
+    if len(prior) < LOCATION_ANOMALY_MIN_PRIOR_SCANS:
+        return None
+
+    centroid_lat = sum(r["latitude"] for r in prior) / len(prior)
+    centroid_lon = sum(r["longitude"] for r in prior) / len(prior)
+    distance_km = _haversine_km(latitude, longitude, centroid_lat, centroid_lon)
+
+    return {
+        "distance_from_usual_km": round(distance_km, 1),
+        "prior_scan_count": len(prior),
+        "anomaly": distance_km > LOCATION_ANOMALY_THRESHOLD_KM,
+        "threshold_km": LOCATION_ANOMALY_THRESHOLD_KM,
+    }
+
 
 @router.post("/webhook/upload-invoice")
 async def upload_invoice_direct(
     file: UploadFile = File(...),
     trader_id: str = Form(...),
+    latitude: Optional[float] = Form(None),
+    longitude: Optional[float] = Form(None),
     current_trader_id: str = Depends(get_current_trader_id),
 ):
     """
     Direct invoice upload from the Trader PWA (no WhatsApp).
     Accepts image or PDF, runs the full LangGraph pipeline, returns diagnosis.
+
+    latitude/longitude are optional — set only when the native shell
+    (mobile/) captured the photo and a GPS fix was available (mobile/
+    BRIDGE.md). Absent for every plain-browser upload, exactly as before.
     """
-    if trader_id != current_trader_id:
-        raise HTTPException(status_code=403, detail="Not authorized")
+    # Reuse the same CA-on-behalf-of-client check every other trader-scoped
+    # endpoint uses (deps.py:verify_trader_access) instead of a raw equality
+    # check -- a raw check rejects the CA uploading for a client trader even
+    # though dashboard.py/gstr2b.py/reports.py all already allow exactly that
+    # via ca_whatsapp_number matching.
+    await verify_trader_access(trader_id, current_trader_id)
 
     if not check_rate_limit(f"upload:{current_trader_id}", max_requests=10, window_seconds=60):
         raise HTTPException(status_code=429, detail="Too many upload requests. Please wait a minute.")
@@ -107,12 +178,52 @@ async def upload_invoice_direct(
             invoice_data["igst_amount"] = sum((li.igst_amount or 0) for li in inv_json.line_items)
         if diagnosis.fraud_result:
             invoice_data["fraud_score"] = diagnosis.fraud_result.total_score
+        # Only set when the native shell actually sent a fix -- omitted
+        # entirely otherwise, same as every other conditional field above.
+        # Until backend/migrations/add_invoice_geolocation.sql is applied by
+        # hand (see that file), a scan that *does* include one will fail to
+        # store here and store_invoice() will log-and-return None like any
+        # other schema-drift write -- the same landmine CLAUDE.md documents
+        # for gstr2b_records.record_type, not a new failure mode.
+        if latitude is not None and longitude is not None:
+            invoice_data["latitude"] = latitude
+            invoice_data["longitude"] = longitude
         stored_invoice = await store_invoice(invoice_data)
+
+        # Close the match-exclusivity loop: the back-link is an FK to
+        # invoices(id), so it can only be written once the row exists.
+        # reconcile_gstr2b seeds consumed_ids from this column, so without
+        # it a later invoice can re-claim the same GSTR-2B record.
+        await persist_gstr2b_backlink(
+            stored_invoice["id"] if stored_invoice else None,
+            diagnosis.gstr2b_match,
+        )
 
         # Store line items
         if stored_invoice and inv_json and inv_json.line_items:
             from app.services.supabase_client import store_invoice_line_items
             await store_invoice_line_items(stored_invoice["id"], inv_json.line_items, diagnosis.hsn_validations)
+
+        # Same recovery-request close as the WhatsApp path: a trader asked for
+        # a missing bill may well answer by uploading it in the app instead of
+        # photographing it in the chat, and the request should close either way.
+        if stored_invoice:
+            from app.services.itc_recovery import note_invoice_uploaded
+            from app.services.supabase_client import get_supabase as _db
+            _t = (_db().table("traders").select("id, whatsapp_number, language_pref")
+                  .eq("id", trader_id).limit(1).execute()).data
+            if _t:
+                await note_invoice_uploaded(_t[0], stored_invoice)
+
+        # Soft geographic signal -- see _check_location_anomaly's comment.
+        # Always present in the response (None when there's no location or
+        # not enough scan history yet) rather than an occasionally-missing
+        # key, so the frontend can check it with one optional-chain read.
+        location_signal = None
+        if latitude is not None and longitude is not None:
+            location_signal = await _check_location_anomaly(
+                trader_id, latitude, longitude, exclude_invoice_id=stored_invoice["id"] if stored_invoice else None
+            )
 
         return {
             "status": "processed",
@@ -128,6 +239,9 @@ async def upload_invoice_direct(
             "diagnosis_en": diagnosis.diagnosis_en,
             "action_items": diagnosis.action_items,
             "processing_duration_ms": diagnosis.processing_duration_ms,
+            "supplier_name": inv_json.supplier_name if inv_json else None,
+            "line_item_descriptions": [li.description for li in inv_json.line_items if li.description] if inv_json else [],
+            "location_signal": location_signal,
         }
 
     except HTTPException:
@@ -202,6 +316,23 @@ async def receive_webhook(request: Request):
 
 async def handle_text_message(phone: str, text: str):
     """Handle text messages — registration flow, status queries, etc."""
+    # Two fast messages from the same number (e.g. a quick double-tap during
+    # onboarding) are dispatched as independent asyncio.create_task calls
+    # and can both read stale conversation state before either writes its
+    # transition. This per-phone lock serializes processing for one number
+    # at a time; the TTL is a backstop against a crashed handler, not the
+    # normal release path (see the finally block below).
+    if not acquire_phone_lock(phone):
+        logger.info(f"Dropping message from {phone}: another message from this number is already being processed")
+        return
+
+    try:
+        await _handle_text_message_locked(phone, text)
+    finally:
+        release_phone_lock(phone)
+
+
+async def _handle_text_message_locked(phone: str, text: str):
     text_lower = text.strip().lower()
 
     # Check if trader exists
@@ -247,6 +378,16 @@ async def handle_text_message(phone: str, text: str):
         if state_name in ["awaiting_name", "awaiting_ca_number", "awaiting_language", "awaiting_gstin"]:
             await _process_registration_step(phone, text, trader, state_name)
             return
+
+    # A reply to "do you have this bill?" is answered before anything else,
+    # because a bare "haan" means nothing to the intent classifier and would
+    # otherwise fall through to a generic answer — losing the one reply that
+    # closes a recovery request. handle_reply returns False for anything that
+    # is not a yes/no/stop, so a trader who changes the subject is not trapped.
+    from app.services.itc_recovery import handle_reply as _handle_recovery_reply
+
+    if await _handle_recovery_reply(phone, trader, text):
+        return
 
     # Fully registered user — check for direct commands first
     if text_lower.startswith("update gstin"):
@@ -357,10 +498,19 @@ async def handle_voice_message(phone: str, msg: dict):
         await whatsapp.send_text_message(phone, "Aapki aawaz samajh nahi aayi.")
         return
 
-    # 3. Send transcribed text to general query handler
-    trader = await get_trader_by_phone(phone)
+    # 3. Send transcribed text to general query handler. _answer_general_query
+    # itself is exception-safe (always sends something), but the trader
+    # lookup right before it isn't -- guard it too so a Supabase hiccup here
+    # still gets the trader a reply instead of dead silence.
+    try:
+        trader = await get_trader_by_phone(phone)
+    except Exception as e:
+        logger.error(f"get_trader_by_phone failed for {phone}: {e}")
+        await whatsapp.send_text_message(phone, "Kuch dikkat aa gayi. Kripya dubara try karein.")
+        return
+
     if trader:
-        await _answer_general_query(phone, transcribed_text, trader)
+        await _answer_general_query(phone, transcribed_text, trader, is_voice_query=True)
     else:
         await whatsapp.send_text_message(phone, "Pehle register karo! 'Hi' likh ke bhejo.")
 
@@ -474,6 +624,15 @@ async def handle_invoice_message(phone: str, msg: dict):
 
         stored_invoice = await store_invoice(invoice_data)
 
+        # Close the match-exclusivity loop: the back-link is an FK to
+        # invoices(id), so it can only be written once the row exists.
+        # reconcile_gstr2b seeds consumed_ids from this column, so without
+        # it a later invoice can re-claim the same GSTR-2B record.
+        await persist_gstr2b_backlink(
+            stored_invoice["id"] if stored_invoice else None,
+            diagnosis.gstr2b_match,
+        )
+
         # Store line items with HSN validation results
         if stored_invoice and inv_json and inv_json.line_items:
             from app.services.supabase_client import store_invoice_line_items
@@ -482,6 +641,14 @@ async def handle_invoice_message(phone: str, msg: dict):
                 inv_json.line_items,
                 diagnosis.hsn_validations,
             )
+
+        # If this photo is the bill we asked them for, close that request and
+        # move the conversation to the next one. Strictly best-effort — the
+        # invoice is already stored and diagnosed, and nothing here may
+        # jeopardise that.
+        if stored_invoice:
+            from app.services.itc_recovery import note_invoice_uploaded
+            await note_invoice_uploaded(trader, stored_invoice)
 
         # Auto-create supplier and link to trader (builds compliance graph)
         if supplier_gstin:
@@ -592,16 +759,34 @@ Please review and confirm receipt."""
 # --- Registration Flow ---
 
 async def _handle_registration(phone: str, text: str):
-    """Handle new user registration."""
+    """Handle new user registration. A first message matching JOIN-<code> came
+    from scanning a CA's onboarding QR code -- link the CA up front and skip
+    the manual CA-number step later. Anything else falls back to the normal
+    manual flow unchanged."""
+    linked_ca = None
+    join_match = JOIN_CODE_REGEX.match(text.strip())
+    if join_match:
+        linked_ca = await get_trader_by_short_code(join_match.group(1).upper())
+
     trader = await create_trader(phone)
-    if trader:
+    if not trader:
+        return
+
+    greeting = (
+        "Namaste! 🙏 Main Munim hun — aapka AI GST compliance agent.\n\n"
+        "Kaunsi bhasha mein baat karein?\n\n"
+        "1️⃣ Hindi\n2️⃣ English\n3️⃣ Marathi\n4️⃣ Gujarati"
+    )
+
+    if linked_ca:
+        await update_trader(trader["id"], {"ca_whatsapp_number": linked_ca["whatsapp_number"]})
+        ca_name = linked_ca.get("business_name") or linked_ca.get("name") or "your CA"
+        set_conversation_state(phone, "awaiting_language", context={"linked_ca_name": ca_name})
+        greeting = f"✅ Linked to {ca_name}.\n\n" + greeting
+    else:
         set_conversation_state(phone, "awaiting_language")
-        await whatsapp.send_text_message(
-            phone,
-            "Namaste! 🙏 Main Munim hun — aapka AI GST compliance agent.\n\n"
-            "Kaunsi bhasha mein baat karein?\n\n"
-            "1️⃣ Hindi\n2️⃣ English\n3️⃣ Marathi\n4️⃣ Gujarati"
-        )
+
+    await whatsapp.send_text_message(phone, greeting)
 
 async def _process_registration_step(phone: str, text: str, trader: dict, state: str):
     """Handle the multi-step onboarding flow — powered by Gemini for context awareness."""
@@ -648,14 +833,25 @@ async def _process_registration_step(phone: str, text: str, trader: dict, state:
         await update_trader(trader["id"], {"name": name, "business_name": business_name})
         # Update local dict so next message gets correct language
         trader["language_pref"] = current_lang
-        set_conversation_state(phone, "awaiting_ca_number")
 
-        next_questions = {
-            "en": f"Nice to meet you, {name}! 👋\n\nWhat's your CA or accountant's WhatsApp number?\n(So I can send them monthly reports. Type 'skip' if you don't have one yet.)",
-            "mr": f"भेटून आनंद झाला, {name}! 👋\n\nतुमच्या CA किंवा अकाउंटंटचा WhatsApp नंबर काय आहे?\n('skip' टाइप करा जर आत्ता नाही.)",
-            "gu": f"મળીને આનંદ થયો, {name}! 👋\n\nતમારા CA અથવા એકાઉન્ટન્ટનો WhatsApp નંબર શું છે?\n(જો અત્યારે નથી તો 'skip' ટાઇપ કરો.)",
-            "hi": f"Mil ke khushi hui, {name}! 👋\n\nAapke CA ya accountant ka WhatsApp number kya hai?\n(Toh main unhe monthly reports bhej saku. Agar abhi nahi hai toh 'skip' likho.)",
-        }
+        if trader.get("ca_whatsapp_number"):
+            # Already linked via a JOIN-<code> QR scan -- skip the manual
+            # CA-number step and go straight to GSTIN.
+            set_conversation_state(phone, "awaiting_gstin")
+            next_questions = {
+                "en": f"Nice to meet you, {name}! 👋\n\nAlmost done! 🎉\n\nWhat is your GSTIN number?\n(Example: 27AABCU9603R1ZM — 15 characters)",
+                "mr": f"भेटून आनंद झाला, {name}! 👋\n\nजवळजवळ झाले! 🎉\n\nतुमचा GSTIN नंबर काय आहे?\n(उदाहरण: 27AABCU9603R1ZM — 15 अक्षरे)",
+                "gu": f"મળીને આનંદ થયો, {name}! 👋\n\nલગભગ થઈ ગયું! 🎉\n\nતમારો GSTIN નંબર શું છે?\n(ઉદાહરણ: 27AABCU9603R1ZM — 15 અક્ષરો)",
+                "hi": f"Mil ke khushi hui, {name}! 👋\n\nBas thoda aur! 🎉\n\nAapka GSTIN number kya hai?\n(Example: 27AABCU9603R1ZM — 15 characters)",
+            }
+        else:
+            set_conversation_state(phone, "awaiting_ca_number")
+            next_questions = {
+                "en": f"Nice to meet you, {name}! 👋\n\nWhat's your CA or accountant's WhatsApp number?\n(So I can send them monthly reports. Type 'skip' if you don't have one yet.)",
+                "mr": f"भेटून आनंद झाला, {name}! 👋\n\nतुमच्या CA किंवा अकाउंटंटचा WhatsApp नंबर काय आहे?\n('skip' टाइप करा जर आत्ता नाही.)",
+                "gu": f"મળીને આનંદ થયો, {name}! 👋\n\nતમારા CA અથવા એકાઉન્ટન્ટનો WhatsApp નંબર શું છે?\n(જો અત્યારે નથી તો 'skip' ટાઇપ કરો.)",
+                "hi": f"Mil ke khushi hui, {name}! 👋\n\nAapke CA ya accountant ka WhatsApp number kya hai?\n(Toh main unhe monthly reports bhej saku. Agar abhi nahi hai toh 'skip' likho.)",
+            }
         await whatsapp.send_text_message(phone, next_questions.get(current_lang, next_questions["hi"]))
 
     elif state == "awaiting_ca_number":
@@ -717,19 +913,89 @@ async def _process_registration_step(phone: str, text: str, trader: dict, state:
         }
         await whatsapp.send_text_message(phone, email_msgs.get(current_lang, email_msgs["hi"]))
 
-async def _answer_general_query(phone: str, text: str, trader: dict):
-    from app.services.supabase_client import get_itc_summary, get_recent_invoices
-    from app.services.gemini import answer_trader_question
-    buckets = await get_itc_summary(trader["id"])
-    recent = await get_recent_invoices(trader["id"], limit=3)
-    
-    context_data = {
-        "business_name": trader.get("business_name"),
-        "itc_summary_totals": buckets,
-        "recent_invoices": recent
-    }
-    answer = await answer_trader_question(text, context_data)
+async def _send_voice_note(phone: str, text: str, language_pref: str) -> None:
+    """
+    Best-effort audio follow-up to an already-sent text reply, in the
+    trader's actual language -- gTTS (backend/app/services/tts.py) maps
+    language_pref directly to its language codes (hi/en/mr/gu all
+    supported). Never raises: a TTS/upload/send failure here must not take
+    down the text reply that already succeeded above it.
+    """
+    if not text:
+        return
+    try:
+        from app.services.tts import generate_and_upload_tts
+        audio_url = await generate_and_upload_tts(text, language_pref)
+        if audio_url:
+            await whatsapp.send_audio_message(phone, audio_url)
+    except Exception as e:
+        logger.warning(f"Voice-note generation/send failed (non-fatal): {e}")
+
+
+_GENERAL_QUERY_FAILURE_MSGS = {
+    "hi": "⚠️ Abhi answer nahi de paaya, ek dikkat aa gayi. Kripya thodi der baad dubara try karein.",
+    "en": "⚠️ Couldn't answer that just now — something went wrong on my end. Please try again in a moment.",
+    "mr": "⚠️ Abhi uttar deu shaklo nahi, kahitari adchan ali. Thoda velane punha try kara.",
+    "gu": "⚠️ Have javab api sakyo nathi, kaink problem thai. Thodi vaar pachi ferithi try karo.",
+}
+
+
+async def _answer_general_query(phone: str, text: str, trader: dict, is_voice_query: bool = False):
+    """
+    Answers a trader's typed or voice-transcribed question. Guaranteed to
+    always send SOMETHING back -- previously any exception here (a Supabase
+    hiccup, a malformed LLM response, anything at all) died silently inside
+    a fire-and-forget asyncio task with zero reply and no way for the
+    trader to know something went wrong, which is worse than a slow answer.
+    """
+    language_pref = trader.get("language_pref", "hi")
+    try:
+        from datetime import date
+        from app.services.supabase_client import get_itc_summary, get_recent_invoices
+        from app.services.gemini import answer_trader_question
+        buckets = await get_itc_summary(trader["id"])
+        recent = await get_recent_invoices(trader["id"], limit=3)
+
+        # Same GSTR-1/GSTR-3B deadline math as main.py's _send_deadline_alerts
+        # scheduled job (GSTR-1 due 11th, GSTR-3B due 20th) -- without this, a
+        # trader asking "when is my GST deadline" had no deadline data in
+        # context_data at all, and the model correctly refused to guess rather
+        # than hallucinate a date. Kept as a small duplicate here rather than a
+        # shared import so this never risks touching the live cron job's code.
+        today = date.today()
+        if today.day <= 11:
+            next_filing_type, deadline_day = "GSTR-1", 11
+        else:
+            next_filing_type, deadline_day = "GSTR-3B", 20
+        days_remaining = deadline_day - today.day
+
+        context_data = {
+            "business_name": trader.get("business_name"),
+            "itc_summary_totals": buckets,
+            "recent_invoices": recent,
+            "next_filing_deadline": {
+                "filing_type": next_filing_type,
+                "deadline_day_of_month": deadline_day,
+                "days_remaining": days_remaining,
+            },
+        }
+        answer = await answer_trader_question(text, context_data, language_pref)
+        if not answer or not answer.strip():
+            # An empty string is a valid non-exception return from the LLM
+            # router when every backend failed -- WhatsApp rejects sending
+            # empty text, which is the same silent-failure symptom as an
+            # uncaught exception, so treat it the same way.
+            raise ValueError("answer_trader_question returned an empty answer")
+    except Exception as e:
+        logger.error(f"_answer_general_query failed for {phone}: {e}")
+        answer = _GENERAL_QUERY_FAILURE_MSGS.get(language_pref, _GENERAL_QUERY_FAILURE_MSGS["hi"])
+
     await whatsapp.send_text_message(phone, answer)
+    # Match output modality to input modality: a voice note back is only
+    # sent when the trader themselves asked by voice -- a typed question (or
+    # an invoice photo, which never calls this at all) gets text only.
+    if is_voice_query:
+        await _send_voice_note(phone, answer, language_pref)
 
 
 async def _send_itc_status(phone: str, trader: dict):

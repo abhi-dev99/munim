@@ -46,6 +46,14 @@ body {
   background: #FFFFFF;
   color: var(--text-primary);
   min-height: 100vh;
+  /* Safety net, not the real fix -- the real fix is making content actually
+     fit (see MoneyMeter.js/InvoiceFeed.js/dashboard header for the specific
+     elements that didn't). This just guarantees that if something ELSE
+     somewhere is still too wide for a phone viewport, it clips instead of
+     forcing the whole page to scroll horizontally and shifting content out
+     from under the visible frame -- clipped-but-static beats "everything
+     past the first screen's-width is invisible off to the right." */
+  overflow-x: hidden;
 }
 
 h1, h2, h3, h4, h5, h6 {

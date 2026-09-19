@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import GeminiKeysModal from "../components/GeminiKeysModal";
+import { adminHeaders, ensureAdminKey } from "../utils/api";
 import { 
   Activity, Database, Server, Link as LinkIcon, RefreshCw, 
   MessageSquare, Cpu, HardDrive, ShieldCheck, Play, 
@@ -25,6 +26,12 @@ export default function DevDashboard() {
   const [testError, setTestError] = useState(null);
   const [expandedStep, setExpandedStep] = useState(null);
 
+  // Ops surface: ask for the admin key once per session before any
+  // /api/v1/admin/* call goes out. Without it every panel below 403s.
+  useEffect(() => {
+    ensureAdminKey();
+  }, []);
+
   const fetchStatus = async (service = null) => {
     if (service) {
       setPingingService(service);
@@ -35,7 +42,7 @@ export default function DevDashboard() {
       const url = service 
         ? `${API_BASE}/api/v1/admin/system-status?service=${service}`
         : `${API_BASE}/api/v1/admin/system-status`;
-      const res = await fetch(url);
+      const res = await fetch(url, { headers: adminHeaders() });
       if (res.ok) {
         const data = await res.json();
         setStatus(prev => ({
@@ -62,7 +69,7 @@ export default function DevDashboard() {
 
   useEffect(() => {
     const fetchGemini = () => {
-      fetch(`${API_BASE}/api/v1/admin/gemini-keys`)
+      fetch(`${API_BASE}/api/v1/admin/gemini-keys`, { headers: adminHeaders() })
         .then((r) => r.json())
         .then((d) => setGeminiStatus(d))
         .catch(() => {});
@@ -80,7 +87,8 @@ export default function DevDashboard() {
     setTestError(null);
     try {
       const res = await fetch(`${API_BASE}/api/v1/admin/test-recon-pipeline?mode=${mode}`, {
-        method: "POST"
+        method: "POST",
+        headers: adminHeaders(),
       });
       if (res.ok) {
         const data = await res.json();
