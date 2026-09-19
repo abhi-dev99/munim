@@ -236,18 +236,30 @@ def _handle_message(message):
     logger.info("Inbound message %s has no text, voice, or invoice media -- nothing to do.", message_id)
 
 
+_INVOICE_RECEIVED_MSG = {
+    "hi": "Invoice mil gaya! ✅ Check kar raha hoon, thodi der mein result bhejta hoon.",
+    "hi_dev": "इनवॉइस मिल गया! जांच रहा हूं, कुछ ही पल में परिणाम भेजूंगा।",
+    "en": "Got your invoice! Checking it now, I'll send the result shortly.",
+    "mr": "इनव्हॉइस मिळाले! तपासत आहे, थोड्याच वेळात निकाल पाठवतो.",
+    "gu": "ઇનવોઇસ મળ્યું! ચેક કરી રહ્યો છું, થોડી વારમાં પરિણામ મોકલીશ.",
+}
+
+
 def _handle_invoice_media(sender, message_id, media):
     media_id = media.get("id")
     if not media_id:
         logger.warning("Media message %s missing media id, can't fetch.", message_id)
         return
 
-    if not _is_registered_trader(sender):
+    trader = _get_active_trader(sender)
+    if trader is None:
         # Same reasoning as every other trigger path in this pipeline:
         # a stranger messaging the number must never cost us a Graph API
         # call plus a full Textract/Bedrock run downstream.
         logger.warning("Invoice message %s from unregistered sender -- dropping, not fetching media.", message_id)
         return
+
+    lang = trader.get("language_pref", "hi")
 
     media_bytes, mime_type = _download_media(media_id)
     if media_bytes is None:
@@ -263,6 +275,11 @@ def _handle_invoice_media(sender, message_id, media):
         return
 
     logger.info("Wrote inbound media for message %s to s3://%s/%s", message_id, INVOICES_BUCKET, s3_key)
+
+    # Never leave the trader hanging on a silent upload -- the actual
+    # verdict follows later (async, via munim-finalize-invoice once the
+    # Step Functions pipeline completes), this is just the "got it" ack.
+    _reply_text(sender, lang, _INVOICE_RECEIVED_MSG.get(lang, _INVOICE_RECEIVED_MSG["hi"]))
 
 
 def _mark_as_read(message_id):
@@ -290,13 +307,16 @@ def _mark_as_read(message_id):
         logger.exception("Failed to mark message %s as read.", message_id)
 
 
-def _is_registered_trader(sender):
+def _get_active_trader(sender):
+    """Returns the trader record if active, else None -- lets callers
+    read language_pref off the same lookup instead of a second query."""
     try:
         response = traders_table.get_item(Key={"trader_id": sender})
     except ClientError:
         logger.exception("Failed to look up trader %s in registry -- treating as unregistered.", sender)
-        return False
-    return response.get("Item", {}).get("status") == "active"
+        return None
+    item = response.get("Item", {})
+    return item if item.get("status") == "active" else None
 
 
 def _download_media(media_id):
@@ -514,7 +534,7 @@ def _fallback_msg(lang):
 
 
 def _process_conversation_turn(sender, trader, text):
-    lang = trader.get("language_pref", "hi")
+    lang = _effective_language(trader.get("language_pref", "hi"), text)
     intent, entities = _understand_intent(text)
 
     if intent == "change_language":
@@ -603,6 +623,30 @@ def _answer_general_query(sender, question, lang):
         f"Trader's question: {question}"
     )
     return _generate_reply(prompt)
+
+
+_DEVANAGARI_RE = re.compile(r"[ऀ-ॿ]")
+_GUJARATI_SCRIPT_RE = re.compile(r"[઀-૿]")
+
+
+def _effective_language(stored_lang, text):
+    """Per-turn override, not a persistence change -- if the trader just
+    typed in a script that doesn't match their stored preference, reply
+    in kind for THIS message rather than robotically sticking to the
+    onboarding choice. Explicit "change_language" intent is still the
+    only thing that updates the persisted preference.
+
+    Deliberately script-based only, not a full language classifier: script
+    mismatch (Devanagari/Gujarati vs. the stored pref) is the clear,
+    unambiguous case. Distinguishing English from Hinglish within Latin
+    script would need an LLM call on every single message -- not worth
+    that latency/cost tradeoff for a genuinely ambiguous signal, so Latin
+    script always defers to the stored preference."""
+    if _GUJARATI_SCRIPT_RE.search(text):
+        return "gu"
+    if _DEVANAGARI_RE.search(text):
+        return stored_lang if stored_lang in ("hi_dev", "mr") else "hi_dev"
+    return stored_lang
 
 
 # Order matters: hi_dev is checked before hi, since "shuddh hindi"
