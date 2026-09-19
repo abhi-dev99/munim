@@ -8,7 +8,6 @@ from app.services.supabase_client import get_supabase
 import resend
 from app.config import get_settings
 from app.services.whatsapp import send_text_message
-from app.utils.errors import safe_http_error
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -127,7 +126,8 @@ async def email_vendor_warning(invoice_id: str, current_trader_id: str = Depends
     except HTTPException:
         raise
     except Exception as e:
-        raise safe_http_error(logger, "Failed to send vendor warning email", e)
+        logger.error(f"Failed to send vendor warning email: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/whatsapp-vendor/{invoice_id}")
@@ -184,7 +184,8 @@ async def whatsapp_vendor_warning(invoice_id: str, lang: str = "en", current_tra
         logger.info(f"WhatsApp warning sent to vendor {phone} for invoice {invoice_id}")
         return {"status": "success", "message": "WhatsApp sent to vendor"}
     except Exception as e:
-        raise safe_http_error(logger, "Failed to send vendor WhatsApp warning", e)
+        logger.error(f"Failed to send vendor WhatsApp: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/test-alert/{trader_id}")
@@ -233,7 +234,8 @@ async def send_test_alert(trader_id: str = Depends(verify_trader_access), lang: 
         logger.info(f"Test alert sent to trader {trader_id} at {phone}")
         return {"status": "success", "message": f"Test alert sent to {phone}"}
     except Exception as e:
-        raise safe_http_error(logger, "Failed to send test WhatsApp alert", e)
+        logger.error(f"Failed to send test alert: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/remind-gstin/{trader_id}")
@@ -254,4 +256,4 @@ async def remind_gstin_whatsapp(trader_id: str = Depends(verify_trader_access), 
         await send_text_message(phone, msg)
         return {"status": "success", "message": "GSTIN reminder sent"}
     except Exception as e:
-        raise safe_http_error(logger, "Failed to send GSTIN reminder WhatsApp message", e)
+        raise HTTPException(status_code=500, detail=str(e))

@@ -17,7 +17,6 @@ from app.services.supabase_client import (
     get_active_supplier_flags,
 )
 from app.models.trader import DashboardSummary, ITCBucket, ActionItem
-from app.utils.errors import safe_http_error
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +52,8 @@ async def get_dashboard_summary(trader_id: str = Depends(verify_trader_access)):
             total_recovery_possible=total_recovery,
         )
     except Exception as e:
-        raise safe_http_error(logger, "Failed to compute dashboard summary", e)
+        logger.error(f"Dashboard summary failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/invoices/{trader_id}")
@@ -63,7 +63,8 @@ async def get_trader_invoices(trader_id: str = Depends(verify_trader_access), mo
         invoices = await get_invoices_for_trader(trader_id, month, year)
         return {"invoices": invoices, "total": len(invoices)}
     except Exception as e:
-        raise safe_http_error(logger, "Failed to fetch trader invoices", e)
+        logger.error(f"Get invoices failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/suppliers/{trader_id}")
@@ -97,7 +98,8 @@ async def get_trader_suppliers(trader_id: str = Depends(verify_trader_access)):
         result.sort(key=lambda s: s.get("health_score", 100))
         return {"suppliers": result, "total": len(result)}
     except Exception as e:
-        raise safe_http_error(logger, "Failed to fetch trader suppliers", e)
+        logger.error(f"Get suppliers failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/actions/{trader_id}")
@@ -139,7 +141,8 @@ async def get_action_items(trader_id: str = Depends(verify_trader_access)):
 
         return {"actions": actions, "total": len(actions)}
     except Exception as e:
-        raise safe_http_error(logger, "Failed to compute action items", e)
+        logger.error(f"Get actions failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.patch("/actions/{invoice_id}/resolve")
@@ -159,7 +162,8 @@ async def resolve_action_item(invoice_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        raise safe_http_error(logger, f"Failed to resolve action item for invoice {invoice_id}", e)
+        logger.error(f"Resolve action failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/itc-timeline/{trader_id}")
@@ -200,7 +204,8 @@ async def get_itc_timeline(trader_id: str = Depends(verify_trader_access)):
 
         return {"timeline": timeline}
     except Exception as e:
-        raise safe_http_error(logger, "Failed to build ITC timeline", e)
+        logger.error(f"ITC timeline failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 def _get_fix_action(status: str, lang: str = "en") -> str:
@@ -287,7 +292,8 @@ async def list_traders(current_trader_id: str = Depends(get_current_trader_id)):
         
         return {"traders": response.data or []}
     except Exception as e:
-        raise safe_http_error(logger, "Failed to list traders", e)
+        logger.error(f"List traders failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/gstr2b-status/{trader_id}")
@@ -312,7 +318,8 @@ async def get_gstr2b_status(trader_id: str = Depends(verify_trader_access)):
             "unreconciled": len(invoices) - matched - probable - at_risk,
         }
     except Exception as e:
-        raise safe_http_error(logger, "Failed to compute GSTR-2B reconciliation status", e)
+        logger.error(f"GSTR-2B status failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/reports/generate/{trader_id}")
@@ -341,7 +348,8 @@ async def trigger_report_generation(trader_id: str = Depends(verify_trader_acces
     except HTTPException:
         raise
     except Exception as e:
-        raise safe_http_error(logger, "Report generation failed", e)
+        logger.error(f"Report generation failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/reports/{trader_id}")
@@ -354,7 +362,8 @@ async def get_reports(trader_id: str = Depends(verify_trader_access)):
         ).order("year", desc=True).order("month", desc=True).execute()
         return {"reports": response.data or []}
     except Exception as e:
-        raise safe_http_error(logger, "Failed to fetch generated reports", e)
+        logger.error(f"Get reports failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/check-deadlines")
@@ -478,7 +487,8 @@ async def get_gstr3b_draft(trader_id: str = Depends(verify_trader_access), month
             "note": "Table 4 (ITC) computed from Munim.ai engine. Table 3.1 (output liability) requires outward supply data.",
         }
     except Exception as e:
-        raise safe_http_error(logger, "Failed to compute GSTR-3B draft", e)
+        logger.error(f"GSTR-3B draft failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/ims/{trader_id}")
@@ -554,7 +564,8 @@ async def get_ims_invoices(trader_id: str = Depends(verify_trader_access), month
             },
         }
     except Exception as e:
-        raise safe_http_error(logger, "Failed to build IMS invoice feed", e)
+        logger.error(f"IMS data failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 
