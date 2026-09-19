@@ -12,6 +12,7 @@ from app.api.deps import verify_trader_access, get_current_trader_id, HTTPExcept
 from fastapi.responses import JSONResponse
 
 from app.services.supabase_client import get_supabase
+from app.utils.errors import safe_http_error
 
 logger = logging.getLogger(__name__)
 
@@ -62,8 +63,7 @@ async def generate_report(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Report generation failed for {trader_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise safe_http_error(logger, f"Report generation failed for trader {trader_id}", e)
 
 
 @router.get("/list/{trader_id}")
@@ -77,5 +77,4 @@ async def list_reports(trader_id: str = Depends(verify_trader_access)):
 
         return {"reports": resp.data or []}
     except Exception as e:
-        logger.error(f"Failed to list reports: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise safe_http_error(logger, "Failed to list generated reports", e)
