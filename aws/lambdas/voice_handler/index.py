@@ -86,17 +86,23 @@ def handler(event, context):
         return
 
     trader = _get_or_create_trader(sender)
-    lang = trader.get("language_pref", "hi")
+    stored_lang = trader.get("language_pref", "hi")
 
     transcript = _transcribe_voice(media_id)
     if transcript is None:
-        _reply_text(sender, _fallback_msg(lang))
+        _reply_text(sender, _fallback_msg(stored_lang))
         return
 
     state = trader.get("conversation_state", "idle")
     if state != "idle":
         _process_onboarding_step(sender, trader, state, transcript)
         return
+
+    # Per-turn override based on what they just said, not a persistence
+    # change -- see _effective_language's docstring in munim-meta-webhook
+    # for the full reasoning. Transcribe already outputs native script per
+    # detected spoken language, so this works the same way here.
+    lang = _effective_language(stored_lang, transcript)
 
     intent, entities = _understand_intent(transcript)
 
@@ -324,6 +330,19 @@ def _answer_general_query(sender, question, lang):
         f"Trader's question (transcribed from a voice note, may have transcription errors): {question}"
     )
     return _generate_reply(prompt)
+
+
+_DEVANAGARI_RE = re.compile(r"[ऀ-ॿ]")
+_GUJARATI_SCRIPT_RE = re.compile(r"[઀-૿]")
+
+
+def _effective_language(stored_lang, text):
+    """See munim-meta-webhook for the full reasoning."""
+    if _GUJARATI_SCRIPT_RE.search(text):
+        return "gu"
+    if _DEVANAGARI_RE.search(text):
+        return stored_lang if stored_lang in ("hi_dev", "mr") else "hi_dev"
+    return stored_lang
 
 
 # Order matters: hi_dev before hi -- see munim-meta-webhook for why.
