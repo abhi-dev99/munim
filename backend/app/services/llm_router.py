@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import base64
@@ -46,7 +47,8 @@ class LLMRouter:
         full_prompt = f"{prompt}\n\nContext:\n{json.dumps(anon_ctx, indent=2)}"
 
         try:
-            response = gemini_client.models.generate_content(
+            response = await asyncio.to_thread(
+                gemini_client.models.generate_content,
                 model=gemini_settings.gemini_model,
                 contents=full_prompt,
                 config=types.GenerateContentConfig(temperature=temperature)
