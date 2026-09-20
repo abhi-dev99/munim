@@ -84,3 +84,17 @@ backend/fix_env.py
 backend/generate_test_invoice.py
 backend/parse_env.py
 backend/dummy.jpg
+
+# One-time setup/ops/debug scripts, never imported by the running app
+backend/scripts/
+
+# Local-only MCP server for AI-assisted dev tooling, not part of the product
+backend/munim_mcp/
+
+# AI tooling instruction files, not product code
+frontend/AGENTS.md
+frontend/CLAUDE.md
+
+# Default create-next-app boilerplate, never customized, contradicts
+# this repo's "deployment is final, not meant to run locally" framing
+frontend/README.md

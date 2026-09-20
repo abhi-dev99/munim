@@ -1,1 +1,0 @@
-# munim_mcp package
