@@ -136,6 +136,8 @@ Supabase PostgreSQL
 
 ### AWS Architecture
 
+![AWS Architecture](docs/assets/aws_architecture.png)
+
 The `aws/` directory is a separate, parallel build of this same product's
 invoice pipeline — Step Functions, Lambda, Textract, Bedrock, DynamoDB,
 API Gateway, Cognito, and more. **See [`aws/README.md`](aws/README.md)**
