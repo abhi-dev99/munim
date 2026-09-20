@@ -69,3 +69,18 @@ start_dev.bat
 /gst-portal-automation/
 # Not AWS-related, product-general asset only
 docs/assets/tech_stack_diagram.html
+
+# Loose scratch/debug scripts, never discovered by pytest
+# (pytest.ini scopes testpaths to backend/tests/ only) or imported
+# by the real app -- confirmed via grep before untracking.
+backend/test_email.py
+backend/test_invoices.py
+backend/test_langgraph_pipeline.py
+backend/test_report.py
+backend/test_summary.py
+backend/test_traders.py
+backend/test_wa.py
+backend/fix_env.py
+backend/generate_test_invoice.py
+backend/parse_env.py
+backend/dummy.jpg
