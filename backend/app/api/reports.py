@@ -1,5 +1,5 @@
 """
-Munim.ai — Reports API
+Munim-AI — Reports API
 Endpoints for triggering and downloading Munim Report PDFs.
 """
 

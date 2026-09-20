@@ -1,5 +1,5 @@
 """
-Munim.ai — Dashboard REST API
+Munim-AI — Dashboard REST API
 Serves data to the Next.js frontend.
 """
 
@@ -368,13 +368,13 @@ async def check_deadlines():
     message = (
         "⚠️ *GST Deadline Alert*\n\n"
         "Tomorrow is the 11th. Your GSTR-1 is due!\n\n"
-        "Please review the pending Action Items on Munim.ai and clear them so your CA can file on time."
+        "Please review the pending Action Items on Munim-AI and clear them so your CA can file on time."
     )
     
     ca_message = (
         "⚠️ *GST Deadline Alert*\n\n"
         "Client: Suryakant Optics\n"
-        "GSTR-1 is due tomorrow. The client has uncleared ITC flags on Munim.ai. Please follow up."
+        "GSTR-1 is due tomorrow. The client has uncleared ITC flags on Munim-AI. Please follow up."
     )
     
     # We log it or send to a test number.
@@ -475,7 +475,7 @@ async def get_gstr3b_draft(trader_id: str = Depends(verify_trader_access), month
                 "blocked": blocked_count,
             },
             "table3_1": None,  # Outward supply data not available — output tax liability requires GSTR-1 data
-            "note": "Table 4 (ITC) computed from Munim.ai engine. Table 3.1 (output liability) requires outward supply data.",
+            "note": "Table 4 (ITC) computed from Munim-AI engine. Table 3.1 (output liability) requires outward supply data.",
         }
     except Exception as e:
         raise safe_http_error(logger, "Failed to compute GSTR-3B draft", e)
@@ -485,7 +485,7 @@ async def get_gstr3b_draft(trader_id: str = Depends(verify_trader_access), month
 async def get_ims_invoices(trader_id: str = Depends(verify_trader_access), month: int = None, year: int = None):
     """
     Invoice Management System (IMS) data feed.
-    Returns all invoices with their Munim.ai verdict pre-mapped to an IMS action:
+    Returns all invoices with their Munim-AI verdict pre-mapped to an IMS action:
       CONFIRMED       → Accept
       FIXABLE_BLOCKED → Pending (needs CA review)
       AT_RISK         → Pending

@@ -1,6 +1,6 @@
-# Munim.ai on AWS
+# Munim-AI on AWS
 
-This is the AWS-native rebuild of [Munim.ai](https://github.com/abhi-dev99/munim-ai)'s
+This is the AWS-native rebuild of [Munim-AI](https://github.com/abhi-dev99/munim-ai)'s
 invoice pipeline, built for the WeMakeDevs x AWS "First Commit" hackathon.
 Munim is a WhatsApp-first GST compliance co-pilot for Indian MSMEs -- it
 reads a shopkeeper's purchase invoices, tells them exactly how much Input

@@ -1,5 +1,5 @@
 """
-Munim.ai — Text-to-Speech Service
+Munim-AI — Text-to-Speech Service
 Uses gTTS (Google Text-to-Speech) for completely free voice generation.
 """
 

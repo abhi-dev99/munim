@@ -1,1 +1,1 @@
-# Munim.ai — Backend Application
+# Munim-AI — Backend Application

@@ -207,7 +207,7 @@ async def send_test_alert(trader_id: str = Depends(verify_trader_access), lang: 
     biz = trader.get("business_name") or trader.get("name") or "your business"
     if lang == "hi":
         message = (
-            f"✅ *Munim.ai अलर्ट टेस्ट*\n\n"
+            f"✅ *Munim-AI अलर्ट टेस्ट*\n\n"
             f"यह *{biz}* के लिए एक परीक्षण अधिसूचना है।\n\n"
             f"आपके WhatsApp अलर्ट अब सक्रिय हैं। आपको यहाँ सूचनाएं मिलेंगी:\n"
             f"• 🗓️ आगामी GST फाइलिंग समय-सीमाएं\n"
@@ -218,7 +218,7 @@ async def send_test_alert(trader_id: str = Depends(verify_trader_access), lang: 
         )
     else:
         message = (
-            f"✅ *Munim.ai Alert Test*\n\n"
+            f"✅ *Munim-AI Alert Test*\n\n"
             f"This is a test notification for *{biz}*.\n\n"
             f"Your WhatsApp alerts are now active. You'll receive notifications here for:\n"
             f"• 🗓️ Upcoming GST filing deadlines\n"
@@ -249,7 +249,7 @@ async def remind_gstin_whatsapp(trader_id: str = Depends(verify_trader_access), 
         raise HTTPException(status_code=400, detail="Client does not have a registered WhatsApp number")
 
     # Send WhatsApp reminder
-    msg = f"Hello {client.get('name', 'there')}!\n\nThis is a gentle reminder from your Chartered Accountant to please update your GSTIN in the Munim.ai portal so we can automate your compliance checks and ITC reconciliation.\n\nPlease reply to this message with your 15-digit GSTIN."
+    msg = f"Hello {client.get('name', 'there')}!\n\nThis is a gentle reminder from your Chartered Accountant to please update your GSTIN in the Munim-AI portal so we can automate your compliance checks and ITC reconciliation.\n\nPlease reply to this message with your 15-digit GSTIN."
     try:
         await send_text_message(phone, msg)
         return {"status": "success", "message": "GSTIN reminder sent"}

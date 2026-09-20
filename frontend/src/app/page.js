@@ -101,7 +101,7 @@ export default function LoginPage() {
       <div className="hidden lg:flex w-1/2 bg-white flex-col justify-center px-20">
         <div className="max-w-xl">
           <div className="font-bold text-4xl tracking-tight text-black mb-10">
-            Munim.ai
+            Munim-AI
           </div>
           <h1 className="text-6xl font-black text-black tracking-tighter leading-none mb-6">
             The CA in your pocket.
@@ -137,7 +137,7 @@ export default function LoginPage() {
       <div className="w-full lg:w-1/2 bg-[#0a0a0a] flex flex-col justify-center px-8 sm:px-20 relative">
         <div className="max-w-sm mx-auto w-full">
           <h2 className="text-3xl font-bold text-white mb-2">Welcome back</h2>
-          <p className="text-gray-400 mb-8 font-medium">Log in to your Munim.ai portal.</p>
+          <p className="text-gray-400 mb-8 font-medium">Log in to your Munim-AI portal.</p>
 
           <div className="bg-[#171717] border border-[#2a2a2a] p-8 rounded-2xl shadow-2xl">
             {step === 1 ? (

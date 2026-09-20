@@ -1,5 +1,5 @@
 """
-Munim.ai — Supplier Monitoring Service
+Munim-AI — Supplier Monitoring Service
 Daily health check, state-change detection, and proactive alerts.
 """
 

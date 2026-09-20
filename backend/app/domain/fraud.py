@@ -1,5 +1,5 @@
 """
-Munim.ai — Multi-Variate Fraud Scoring Engine
+Munim-AI — Multi-Variate Fraud Scoring Engine
 Six independent signals weighted into a composite fraud score (0-100).
 Pure statistical/rule-based — NO LLM.
 """

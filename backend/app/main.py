@@ -1,5 +1,5 @@
 """
-Munim.ai — FastAPI Application Entry Point
+Munim-AI — FastAPI Application Entry Point
 """
 
 import logging
@@ -153,7 +153,7 @@ async def custom_swagger_ui_html():
     <!DOCTYPE html>
     <html>
     <head>
-      <title>Munim.ai — API Reference & Swagger UI</title>
+      <title>Munim-AI — API Reference & Swagger UI</title>
       <meta charset="utf-8"/>
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -371,7 +371,7 @@ async def custom_swagger_ui_html():
     <body>
       <div class="munim-topbar">
         <a href="http://localhost:3000/dashboard" class="munim-topbar-brand">
-          <span class="logo-title">Munim.ai</span>
+          <span class="logo-title">Munim-AI</span>
           <span class="logo-badge">API Reference v1.0</span>
         </a>
         <div class="munim-topbar-links">

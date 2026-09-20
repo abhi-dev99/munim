@@ -119,7 +119,7 @@ export default function GSTR3BPanel({ traderId, apiBase }) {
             <div className="px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold text-gray-900">Table 4 — ITC Availability</h3>
-                <p className="text-[10px] text-gray-400">As per Section 16 — computed from Munim.ai engine</p>
+                <p className="text-[10px] text-gray-400">As per Section 16 — computed from Munim-AI engine</p>
               </div>
               <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">REAL DATA</span>
             </div>
@@ -210,7 +210,7 @@ export default function GSTR3BPanel({ traderId, apiBase }) {
                 <h3 className="text-sm font-bold text-gray-900">Table 3.1 — Output Tax Liability</h3>
                 <p className="text-xs text-gray-500 mt-1">
                   Output liability (what you owe on your own sales) requires outward supply data from GSTR-1.
-                  Munim.ai currently processes your <strong>purchase-side ITC</strong> — the sharper compliance risk for most traders.
+                  Munim-AI currently processes your <strong>purchase-side ITC</strong> — the sharper compliance risk for most traders.
                   Output-side filing is managed by your CA using your sales register.
                 </p>
                 <div className="mt-3 flex items-center gap-2">

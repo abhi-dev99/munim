@@ -1,5 +1,5 @@
 """
-Munim.ai — LangGraph Invoice Processing Agent
+Munim-AI — LangGraph Invoice Processing Agent
 Stateful directed graph for processing invoices end-to-end.
 
 Graph flow:

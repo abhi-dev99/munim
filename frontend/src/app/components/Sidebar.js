@@ -132,7 +132,7 @@ export default function Sidebar({ activeTab, onTabChange, actionCount = 0, trade
     <aside className="w-64 fixed h-full bg-white border-r border-gray-200 z-10 flex flex-col overflow-y-auto">
       {/* Logo — same height as main header */}
       <div className="px-6 h-[65px] flex items-center border-b border-gray-200 flex-none">
-        <span className="font-bold text-xl tracking-tight text-gray-900">Munim.ai</span>
+        <span className="font-bold text-xl tracking-tight text-gray-900">Munim-AI</span>
       </div>
 
       {/* Main Nav */}

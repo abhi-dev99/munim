@@ -1,5 +1,5 @@
 """
-Munim.ai — Pydantic Models for Traders and Suppliers
+Munim-AI — Pydantic Models for Traders and Suppliers
 """
 
 from pydantic import BaseModel, Field

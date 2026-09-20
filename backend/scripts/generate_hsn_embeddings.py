@@ -1,5 +1,5 @@
 """
-Munim.ai — HSN Embeddings Generator
+Munim-AI — HSN Embeddings Generator
 Generates Gemini text-embedding-004 embeddings for all HSN codes and stores in Supabase pgvector.
 This enables semantic HSN search: "steel pipes" → finds 7304 automatically.
 

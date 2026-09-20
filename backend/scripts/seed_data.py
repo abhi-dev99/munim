@@ -1,5 +1,5 @@
 """
-Munim.ai — Demo Seed Data Script
+Munim-AI — Demo Seed Data Script
 Seeds Supabase with 6 months of synthetic invoice history for "Raju's Kirana".
 Run this once before the demo to have realistic data in the dashboard.
 
@@ -318,7 +318,7 @@ def seed_gstr2b(trader_id: str):
 
 def main():
     print("=" * 60)
-    print("🔵 Munim.ai — Demo Data Seeder")
+    print("🔵 Munim-AI — Demo Data Seeder")
     print("=" * 60)
 
     seed_hsn_codes()

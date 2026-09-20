@@ -134,7 +134,7 @@ export default function InvoiceScanner() {
                 <CheckCircle2 size={40} className="text-[var(--green-primary)]" />
               </motion.div>
               <h2 className="text-2xl font-bold mb-2">Invoice Captured</h2>
-              <p className="text-white/70 mb-8 text-sm">Munim.ai has extracted the data and synced it with your CA's dashboard.</p>
+              <p className="text-white/70 mb-8 text-sm">Munim-AI has extracted the data and synced it with your CA's dashboard.</p>
               
               <div className="w-full bg-white/10 rounded-2xl p-4 text-left space-y-3 mb-8 border border-white/10">
                 <div className="flex justify-between items-center border-b border-white/10 pb-2">

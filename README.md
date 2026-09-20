@@ -1,4 +1,4 @@
-# Munim.ai
+# Munim-AI
 
 **WhatsApp-first GST compliance co-pilot for Indian MSMEs**
 
@@ -7,6 +7,16 @@
 ![License](https://img.shields.io/badge/License-Proprietary-red)
 
 > Traders forward invoices via WhatsApp. Munim extracts, validates, fraud-checks, and reconciles them automatically. CAs get a clean action-driven dashboard instead of a pile of paper..
+
+---
+
+> **Submitted to AWS First Commit (WeMakeDevs × AWS).** This branch (`aws`)
+> is a separate, isolated AWS build on top of the same product — Step
+> Functions, Lambda, Textract, Bedrock, DynamoDB, API Gateway, Cognito,
+> and more. **Start with [`aws/README.md`](aws/README.md)** for the AWS
+> architecture, service list, and how each Lambda maps to this product's
+> compliance pipeline. Everything below this banner is the original
+> product README (stack, USPs, GST logic) and applies regardless of cloud.
 
 ---
 

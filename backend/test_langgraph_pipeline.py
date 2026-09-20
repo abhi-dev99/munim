@@ -273,7 +273,7 @@ async def test_live_gemini_extraction():
 
 async def main():
     print("\n" + "#" * 75)
-    print("###  MUNIM.AI -- LANGGRAPH AUTONOMOUS RECONCILIATION PIPELINE TEST  ###")
+    print("###  MUNIM-AI -- LANGGRAPH AUTONOMOUS RECONCILIATION PIPELINE TEST  ###")
     print("#" * 75)
 
     res1 = await test_mocked_langgraph_pipeline()

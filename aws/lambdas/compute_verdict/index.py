@@ -134,18 +134,29 @@ class ITCRulesEngine:
                 return True, f"Section 17(5): Contains blocked category keyword '{keyword}'"
         return False, ""
 
-    def is_valid_tax_invoice(self, invoice):
-        if not all([
-            invoice.invoice_number, invoice.invoice_date,
-            invoice.gstin_supplier, invoice.total_amount and invoice.total_amount > 0,
-        ]):
-            return False
+    def missing_tax_invoice_fields(self, invoice):
+        """Returns the list of missing/invalid field keys, [] if valid.
+        Split out from a plain boolean specifically so callers (and
+        eventually the trader-facing message) can say WHICH field is
+        wrong instead of a generic "something's missing" -- a boolean
+        throws that information away at the exact point it's known."""
+        missing = []
+        if not invoice.invoice_number:
+            missing.append("invoice_number")
+        if not invoice.invoice_date:
+            missing.append("invoice_date")
+        if not invoice.gstin_supplier:
+            missing.append("gstin_supplier")
+        if not (invoice.total_amount and invoice.total_amount > 0):
+            missing.append("total_amount")
+        if missing:
+            return missing
         try:
             if date.fromisoformat(invoice.invoice_date) > date.today():
-                return False
+                return ["invoice_date_future"]
         except (ValueError, TypeError):
             pass
-        return True
+        return []
 
     def is_within_time_limit(self, invoice_date_str):
         if not invoice_date_str:
@@ -190,10 +201,12 @@ class ITCRulesEngine:
             if blocked:
                 return ITCVerdict(status="INELIGIBLE", itc_amount=0.0, itc_blocked=total_tax, reason=reason, legal_section="17(5)")
 
-        if not self.is_valid_tax_invoice(invoice):
+        missing_fields = self.missing_tax_invoice_fields(invoice)
+        if missing_fields:
             return ITCVerdict(
                 status="FIXABLE_BLOCKED", itc_amount=0.0, itc_blocked=total_tax,
-                reason="Invalid tax invoice — missing required fields", legal_section="16(2)(a)",
+                reason=f"Invalid tax invoice — missing required fields: {', '.join(missing_fields)}",
+                legal_section="16(2)(a)",
                 fix_action="Get a corrected invoice from the supplier with all mandatory fields",
             )
 

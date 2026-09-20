@@ -1,5 +1,5 @@
 """
-Munim.ai — Supabase Database Service
+Munim-AI — Supabase Database Service
 Handles all database operations via Supabase client.
 """
 

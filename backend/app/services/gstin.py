@@ -1,5 +1,5 @@
 """
-Munim.ai — GSTIN Verification Service
+Munim-AI — GSTIN Verification Service
 Verifies GSTINs via external API with Redis caching.
 """
 

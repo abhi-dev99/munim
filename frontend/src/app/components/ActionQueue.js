@@ -65,7 +65,7 @@ export default function ActionQueue({ traderId, apiBase, traderPhone }) {
 
   function waMsg(a) {
     return encodeURIComponent(
-      `📋 *Munim.ai Alert*\n\nSupplier: *${a.supplier}*\nIssue: ${a.description}\nITC at stake: ₹${a.amount.toLocaleString("en-IN")}\n\n${a.advisory || "Please check with your CA."}`
+      `📋 *Munim-AI Alert*\n\nSupplier: *${a.supplier}*\nIssue: ${a.description}\nITC at stake: ₹${a.amount.toLocaleString("en-IN")}\n\n${a.advisory || "Please check with your CA."}`
     );
   }
 

@@ -1,5 +1,5 @@
 -- =====================================================
--- Munim.ai — Supabase Database Schema
+-- Munim-AI — Supabase Database Schema
 -- Run this in Supabase SQL Editor to set up all tables.
 -- =====================================================
 

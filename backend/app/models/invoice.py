@@ -1,5 +1,5 @@
 """
-Munim.ai — Pydantic Models for Invoice Processing
+Munim-AI — Pydantic Models for Invoice Processing
 """
 
 from pydantic import BaseModel, Field

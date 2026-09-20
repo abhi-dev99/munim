@@ -1,5 +1,5 @@
 """
-Run the Munim.ai schema against Supabase.
+Run the Munim-AI schema against Supabase.
 Uses the Supabase Management API to execute raw SQL.
 """
 import httpx

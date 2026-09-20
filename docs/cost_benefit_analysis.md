@@ -1,4 +1,4 @@
-# Munim.ai — Cost-Benefit Analysis
+# Munim-AI — Cost-Benefit Analysis
 
 All numbers are grounded in actual API pricing, real CA market rates, and conservative ITC recovery estimates.
 

@@ -1,5 +1,5 @@
 """
-Munim.ai — GSTR-2B Upload API
+Munim-AI — GSTR-2B Upload API
 Allows traders (or CAs) to upload their GSTR-2B JSON export from the GST portal.
 Parses and stores records for reconciliation against processed invoices.
 """

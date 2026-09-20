@@ -1,5 +1,5 @@
 """
-Munim.ai — Fast HSN Rate Fix (Batch by chapter using Supabase filter)
+Munim-AI — Fast HSN Rate Fix (Batch by chapter using Supabase filter)
 Instead of updating row-by-row, this uses Supabase's bulk filter+update.
 Updates all HSN codes of a given chapter prefix in one API call per chapter.
 """
