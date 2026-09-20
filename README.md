@@ -10,7 +10,28 @@
 
 ---
 
-![Dashboard](docs/assets/dashboard_screenshot.png)
+## What Munim-AI Does
+
+A CA managing GST compliance for MSME clients today reconciles once a month, in a
+deadline rush, after the window to fix a supplier's mistake has already closed. Munim
+flips that: every invoice is checked **the moment it arrives** — extracted from a
+WhatsApp photo, validated against GST Act rules, fraud-scored, and reconciled against
+GSTR-2B — so the CA (and the trader) knows about a blocked credit or a fraudulent
+supplier weeks before the filing deadline, not on it.
+
+- **No app to install.** Traders send invoices as WhatsApp photos; onboarding takes under 2 minutes.
+- **Deterministic compliance logic.** GST Act §16/§17(5) eligibility, HSN validation, and GSTR-2B reconciliation are pure rule-based code — the LLM only does OCR and plain-language explanation, never the compliance decision itself.
+- **Fraud detection nobody runs by hand.** A 6-signal scorer (Benford's Law, sequential invoicing, velocity anomalies, and more) flags fake-invoice patterns a CA charging ₹1,000/month has no time to check manually.
+- **One CA, unlimited clients.** A single multi-tenant dashboard ranks every client's open issues by money at risk, so the CA always works the highest-value problem first.
+- **It automates the paperwork, not the judgment call.** Representation before tax authorities and legal interpretation stay with the CA — that boundary is deliberate, not a limitation.
+
+The rest of this README covers the feature list, tech stack, and architecture in
+detail — see below.
+
+---
+
+![Money Meter — confirmed ITC, at-risk credit, and potential recovery at a glance](docs/assets/dashboard_screenshot.png)
+*Money Meter: the CA's home screen — confirmed ITC, blocked credit, and unclaimed recovery, live.*
 
 ---
 
@@ -84,6 +105,42 @@ Score ≥ 70 → `FRAUD_FLAGGED`. Score 40–69 → soft flag for CA review.
 - Instant client switching, fully isolated per trader data
 - Built as a PWA — works on mobile without installation
 
+### 13. Cross-Tenant Network Intelligence
+- Aggregates how a supplier behaves across *every* business Munim monitors, not just one CA's client
+- A supplier flagged risky by one CA's client sharpens the signal for every other CA watching the same GSTIN
+- Strictly aggregate-only — a business never sees another business's invoices, amounts, or identity, only counts
+- Requires a minimum of 3 businesses tracking a supplier before it reports a pattern, to avoid leaking a single client's data through the aggregate
+
+---
+
+## Product Walkthrough
+
+The screenshots below are the live, deployed app — not mockups.
+
+![My Practice — every client the CA manages, ranked by money at risk](docs/assets/screenshot_my_practice.png)
+*My Practice — the CA's full client list, each one flagged by reconciliation status and money at risk.*
+
+![Monthly Reports — GSTR-2B records and auto-drafted GSTR-3B readiness](docs/assets/screenshot_monthly_reports.png)
+*Monthly Reports — period-by-period GSTR-2B records, one-click PDF export, GSTR-3B readiness score.*
+
+![Action Queue — every open issue across every client, ranked by severity](docs/assets/screenshot_action_queue.png)
+*Action Queue — every open issue across every client, ranked Critical → Medium, each with the exact ITC amount at stake.*
+
+![Supplier Trust — filing-consistency health score per vendor](docs/assets/screenshot_supplier_trust.png)
+*Supplier Trust — every vendor's GSTR-1 filing health, so a supplier going bad is caught before it blocks ITC.*
+
+![What the Network Sees — cross-tenant supplier intelligence, aggregate only](docs/assets/screenshot_network_intel.png)
+*What the Network Sees — Core USP #13 above, live: aggregate-only supplier behavior pooled across every business Munim monitors.*
+
+![Onboard a New Trader — WhatsApp or web QR code, no app install](docs/assets/screenshot_onboard_trader.png)
+*Onboarding — a CA adds a new trader with a single QR code, over WhatsApp or the web app.*
+
+![My Profile — CA's practice details and full client roster](docs/assets/screenshot_ca_profile.png)
+*My Profile — the CA's practice details and client roster in one place.*
+
+![Login — WhatsApp OTP, no password, no app to install](docs/assets/screenshot_login.png)
+*Login — WhatsApp OTP only. No password, no app store.*
+
 ---
 
 ## Tech Stack
@@ -91,8 +148,8 @@ Score ≥ 70 → `FRAUD_FLAGGED`. Score 40–69 → soft flag for CA review.
 | Layer | Technology |
 |---|---|
 | Backend | FastAPI, LangGraph, Python 3.12, Uvicorn |
-| Frontend | Next.js 14 (App Router, Turbopack), Tailwind CSS |
-| Database | Supabase (PostgreSQL + Row Level Security) |
+| Frontend | Next.js 16 (App Router), React 19, Tailwind CSS |
+| Database | Supabase (PostgreSQL) — multi-tenant isolation enforced app-layer, not via RLS |
 | AI / LLM | Google Gemini 2.5 Flash (Vision + Text) |
 | Messaging | Meta WhatsApp Cloud API |
 | Email Ingestion | Cloudmailin |
@@ -100,19 +157,21 @@ Score ≥ 70 → `FRAUD_FLAGGED`. Score 40–69 → soft flag for CA review.
 | GSTIN Validation | deepvue.tech API |
 | Fuzzy Matching | python-Levenshtein |
 | PDF Generation | WeasyPrint |
-| Deployment | Google Cloud Run (backend) + Vercel (frontend) — see [AWS Architecture](aws/README.md) below for this submission's separate AWS deployment |
+| Deployment (this submission) | Backend on Google Cloud Run, frontend on **AWS App Runner** — see [Live Deployment](#live-deployment) below. Full AWS-native pipeline (Step Functions, Lambda, Textract, Bedrock, DynamoDB) in [`aws/`](aws/README.md) |
 
 ---
 
 ## Architecture
 
+Generated directly from the real code structure — every box names the actual file behind it.
+
 ![Architecture Diagram](docs/assets/architecture_final.png)
 
 ```
-Trader (WhatsApp / Email)
-         │
-         ▼
-Meta Cloud API / Cloudmailin Webhook
+Trader (WhatsApp / Email)                              Vendor (Email)
+         │                                                    │
+         ▼                                                    ▼
+Meta Cloud API / Cloudmailin Webhook ──────────────────────────
          │
          ▼
 FastAPI Backend (Google Cloud Run)
@@ -127,10 +186,9 @@ FastAPI Backend (Google Cloud Run)
          │
          ▼
 Supabase PostgreSQL
-    ├── CA Dashboard (Next.js / Vercel)
+    ├── CA Dashboard (Next.js, deployed to AWS App Runner for this submission)
     │     ├── Action Queue
     │     ├── Supplier Health
-    │     ├── ITC Timeline Chart
     │     ├── Reports Panel
     │     └── GST Simulation
     └── Redis (session state / conversation context)

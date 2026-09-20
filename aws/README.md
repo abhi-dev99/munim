@@ -1,15 +1,16 @@
 # Munim-AI on AWS
 
-This is the AWS-native rebuild of [Munim-AI](https://github.com/abhi-dev99/munim-ai)'s
-invoice pipeline, built for the WeMakeDevs x AWS "First Commit" hackathon.
-Munim is a WhatsApp-first GST compliance co-pilot for Indian MSMEs -- it
+Munim-AI is a WhatsApp-first GST compliance co-pilot for Indian MSMEs -- it
 reads a shopkeeper's purchase invoices, tells them exactly how much Input
 Tax Credit (ITC) they can legally claim, flags the ones that are fraudulent
 or defective, and does it the moment the invoice arrives instead of once a
-month at deadline rush.
+month at deadline rush. See the [root README](../README.md) for the full
+product, feature list, and architecture.
 
-Everything on this branch lives in `aws/`. It does not touch the rest of
-this repo, and it is not yet merged into `main`.
+This directory (`aws/`) is the AWS-native build of that invoice pipeline,
+built for the WeMakeDevs x AWS "First Commit" hackathon -- Step Functions,
+Lambda, Textract, Bedrock, DynamoDB, API Gateway. It does not touch the
+rest of the app's logic, only how the pipeline is hosted and triggered.
 
 ## The pipeline, in one line
 
