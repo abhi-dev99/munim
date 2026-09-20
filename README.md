@@ -16,6 +16,8 @@
 
 ## Core USPs
 
+![Features](docs/assets/features_diagram.png)
+
 ### 1. WhatsApp-First — Zero App Download
 - Traders interact entirely via WhatsApp in their language (Hindi, English, Marathi, Gujarati)
 - Conversational onboarding in under 2 minutes

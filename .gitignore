@@ -67,3 +67,5 @@ start_dev.bat
 # Orphaned duplicate of frontend/public/demo/, not referenced by any
 # code or build config. Kept locally under its real name, not tracked.
 /gst-portal-automation/
+# Not AWS-related, product-general asset only
+docs/assets/tech_stack_diagram.html
