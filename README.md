@@ -24,6 +24,7 @@ supplier weeks before the filing deadline, not on it.
 - **Fraud detection nobody runs by hand.** A 6-signal scorer (Benford's Law, sequential invoicing, velocity anomalies, and more) flags fake-invoice patterns a CA charging ₹1,000/month has no time to check manually.
 - **One CA, unlimited clients.** A single multi-tenant dashboard ranks every client's open issues by money at risk, so the CA always works the highest-value problem first.
 - **It automates the paperwork, not the judgment call.** Representation before tax authorities and legal interpretation stay with the CA — that boundary is deliberate, not a limitation.
+- **Built for scale, not a niche.** India has an estimated 6.3+ crore MSMEs and only ~1.4 crore GST-registered businesses with any real CA relationship today — the rest are priced out of compliance help entirely. A WhatsApp-first product, not an app they have to download, is the realistic way to reach the crores of Indian shopkeepers and small manufacturers this actually affects.
 
 The rest of this README covers the feature list, tech stack, and architecture in
 detail — see below.
