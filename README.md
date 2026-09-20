@@ -102,7 +102,7 @@ Full service breakdown, security posture, and known issues:
 - Handles crumpled thermal receipts, handwritten bills, scanned PDFs, blurry photos
 - Outputs structured JSON: supplier name, GSTIN, invoice number, date, line items, HSN codes, tax breakdown
 - Low-confidence extractions are flagged for human review
-- Gemini 2.5 Flash in the core product; **this AWS submission uses Amazon Textract for OCR and Amazon Bedrock for the plain-language explanation instead** — see [Built on AWS](#built-on-aws) above
+- The AWS-native pipeline runs this extraction through Amazon Textract, with Amazon Bedrock (Nova Micro) generating the plain-language verdict explanation — full breakdown in [Built on AWS](#built-on-aws) above
 
 ### 3. Deterministic ITC Rules Engine — No LLM
 - Pure rule-based GST Act §16 + §17(5) implementation
