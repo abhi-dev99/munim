@@ -1,0 +1,19 @@
+# Container image for the dashboard API Lambda -- separate from the plain
+# Dockerfile (Cloud Run), which is untouched and keeps building exactly as
+# before. No WeasyPrint system deps here (build-essential/libpango/etc,
+# present in the Cloud Run image): report generation actually runs on
+# fpdf2, pure Python, confirmed by reading report_agent.py directly --
+# those apt packages were never needed for reports at all, so this image
+# skips them and stays small.
+
+FROM public.ecr.aws/lambda/python:3.12
+
+WORKDIR ${LAMBDA_TASK_ROOT}
+
+COPY requirements-lambda.txt .
+RUN pip install --no-cache-dir -r requirements-lambda.txt
+
+COPY app ./app
+COPY lambda_handler.py .
+
+CMD ["lambda_handler.handler"]

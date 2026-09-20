@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends
 from app.api.deps import verify_trader_access, get_current_trader_id, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse
 
-from app.services.supabase_client import get_supabase
+from app.services import db
 from app.utils.errors import safe_http_error
 
 logger = logging.getLogger(__name__)
@@ -69,12 +69,8 @@ async def generate_report(
 @router.get("/list/{trader_id}")
 async def list_reports(trader_id: str = Depends(verify_trader_access)):
     """List all generated reports for a trader."""
-    db = get_supabase()
     try:
-        resp = db.table("munim_reports").select(
-            "id, month, year, pdf_url, total_invoices_processed, total_itc_confirmed, total_issues_count"
-        ).eq("trader_id", trader_id).order("year", desc=True).order("month", desc=True).execute()
-
-        return {"reports": resp.data or []}
+        reports = await db.get_reports_for_trader(trader_id)
+        return {"reports": reports}
     except Exception as e:
         raise safe_http_error(logger, "Failed to list generated reports", e)

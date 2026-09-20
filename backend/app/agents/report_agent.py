@@ -9,14 +9,7 @@ from datetime import date, datetime
 from typing import Optional
 from fpdf import FPDF
 
-from app.services.supabase_client import (
-    get_supabase,
-    get_invoices_for_trader,
-    get_itc_summary,
-    get_all_suppliers_for_trader,
-    get_active_supplier_flags,
-    upload_file,
-)
+from app.services import db
 from app.services import whatsapp
 
 logger = logging.getLogger(__name__)
@@ -108,19 +101,16 @@ async def generate_munim_report(
         "July", "August", "September", "October", "November", "December",
     ]
 
-    db = get_supabase()
-
     # Fetch trader info
-    trader_resp = db.table("traders").select("*").eq("id", trader_id).execute()
-    if not trader_resp.data:
+    trader_data = await db.get_trader_by_id(trader_id)
+    if not trader_data:
         logger.error(f"Trader {trader_id} not found")
         return None
-    trader_data = trader_resp.data[0]
 
     # Fetch data
-    buckets = await get_itc_summary(trader_id)
-    invoices = await get_invoices_for_trader(trader_id, month, year)
-    supplier_links = await get_all_suppliers_for_trader(trader_id)
+    buckets = await db.get_itc_summary(trader_id)
+    invoices = await db.get_invoices_for_trader(trader_id, month, year)
+    supplier_links = await db.get_all_suppliers_for_trader(trader_id)
 
     confirmed = buckets.get("confirmed", 0)
     blocked = buckets.get("fixable_blocked", 0)
@@ -307,7 +297,7 @@ async def generate_munim_report(
         sup = link.get("suppliers", {})
         if not sup:
             continue
-        flags = await get_active_supplier_flags(sup["id"])
+        flags = await db.get_active_supplier_flags(sup["id"])
         health = sup.get("health_score", 100) or 100
         r, g, b = (50, 150, 50) if health >= 70 else ((200, 120, 0) if health >= 40 else (200, 50, 50))
 
@@ -344,16 +334,13 @@ async def generate_munim_report(
         logger.error(f"PDF generation failed: {e}")
         return None
 
-    # Upload to Supabase Storage
+    # Upload to storage
     filename = f"munim_report_{trader_id}_{year}_{month:02d}.pdf"
-    pdf_url = await upload_file("reports", filename, pdf_bytes, "application/pdf")
+    pdf_url = await db.upload_file("reports", filename, pdf_bytes, "application/pdf")
 
     # Store report metadata
     try:
-        db.table("munim_reports").upsert({
-            "trader_id": trader_id,
-            "month": month,
-            "year": year,
+        await db.upsert_report(trader_id, month, year, {
             "pdf_url": pdf_url,
             "total_invoices_processed": len(invoices),
             "total_itc_confirmed": confirmed,
@@ -361,7 +348,7 @@ async def generate_munim_report(
             "total_itc_at_risk": at_risk,
             "total_itc_missed": missed,
             "total_issues_count": len(issues),
-        }, on_conflict="trader_id,month,year").execute()
+        })
     except Exception as e:
         logger.error(f"Failed to store report metadata: {e}")
 
@@ -371,12 +358,10 @@ async def generate_munim_report(
 
 async def send_report_to_trader(trader_id: str, pdf_url: str):
     """Send the Munim Report PDF to trader and CA via WhatsApp."""
-    db = get_supabase()
-    trader = db.table("traders").select("*").eq("id", trader_id).execute()
-    if not trader.data:
+    trader_data = await db.get_trader_by_id(trader_id)
+    if not trader_data:
         return
 
-    trader_data = trader.data[0]
     phone = trader_data.get("whatsapp_number")
     if not phone:
         return

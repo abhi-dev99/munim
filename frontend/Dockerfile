@@ -23,6 +23,30 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ARG NEXT_PUBLIC_API_URL=https://munim-backend-1051889700424.us-central1.run.app
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
+# AWS Ship-It build: /aws-pipeline reads real Step Functions pipeline output
+# straight off DynamoDB (see src/app/aws-pipeline/page.js) via its own
+# token-gated Lambda, entirely separate from the OTP/dashboard flow above.
+ARG NEXT_PUBLIC_AWS_READ_API_URL=""
+ENV NEXT_PUBLIC_AWS_READ_API_URL=$NEXT_PUBLIC_AWS_READ_API_URL
+ARG NEXT_PUBLIC_AWS_READ_TOKEN=""
+ENV NEXT_PUBLIC_AWS_READ_TOKEN=$NEXT_PUBLIC_AWS_READ_TOKEN
+
+# The real CA dashboard (login, Money Meter, Action Queue, My Practice, etc.)
+# on AWS Lambda + DynamoDB, replacing Cloud Run for those surfaces only.
+# Left empty, every dashboard/login page falls back to NEXT_PUBLIC_API_URL
+# above -- that fallback IS the rollback path, no code change needed, just
+# rebuild with this arg unset (or redeploy the munim-frontend:pre-aws-dashboard
+# ECR tag directly, which needs no rebuild at all).
+ARG NEXT_PUBLIC_AWS_DASHBOARD_API_URL=""
+ENV NEXT_PUBLIC_AWS_DASHBOARD_API_URL=$NEXT_PUBLIC_AWS_DASHBOARD_API_URL
+
+# The admin-router secret is deliberately NOT built in. Anything named
+# NEXT_PUBLIC_* is inlined into the client JavaScript by Next.js, so passing
+# the admin key here published it: it shipped in the served bundle and was
+# downloadable by anyone who opened the site, while gating DELETE
+# /api/v1/admin/invoices/{id}. utils/api.js now reads it from sessionStorage
+# after an operator types it in. Do not reintroduce a NEXT_PUBLIC_ secret.
+
 RUN npm run build
 
 # Production image, copy all the files and run next

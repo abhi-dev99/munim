@@ -35,22 +35,38 @@ class PrivacyLayer:
 
     def anonymize_for_llm(self, context: dict, llm_target: str, task: str) -> Tuple[Dict[str, Any], Callable[[Dict[str, Any]], Dict[str, Any]]]:
         """
-        """
-        if task in ("DIAGNOSIS", "SUMMARY"):
-            return context, lambda x: x
+        DIAGNOSIS/SUMMARY calls (the verdict-explanation and report-summary
+        prompts) skip the anonymization loop below on purpose -- bucketing
+        `total_amount` into "MEDIUM" or hashing the supplier's name would
+        make the Hindi explanation this function guards factually useless to
+        the trader reading it ("aapka MEDIUM amount blocked hai" tells nobody
+        anything). That's a real, considered product tradeoff, not an
+        oversight.
 
+        What WAS an oversight: skipping the audit write too. Anonymization
+        (data minimization) and the audit trail (transparency -- "the CA can
+        see exactly what was sent to the LLM") are two separate DPDP-relevant
+        obligations, and coupling them meant every DIAGNOSIS/SUMMARY call
+        left zero record that raw supplier names and amounts went to Gemini
+        at all. Every LLM call is now logged either way; only whether the
+        *content* gets redacted differs by task.
+        """
         session_id = str(uuid.uuid4())
         anonymized_context = {}
         real_data = {}
         fields_anonymized = []
         fields_sent_raw = []
+        skip_anonymization = task in ("DIAGNOSIS", "SUMMARY")
 
         # Simple sequential ID for suppliers in this session
         supplier_counter = 1
         supplier_map = {}
 
         for k, v in context.items():
-            if k == "gstin" or k.endswith("gstin_supplier"):
+            if skip_anonymization:
+                anonymized_context[k] = v
+                fields_sent_raw.append(k)
+            elif k == "gstin" or k.endswith("gstin_supplier"):
                 anon_val = self._hash_gstin(str(v))
                 anonymized_context[k] = anon_val
                 real_data[anon_val] = v
@@ -79,7 +95,8 @@ class PrivacyLayer:
                 anonymized_context[k] = v
                 fields_sent_raw.append(k)
 
-        self._session_map[session_id] = real_data
+        if not skip_anonymization:
+            self._session_map[session_id] = real_data
 
         # Write audit log
         audit_entry = {
@@ -87,6 +104,7 @@ class PrivacyLayer:
             "event": "anonymize_for_llm",
             "llm_target": llm_target,
             "task": task,
+            "anonymized": not skip_anonymization,
             "fields_anonymized": fields_anonymized,
             "fields_sent_raw": fields_sent_raw,
             "session_id": session_id
@@ -97,6 +115,17 @@ class PrivacyLayer:
                 f.write(json.dumps(audit_entry) + "\n")
         except Exception as e:
             logger.error(f"Failed to write privacy audit log: {e}")
+
+        # The file above is the local-development copy and nothing more. On
+        # Cloud Run the filesystem is per-instance and ephemeral, so it is wiped
+        # on every deploy, cold start and scale event, and two instances hold
+        # different halves of the trail — which makes "every model call is
+        # logged and the trail is readable by the CA" untrue in production
+        # exactly where it is being claimed. The durable copy is the audit_log
+        # table. Best-effort: an audit write must never break the model call it
+        # is describing, but a silent failure would recreate the same problem,
+        # so failures are logged loudly.
+        self._persist_audit_entry(context.get("trader_id"), audit_entry)
 
         def de_anonymize(response_data: Dict[str, Any]) -> Dict[str, Any]:
             """Re-attaches real data if anonymized tokens are found in the response."""
@@ -112,6 +141,33 @@ class PrivacyLayer:
             return restored
 
         return anonymized_context, de_anonymize
+
+    def _persist_audit_entry(self, trader_id: Any, entry: Dict[str, Any]) -> None:
+        """
+        Write one anonymisation record to the audit_log table.
+
+        trader_id is whatever the calling context carried; it is a real FK to
+        traders(id), so anything that is not a UUID is stored as null rather
+        than failing the insert. A null-owner row still records that the call
+        happened — it just cannot be attributed to one client in the CA's view.
+        """
+        try:
+            from app.services.supabase_client import get_supabase
+
+            owner = str(trader_id) if trader_id else None
+            if owner:
+                try:
+                    uuid.UUID(owner)
+                except (ValueError, AttributeError, TypeError):
+                    owner = None
+
+            get_supabase().table("audit_log").insert({
+                "trader_id": owner,
+                "event_type": "llm_anonymization",
+                "event_data": entry,
+            }).execute()
+        except Exception as e:
+            logger.error(f"Failed to persist privacy audit entry to audit_log: {e}")
 
     def clear_session(self, session_id: str):
         self._session_map.pop(session_id, None)

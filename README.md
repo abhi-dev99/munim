@@ -36,6 +36,7 @@ detail — jump to any section:
 - [Product Walkthrough](#product-walkthrough) — real screenshots of the live app
 - [Tech Stack](#tech-stack)
 - [Architecture](#architecture) · [AWS Architecture](#aws-architecture)
+- [Data Protection (DPDP Act, 2023)](#data-protection-dpdp-act-2023)
 - [Project Structure](#project-structure)
 - [API Reference](#api-reference)
 - [Live Deployment](#live-deployment) — the actual running URLs
@@ -44,29 +45,36 @@ detail — jump to any section:
 
 ## Built on AWS
 
-This submission is a real, live AWS build of Munim's invoice pipeline — not a
-slide. **18 AWS services**, end to end: an image lands in S3, Step Functions
-orchestrates 8 Lambdas through OCR, deterministic compliance scoring, and a
-Bedrock-generated plain-language explanation, and the verdict lands in
-DynamoDB, all traced, encrypted, and observable.
+This submission is a real, live AWS build — not a slide, and not just the
+invoice pipeline. Two separate AWS Lambda surfaces are live: the **invoice
+pipeline** (Step Functions orchestrating 8 Lambdas through OCR, deterministic
+compliance scoring, and a Bedrock-generated explanation) and, new this
+build, the **entire CA dashboard** — Money Meter, Action Queue, My Practice,
+Supplier Trust, GSTR-2B reconciliation, PDF reports — running on a 9th
+Lambda against 13 DynamoDB tables, the same FastAPI code the product always
+ran, ported off Postgres onto DynamoDB rather than rewritten.
 
-**Try it live:** the deployed frontend at
-https://eym73fepx3.ap-south-1.awsapprunner.com runs on AWS App Runner, and
+**Try it live:** https://eym73fepx3.ap-south-1.awsapprunner.com (AWS App
+Runner). Log in with the public demo — phone **`1234567890`**, OTP
+**`123456`** (also shown on the login page itself) — to see the full CA
+dashboard running entirely on AWS, backed by real reconciled invoice data.
 [**/aws-pipeline**](https://eym73fepx3.ap-south-1.awsapprunner.com/aws-pipeline)
-reads real invoice verdicts straight off the pipeline's own DynamoDB table —
-live data, not a fixture.
+separately reads real invoice verdicts straight off the pipeline's own
+DynamoDB table, no login needed — live data, not a fixture, from either
+surface.
 
 ![AWS Architecture](docs/assets/aws_architecture.png)
 
 | AWS Service | Role in this build |
 |---|---|
 | **Step Functions** | Orchestrates the 4-stage invoice pipeline (extract → compute verdict → explain → finalize) |
-| **Lambda** | 8 functions: ingest, extract, compute_verdict, explain, finalize, meta_webhook, voice_handler, bedrock_healthcheck |
+| **Lambda** | 9 functions: ingest, extract, compute_verdict, explain, finalize, meta_webhook, voice_handler, bedrock_healthcheck, plus `munim-dashboard-api` — the entire CA dashboard (FastAPI + Mangum), covering auth, dashboard, GSTR-2B, reports, communications, and My Practice |
 | **Amazon Textract** | `AnalyzeExpense` — OCR extraction from the invoice image, zero LLM involved |
 | **Amazon Bedrock** | Amazon Nova Micro (cross-region inference) turns the already-computed verdict into one plain-language sentence — it never decides the verdict itself |
-| **Amazon DynamoDB** | `munim-invoices`, `munim-traders`, `munim-hsn-codes`, `munim-system-status` |
+| **Amazon DynamoDB** | 13 tables total: the invoice pipeline's own (`munim-invoices`, `munim-traders`, `munim-hsn-codes`, `munim-system-status`) plus 9 more standing up the dashboard (`munim-dashboard-traders`, `munim-dashboard-invoices`, `munim-suppliers`, `munim-supplier-trader-links`, `munim-supplier-flags`, `munim-gstr2b-records`, `munim-reports`, `munim-preferences`, `munim-invoice-line-items`) |
 | **API Gateway** | REST API (`POST /invoices`) + HTTP API (the live read endpoint behind `/aws-pipeline`) |
-| **Amazon S3** | Invoice image storage, the pipeline's entry point |
+| **Lambda Function URL** | Public HTTPS endpoint for `munim-dashboard-api`, CORS-scoped to the App Runner frontend origin |
+| **Amazon S3** | Invoice image storage (pipeline entry point) and generated PDF compliance reports (private, served via presigned URL — not a public bucket) |
 | **AWS KMS** | One customer-managed key encrypts S3, every DynamoDB table, and CloudTrail's log bucket |
 | **Amazon Cognito** | Provisioned for WhatsApp-OTP custom auth — not yet wired to a live auth path, stated honestly rather than overclaimed |
 | **EventBridge Scheduler** | Statutory GSTR deadline alerts on the 5th/10th/18th, matching the FastAPI backend's own cadence |
@@ -77,7 +85,7 @@ live data, not a fixture.
 | **GuardDuty** | Account-wide threat detection |
 | **CloudTrail** | Every management-plane action, plus every S3 `GetObject`/`PutObject` on the invoices bucket, including root's own access |
 | **App Runner** | Hosts this submission's live frontend |
-| **ECR** | Container registry for the App Runner image |
+| **ECR** | Container registry for both the App Runner and `munim-dashboard-api` images |
 
 Full service breakdown, security posture, and known issues:
 **[`aws/README.md`](aws/README.md)**.
@@ -258,6 +266,70 @@ invoice pipeline — Step Functions, Lambda, Textract, Bedrock, DynamoDB,
 API Gateway, Cognito, and more. **See [`aws/README.md`](aws/README.md)**
 for the full service breakdown and how each Lambda maps to the pipeline
 above.
+
+---
+
+## Data Protection (DPDP Act, 2023)
+
+Munim processes real financial and business data for Indian MSMEs —
+invoices, GSTINs, ITC amounts, supplier relationships. That's personal and
+business data squarely inside the scope of India's Digital Personal Data
+Protection Act, 2023. We're not claiming full legal compliance here — that's
+a legal determination, not an engineering one — but naming what's actually
+built with DPDP in mind, and what honestly isn't yet, the same way the rest
+of this README treats GST-scope gaps: naming the boundary reads as
+competence, inventing coverage doesn't.
+
+**In place:**
+- **Data residency.** The AWS build runs in `ap-south-1` (Mumbai) — a
+  deliberate choice, not the default `us-east-1`, specifically for
+  India-resident processing.
+- **Encryption at rest, everywhere.** One customer-managed KMS key covers
+  every DynamoDB table, S3 bucket, and CloudTrail's log bucket — not a
+  per-service default left on autopilot.
+- **LLM data minimization.** Before an invoice detail reaches Gemini/Groq
+  for non-explanatory tasks (intent classification, summaries), GSTINs are
+  hashed, supplier names tokenized, phone numbers redacted, and amounts
+  bucketed — never sent raw. One deliberate, disclosed exception: the
+  invoice-verdict explanation itself sends the real amount and supplier
+  name, because a trader reading "₹MEDIUM blocked" on WhatsApp learns
+  nothing — but every such call is now logged in a tenant-scoped, CA-visible
+  audit trail either way, so what went out and why is never silent.
+- **No AI in the compliance decision.** ITC eligibility, fraud scoring, and
+  GSTR-2B reconciliation are pure deterministic code — no model makes or
+  influences a decision that affects someone's money, which matters
+  directly given DPDP's stance on automated processing affecting a
+  person's rights.
+- **App-layer tenant isolation.** Every dashboard endpoint checks the
+  caller's own phone number against the target trader's registered CA
+  before returning anything (`verify_trader_access`) — a CA sees only
+  clients who've actually named them.
+- **Fail-closed by default.** OTP login has no bypass in production
+  (`DEBUG=false` live), tokens are individually revocable, and the WhatsApp
+  webhook signature check is written to reject unsigned payloads outside a
+  dev environment — see the one open item below for where that last one
+  still needs a config change, not a code change, to actually take effect.
+
+**Honest gaps, not yet built:**
+- **No explicit consent step.** WhatsApp onboarding today is conversational
+  (name, GSTIN, CA number) with no separate "you're agreeing to this"
+  checkpoint — the single highest-priority thing missing here.
+- **No self-service data rights.** A trader can't yet export or delete
+  their own data through the product; today that would need a direct
+  request to the team. DPDP's access/correction/erasure rights need a real
+  endpoint, not a support inbox.
+- **Third-party processors outside India.** Gemini and Groq (both used
+  narrowly, see the minimization above) process data outside India for
+  that slice of calls. Minimized, not eliminated — a formal Data
+  Processing Agreement review with both hasn't been done.
+- **One live config gap, not a code gap.** The main product's Cloud Run
+  backend currently runs with `ENVIRONMENT=development`, which — by
+  design, see `services/whatsapp.py`'s own comment — activates a
+  documented dev-only bypass on the webhook signature check. The code
+  already fails closed correctly in production; the deployed environment
+  variable just hasn't been flipped yet. Fixing this needs a real
+  `META_APP_SECRET` set first (confirmed working), then the environment
+  flip — in that order, or WhatsApp breaks instead.
 
 ---
 

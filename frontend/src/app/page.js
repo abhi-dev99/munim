@@ -4,22 +4,62 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, ShieldCheck, Zap, Smartphone } from "lucide-react";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// AWS Lambda + DynamoDB dashboard backend takes priority when built with
+// NEXT_PUBLIC_AWS_DASHBOARD_API_URL set; empty (the default) falls straight
+// through to the existing Cloud Run URL below -- that fallback is the
+// rollback path, no code change needed to revert.
+const API_BASE = process.env.NEXT_PUBLIC_AWS_DASHBOARD_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+// verify-otp matches the submitted number against a trader's own
+// whatsapp_number first, falling back to a CA's ca_whatsapp_number on any
+// of their clients (see backend/app/api/auth.py) -- it returns whichever
+// trader record matched, with no separate flag saying which path it took.
+// Comparing the last 10 digits (ignoring a "91"/"+91" country-code prefix,
+// same normalization deps.py:verify_trader_access uses) recovers that: a
+// match means this number IS that trader, a mismatch means it only got in
+// via ca_whatsapp_number, i.e. this is the CA logging in to manage a client.
+function last10Digits(phone) {
+  const digits = (phone || "").replace(/\D/g, "");
+  return digits.slice(-10);
+}
+
+// The /trader page is a mobile-first PWA experience (built for a phone-sized
+// WhatsApp-style flow) -- opening it in a laptop browser looks unfinished,
+// not "responsive." A trader's own account should still land on /dashboard
+// when accessed from a desktop rather than showing that mobile view full of
+// unused whitespace; /dashboard already handles a single trader with no CA
+// clients gracefully (backend/app/api/dashboard.py's /traders endpoint
+// returns just that trader's own row when there's nothing else to list), so
+// there's a real, working page to send desktop traders to instead. A CA's
+// own login already goes to /dashboard regardless of device -- unaffected.
+function isMobileDevice() {
+  if (typeof navigator === "undefined") return false;
+  return /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent);
+}
+
+function destinationFor(isTraderRole) {
+  return isTraderRole && isMobileDevice() ? "/trader" : "/dashboard";
+}
 
 export default function LoginPage() {
   const router = useRouter();
   const [mobileNumber, setMobileNumber] = useState("");
   const [otp, setOtp] = useState("");
-  const [step, setStep] = useState(1); // 1 = mobile, 2 = otp
+  const [step, setStep] = useState(1); // 1 = mobile, 2 = otp, 3 = choose role (dual-role accounts only)
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [roleChoices, setRoleChoices] = useState([]);
 
   useEffect(() => {
     // Auto-redirect if already logged in (need BOTH token and trader data)
     const token = localStorage.getItem("munim_auth_token");
     const trader = localStorage.getItem("munim_auth_trader");
     if (token && trader) {
-      router.push("/dashboard");
+      // munim_auth_role is set at login time (see handleVerifyOtp) — a
+      // session from before this fix existed won't have it, so default to
+      // the old always-/dashboard behavior rather than guessing.
+      const role = localStorage.getItem("munim_auth_role");
+      router.push(destinationFor(role === "trader"));
     } else if (token && !trader) {
       // Orphaned token from a bad logout — clean it up
       localStorage.removeItem("munim_auth_token");
@@ -86,13 +126,34 @@ export default function LoginPage() {
         localStorage.setItem("munim_auth_token", data.token);
       }
 
-      // Success, route to dashboard
-      router.push("/dashboard");
+      // verify-otp now tells us directly which role(s) this phone number
+      // actually has (backend/app/api/auth.py) -- own trader account, CA for
+      // someone else's, or both -- instead of us re-deriving it from a
+      // number comparison here. Most logins have exactly one role and go
+      // straight through; a genuine dual-role account (real in the seed
+      // data, see CLAUDE.md) gets a one-time "log in as" choice instead of
+      // silently picking one.
+      const roles = data.roles || [];
+      if (roles.length > 1) {
+        setRoleChoices(roles);
+        setStep(3);
+        setLoading(false);
+        return;
+      }
+
+      const role = roles[0] || "trader";
+      localStorage.setItem("munim_auth_role", role);
+      router.push(destinationFor(role === "trader"));
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleChooseRole = (role) => {
+    localStorage.setItem("munim_auth_role", role);
+    router.push(destinationFor(role === "trader"));
   };
 
   return (
@@ -170,8 +231,21 @@ export default function LoginPage() {
                 >
                   {loading ? <Loader2 size={18} className="animate-spin" /> : "Send OTP via WhatsApp"}
                 </button>
+
+                {/* Public demo access -- this build's own seed data (5 real
+                    clients, real reconciled invoices), not a real trader's
+                    account. Shown plainly rather than auto-filled/auto-
+                    submitted, so it's obvious this is a demo path someone is
+                    deliberately choosing, not a hidden bypass. */}
+                <button
+                  type="button"
+                  onClick={() => setMobileNumber("1234567890")}
+                  className="w-full text-xs text-gray-400 hover:text-white border border-dashed border-[#2a2a2a] hover:border-gray-500 rounded-lg py-2.5 transition-colors"
+                >
+                  Judging? Try the live demo — number <span className="text-gray-200 font-mono">1234567890</span>, OTP <span className="text-gray-200 font-mono">123456</span>
+                </button>
               </form>
-            ) : (
+            ) : step === 2 ? (
               <form onSubmit={handleVerifyOtp} className="space-y-5">
                 <div>
                   <label className="block text-sm font-semibold text-gray-300 mb-2">
@@ -212,6 +286,34 @@ export default function LoginPage() {
                   Back to mobile number
                 </button>
               </form>
+            ) : (
+              // Only reached for a genuine dual-role phone number (their own
+              // trader account AND someone else's CA identifier -- both real
+              // roles, not a guess) -- see auth.py's verify-otp `roles`.
+              <div className="space-y-5">
+                <div>
+                  <h3 className="text-lg font-bold text-white mb-1">Log in as</h3>
+                  <p className="text-sm text-gray-400">This number is linked to both a trader account and a CA account.</p>
+                </div>
+                <div className="flex bg-[#0a0a0a] border border-[#2a2a2a] rounded-full p-1">
+                  {roleChoices.includes("trader") && (
+                    <button
+                      onClick={() => handleChooseRole("trader")}
+                      className="flex-1 py-2.5 rounded-full text-sm font-bold text-white hover:bg-[#25D366] hover:text-black transition-colors"
+                    >
+                      Trader
+                    </button>
+                  )}
+                  {roleChoices.includes("ca") && (
+                    <button
+                      onClick={() => handleChooseRole("ca")}
+                      className="flex-1 py-2.5 rounded-full text-sm font-bold text-white hover:bg-[#25D366] hover:text-black transition-colors"
+                    >
+                      CA
+                    </button>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         </div>

@@ -4,7 +4,7 @@ import html
 import logging
 import asyncio
 from datetime import datetime, timedelta, timezone
-from app.services.supabase_client import get_supabase
+from app.services import db
 import resend
 from app.config import get_settings
 from app.services.whatsapp import send_text_message
@@ -39,26 +39,23 @@ def _check_rate_limit(invoice: dict) -> None:
             pass  # If timestamp parsing fails, allow the send
 
 
-def _stamp_notified(db, invoice_id: str) -> None:
+async def _stamp_notified(invoice_id: str) -> None:
     """Record the notification timestamp on the invoice row."""
     try:
-        db.table("invoices").update(
-            {"last_vendor_notified_at": datetime.now(timezone.utc).isoformat()}
-        ).eq("id", invoice_id).execute()
+        await db.update_invoice_by_id(
+            invoice_id, {"last_vendor_notified_at": datetime.now(timezone.utc).isoformat()}
+        )
     except Exception as e:
         logger.warning(f"Could not stamp last_vendor_notified_at on invoice {invoice_id}: {e}")
 
 @router.post("/email-vendor/{invoice_id}")
 async def email_vendor_warning(invoice_id: str, current_trader_id: str = Depends(get_current_trader_id)):
     """Send an automated warning email to the vendor regarding missed GSTR-1 filing."""
-    db = get_supabase()
     # Fetch invoice — scoped to the caller's own trader_id so one trader can't
     # trigger vendor communications using another trader's invoice data.
-    inv_resp = db.table("invoices").select("*, traders(business_name)").eq("id", invoice_id).eq("trader_id", current_trader_id).execute()
-    if not inv_resp.data:
+    invoice = await db.get_invoice_by_id_for_trader(invoice_id, current_trader_id)
+    if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
-
-    invoice = inv_resp.data[0]
 
     # Rate-limit guard: don't spam the same supplier
     _check_rate_limit(invoice)
@@ -122,7 +119,7 @@ async def email_vendor_warning(invoice_id: str, current_trader_id: str = Depends
                 await asyncio.sleep(1)
                 
         logger.info(f"Warning email sent to vendor {supplier_email} for invoice {invoice_id}")
-        _stamp_notified(db, invoice_id)
+        await _stamp_notified(invoice_id)
         return {"status": "success", "message": "Email sent to vendor"}
     except HTTPException:
         raise
@@ -133,12 +130,9 @@ async def email_vendor_warning(invoice_id: str, current_trader_id: str = Depends
 @router.post("/whatsapp-vendor/{invoice_id}")
 async def whatsapp_vendor_warning(invoice_id: str, lang: str = "en", current_trader_id: str = Depends(get_current_trader_id)):
     """Send an automated WhatsApp warning to the vendor regarding missed GSTR-1 filing."""
-    db = get_supabase()
-    inv_resp = db.table("invoices").select("*, traders(business_name)").eq("id", invoice_id).eq("trader_id", current_trader_id).execute()
-    if not inv_resp.data:
+    invoice = await db.get_invoice_by_id_for_trader(invoice_id, current_trader_id)
+    if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
-    
-    invoice = inv_resp.data[0]
 
     # Rate-limit guard: don't spam the same supplier
     _check_rate_limit(invoice)
@@ -190,12 +184,10 @@ async def whatsapp_vendor_warning(invoice_id: str, lang: str = "en", current_tra
 @router.post("/test-alert/{trader_id}")
 async def send_test_alert(trader_id: str = Depends(verify_trader_access), lang: str = "en"):
     """Send a test WhatsApp alert to the trader (CA self-test)."""
-    db = get_supabase()
-    trader_resp = db.table("traders").select("whatsapp_number, business_name, name").eq("id", trader_id).execute()
-    if not trader_resp.data:
+    trader = await db.get_trader_by_id(trader_id)
+    if not trader:
         raise HTTPException(status_code=404, detail="Trader not found")
 
-    trader = trader_resp.data[0]
     phone_raw = trader.get("whatsapp_number") or ""
     if not phone_raw:
         raise HTTPException(status_code=400, detail="No WhatsApp number on file for this trader")
@@ -238,12 +230,10 @@ async def send_test_alert(trader_id: str = Depends(verify_trader_access), lang: 
 
 @router.post("/remind-gstin/{trader_id}")
 async def remind_gstin_whatsapp(trader_id: str = Depends(verify_trader_access), lang: str = "en"):
-    db = get_supabase()
-    res = db.table("traders").select("*").eq("id", trader_id).execute()
-    if not res.data:
+    client = await db.get_trader_by_id(trader_id)
+    if not client:
         raise HTTPException(status_code=404, detail="Client not found")
 
-    client = res.data[0]
     phone = client.get("whatsapp_number")
     if not phone:
         raise HTTPException(status_code=400, detail="Client does not have a registered WhatsApp number")
