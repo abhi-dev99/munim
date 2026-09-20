@@ -3,6 +3,8 @@
 **WhatsApp-first GST compliance co-pilot for Indian MSMEs**
 
 ![Status](https://img.shields.io/badge/Status-Active-success)
+![AWS](https://img.shields.io/badge/Built%20for-AWS%20First%20Commit%20Hackathon-FF9900?logo=amazonaws&logoColor=white)
+![AWS Services](https://img.shields.io/badge/AWS-Step%20Functions%20%7C%20Lambda%20%7C%20Textract%20%7C%20Bedrock%20%7C%20DynamoDB-FF9900?logo=amazonaws&logoColor=white)
 ![Stack](https://img.shields.io/badge/Stack-FastAPI%20%7C%20Next.js%20%7C%20Supabase%20%7C%20Gemini-orange)
 ![License](https://img.shields.io/badge/License-Proprietary-red)
 
@@ -29,6 +31,7 @@ supplier weeks before the filing deadline, not on it.
 The rest of this README covers the feature list, tech stack, and architecture in
 detail — jump to any section:
 
+- [**Built on AWS**](#built-on-aws) — the service breakdown for this submission
 - [Core USPs](#core-usps)
 - [Product Walkthrough](#product-walkthrough) — real screenshots of the live app
 - [Tech Stack](#tech-stack)
@@ -36,6 +39,48 @@ detail — jump to any section:
 - [Project Structure](#project-structure)
 - [API Reference](#api-reference)
 - [Live Deployment](#live-deployment) — the actual running URLs
+
+---
+
+## Built on AWS
+
+This submission is a real, live AWS build of Munim's invoice pipeline — not a
+slide. **18 AWS services**, end to end: an image lands in S3, Step Functions
+orchestrates 8 Lambdas through OCR, deterministic compliance scoring, and a
+Bedrock-generated plain-language explanation, and the verdict lands in
+DynamoDB, all traced, encrypted, and observable.
+
+**Try it live:** the deployed frontend at
+https://eym73fepx3.ap-south-1.awsapprunner.com runs on AWS App Runner, and
+[**/aws-pipeline**](https://eym73fepx3.ap-south-1.awsapprunner.com/aws-pipeline)
+reads real invoice verdicts straight off the pipeline's own DynamoDB table —
+live data, not a fixture.
+
+![AWS Architecture](docs/assets/aws_architecture.png)
+
+| AWS Service | Role in this build |
+|---|---|
+| **Step Functions** | Orchestrates the 4-stage invoice pipeline (extract → compute verdict → explain → finalize) |
+| **Lambda** | 8 functions: ingest, extract, compute_verdict, explain, finalize, meta_webhook, voice_handler, bedrock_healthcheck |
+| **Amazon Textract** | `AnalyzeExpense` — OCR extraction from the invoice image, zero LLM involved |
+| **Amazon Bedrock** | Amazon Nova Micro (cross-region inference) turns the already-computed verdict into one plain-language sentence — it never decides the verdict itself |
+| **Amazon DynamoDB** | `munim-invoices`, `munim-traders`, `munim-hsn-codes`, `munim-system-status` |
+| **API Gateway** | REST API (`POST /invoices`) + HTTP API (the live read endpoint behind `/aws-pipeline`) |
+| **Amazon S3** | Invoice image storage, the pipeline's entry point |
+| **AWS KMS** | One customer-managed key encrypts S3, every DynamoDB table, and CloudTrail's log bucket |
+| **Amazon Cognito** | Provisioned for WhatsApp-OTP custom auth — not yet wired to a live auth path, stated honestly rather than overclaimed |
+| **EventBridge Scheduler** | Statutory GSTR deadline alerts on the 5th/10th/18th, matching the real backend's own cadence |
+| **SQS + DLQ** | Retry handling and dead-letter capture on the pipeline |
+| **SNS** | WhatsApp inbound event relay from the WABA |
+| **CloudWatch** | `munim-invoice-pipeline` dashboard — invocations, errors, Step Functions outcomes, DynamoDB capacity, DLQ backlog |
+| **X-Ray** | One trace ID spans an invoice's entire journey, upload through finalize, with per-stage latency |
+| **GuardDuty** | Account-wide threat detection |
+| **CloudTrail** | Every management-plane action, plus every S3 `GetObject`/`PutObject` on the invoices bucket, including root's own access |
+| **App Runner** | Hosts this submission's live frontend |
+| **ECR** | Container registry for the App Runner image |
+
+Full service breakdown, security posture, and known issues:
+**[`aws/README.md`](aws/README.md)**.
 
 ---
 
@@ -53,10 +98,11 @@ detail — jump to any section:
 - Conversational onboarding in under 2 minutes
 - Each trader gets a dedicated Munim email address for vendors who prefer email over WhatsApp
 
-### 2. Multimodal AI Extraction (Gemini 2.5 Flash)
+### 2. Multimodal AI Extraction
 - Handles crumpled thermal receipts, handwritten bills, scanned PDFs, blurry photos
 - Outputs structured JSON: supplier name, GSTIN, invoice number, date, line items, HSN codes, tax breakdown
 - Low-confidence extractions are flagged for human review
+- Gemini 2.5 Flash in the core product; **this AWS submission uses Amazon Textract for OCR and Amazon Bedrock for the plain-language explanation instead** — see [Built on AWS](#built-on-aws) above
 
 ### 3. Deterministic ITC Rules Engine — No LLM
 - Pure rule-based GST Act §16 + §17(5) implementation
