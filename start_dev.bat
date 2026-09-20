@@ -1,7 +1,7 @@
 @echo off
 setlocal
 echo ====================================================
-echo  Munim.ai — Dev Server Starter
+echo  Munim-AI — Dev Server Starter
 echo ====================================================
 
 echo.
@@ -24,18 +24,18 @@ timeout /t 2 /nobreak >nul
 echo.
 echo [2/4] Starting Backend (FastAPI) on port 8000...
 cd backend
-start "Munim.ai Backend" cmd /k "title Munim.ai Backend && C:\Users\HP\AppData\Local\Programs\Python\Python312\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+start "Munim-AI Backend" cmd /k "title Munim-AI Backend && C:\Users\HP\AppData\Local\Programs\Python\Python312\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 cd ..
 
 echo.
 echo [3/4] Starting Frontend (Next.js) on port 3000...
 cd frontend
-start "Munim.ai Frontend" cmd /k "title Munim.ai Frontend && npm.cmd run dev -- --port 3000"
+start "Munim-AI Frontend" cmd /k "title Munim-AI Frontend && npm.cmd run dev -- --port 3000"
 cd ..
 
 echo.
 echo [4/4] Starting Ngrok tunnel on port 8000...
-start "Munim.ai Tunnel" cmd /k "title Munim.ai Tunnel && .\ngrok.exe http --domain=moaning-thwarting-dinginess.ngrok-free.dev 8000"
+start "Munim-AI Tunnel" cmd /k "title Munim-AI Tunnel && .\ngrok.exe http --domain=moaning-thwarting-dinginess.ngrok-free.dev 8000"
 
 echo.
 echo Waiting for tunnel to initialise...

@@ -1,4 +1,4 @@
-# Munim.ai — Business Case Factbook
+# Munim-AI — Business Case Factbook
 
 > All figures are sourced from publicly available government data (GSTN, PIB, MoMSME, ICAI), industry research, and verifiable market reports. Nothing is extrapolated without a stated assumption.
 
@@ -74,7 +74,7 @@
 - WhatsApp monthly active users in India (2024–2025): **535 – 596 million**
 - Indian users average **~21 hours/month** on WhatsApp
 
-**So what?** The typical GST-registered trader in a small town **already has WhatsApp** and **already pays a CA** for compliance. The channel (WhatsApp) and the relationship (CA → trader) already exist. Munim.ai is not trying to change behaviour — it is automating the existing workflow.
+**So what?** The typical GST-registered trader in a small town **already has WhatsApp** and **already pays a CA** for compliance. The channel (WhatsApp) and the relationship (CA → trader) already exist. Munim-AI is not trying to change behaviour — it is automating the existing workflow.
 
 ---
 
@@ -88,7 +88,7 @@
 | **Finexo** | CA practice management | ₹5,999–₹24,999/year | No trader-side interface, no WhatsApp |
 | **PracticeStacks** | CA firms | ~₹999/user/month | No trader-facing features |
 | **TaxPower GST** | Professional filers | ~₹7,000/year | Desktop-first, no automation |
-| **Munim.ai** | CAs + traders together | SaaS per CA / per trader | WhatsApp-native, AI-powered, Tier 2/3 first |
+| **Munim-AI** | CAs + traders together | SaaS per CA / per trader | WhatsApp-native, AI-powered, Tier 2/3 first |
 
 **Whitespace:** No existing tool provides a **unified CA dashboard + trader-facing WhatsApp interface + AI-assisted ITC reconciliation** in a single product. The closest category (CA practice tools) does not include trader-facing features. The GST portal itself has no advisory layer.
 
@@ -179,7 +179,7 @@ Rough filter:
 
 - **GSTR-2B made mandatory (Oct 2022):** Section 16(2)(aa) of CGST Act now mandates ITC claims only from GSTR-2B. This makes automated reconciliation a compliance *necessity*, not a convenience.
 - **e-Invoicing threshold keeps falling:** Mandatory e-invoice generation was extended to businesses with turnover >₹5 crore in 2023, pushing more MSMEs into digital workflows.
-- **GST Invoice Management System (IMS) launched Oct 2024:** GSTN launched IMS to let buyers act on invoices (accept/reject/pending). This creates a real-time data layer that Munim.ai can build on.
+- **GST Invoice Management System (IMS) launched Oct 2024:** GSTN launched IMS to let buyers act on invoices (accept/reject/pending). This creates a real-time data layer that Munim-AI can build on.
 - **WhatsApp Business API officially available in India:** Meta opened the WhatsApp Business API to ISVs, enabling compliant business messaging at scale.
 - **India Stack + Account Aggregator:** Government's push for open financial data infrastructure enables deeper integration with bank statement auto-analysis for GST reconciliation.
 
@@ -210,7 +210,7 @@ Rough filter:
 | **Zoho Books** | India/Global | Profitable, 250K+ customers in India | Validates cloud accounting in India |
 | **Konfío (Mexico)** | LatAm | $1.2B valuation | Validates WhatsApp-native SMB finance |
 
-**Key observation:** ClearTax built a $1B business going top-down (enterprises first). Munim.ai's opportunity is going bottom-up — starting with the CA as a distribution node for the long-tail of 1.3 crore small businesses that ClearTax has not meaningfully penetrated.
+**Key observation:** ClearTax built a $1B business going top-down (enterprises first). Munim-AI's opportunity is going bottom-up — starting with the CA as a distribution node for the long-tail of 1.3 crore small businesses that ClearTax has not meaningfully penetrated.
 
 ---
 
@@ -230,7 +230,7 @@ Rough filter:
 
 - **1.65 crore** GST businesses. **78.5 million** registered MSMEs. **~535 million** WhatsApp users.
 - The intersection of these three: a small trader in Kanpur or Surat who files GST, has a CA, and uses WhatsApp daily. This person has no software. Their CA has inadequate software. **Both are underserved.**
-- The total cost of GST non-compliance (late fees, blocked ITC, notice-handling) runs to **₹2,000+ crore/year nationally** in just late fees alone — this is direct financial loss that a product like Munim.ai can protect against.
+- The total cost of GST non-compliance (late fees, blocked ITC, notice-handling) runs to **₹2,000+ crore/year nationally** in just late fees alone — this is direct financial loss that a product like Munim-AI can protect against.
 - The CA-as-distribution-channel model means **customer acquisition cost per trader is near zero** — the CA brings their clients. Onboarding one CA = onboarding 20–30 traders.
 - **India Tax Management Software** market projected to reach ~$1.37B by 2033, growing at ~12% CAGR.
 

@@ -1,5 +1,5 @@
 """
-Munim.ai — Gemini AI Service
+Munim-AI — Gemini AI Service
 Handles: Vision extraction, Hindi text generation, embeddings.
 """
 

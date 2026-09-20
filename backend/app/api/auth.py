@@ -89,13 +89,13 @@ async def request_otp(data: OTPRequest):
         lang = res_ca.data[0].get("language_pref") or "en"
         
     if lang == "hi":
-        msg = f"Aapka Munim.ai verification code hai: *{otp}*. Ise kisi ke saath share na karein."
+        msg = f"Aapka Munim-AI verification code hai: *{otp}*. Ise kisi ke saath share na karein."
     elif lang == "mr":
-        msg = f"Tumcha Munim.ai verification code aahe: *{otp}*. Ha code konashihi share karu naka."
+        msg = f"Tumcha Munim-AI verification code aahe: *{otp}*. Ha code konashihi share karu naka."
     elif lang == "gu":
-        msg = f"Tamaro Munim.ai verification code chhe: *{otp}*. Aa code koi pan sathe share na karo."
+        msg = f"Tamaro Munim-AI verification code chhe: *{otp}*. Aa code koi pan sathe share na karo."
     else:
-        msg = f"Your Munim.ai verification code is: *{otp}*. Do not share this with anyone."
+        msg = f"Your Munim-AI verification code is: *{otp}*. Do not share this with anyone."
 
     # Send via WhatsApp
     await whatsapp.send_text_message(phone, msg)

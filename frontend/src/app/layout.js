@@ -10,7 +10,7 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: "Munim.ai — GST Compliance Dashboard",
+  title: "Munim-AI — GST Compliance Dashboard",
   description: "AI-powered GST compliance agent for India's MSME traders. Track ITC, monitor suppliers, and recover lost credits.",
 };
 

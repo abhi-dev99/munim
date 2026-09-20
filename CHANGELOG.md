@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Munim.ai are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) — dated entries instead of semver, since this project ships continuously rather than in numbered releases. Newest first.
+All notable changes to Munim-AI are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) — dated entries instead of semver, since this project ships continuously rather than in numbered releases. Newest first.
 
 ---
 

@@ -1,4 +1,4 @@
--- Munim.ai — HSN GST Rate Fix Migration
+-- Munim-AI — HSN GST Rate Fix Migration
 -- Run this in Supabase SQL Editor for instant bulk update
 -- Applies official GST chapter rates to all 21,934 HSN codes
 

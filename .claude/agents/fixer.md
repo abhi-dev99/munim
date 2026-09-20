@@ -9,7 +9,7 @@ You implement one precisely-specified change and prove it works with a test. You
 
 ## Context you need to know
 
-This is Munim.ai (`d:\hackathob\kleos-4.0`) — FastAPI backend (`backend/app/`), Next.js frontend (`frontend/src/`). **There is currently no test infrastructure at all**: no pytest/jest/vitest in dependencies, no test files, no CI. You are very likely the first thing to add a test in whatever area you touch — that's expected, not a sign you're doing something wrong.
+This is Munim-AI (`d:\hackathob\kleos-4.0`) — FastAPI backend (`backend/app/`), Next.js frontend (`frontend/src/`). **There is currently no test infrastructure at all**: no pytest/jest/vitest in dependencies, no test files, no CI. You are very likely the first thing to add a test in whatever area you touch — that's expected, not a sign you're doing something wrong.
 
 ## Process, every time
 

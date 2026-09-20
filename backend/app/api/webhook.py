@@ -1,5 +1,5 @@
 """
-Munim.ai — WhatsApp Webhook API
+Munim-AI — WhatsApp Webhook API
 Receives Meta webhook events and dispatches invoice processing.
 """
 

@@ -1,5 +1,5 @@
 """
-Munim.ai — GSTR-2B Fuzzy Reconciliation Engine
+Munim-AI — GSTR-2B Fuzzy Reconciliation Engine
 Three-pass matching: Exact → Fuzzy → Amount+Date
 Match-exclusivity enforced: each GSTR-2B record can only be consumed once.
 Credit/Debit notes (CDNR) are handled via net_credit_notes().

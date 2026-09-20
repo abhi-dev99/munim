@@ -154,7 +154,7 @@ export default function TraderApp() {
       {/* Header */}
       <header className="p-4 flex items-center justify-between border-b border-[var(--border-subtle)] bg-white sticky top-0 z-10">
         <div className="flex flex-col">
-          <h1 className="text-xl font-bold tracking-tight text-black">Munim.ai</h1>
+          <h1 className="text-xl font-bold tracking-tight text-black">Munim-AI</h1>
           <span className="text-[10px] uppercase font-bold text-[var(--green-primary)] tracking-widest">Active</span>
         </div>
         <button className="p-2 -mr-2 text-black" onClick={() => setSidebarOpen(true)}>
@@ -172,7 +172,7 @@ export default function TraderApp() {
             {/* Drawer header */}
             <div className="flex items-center justify-between p-5 border-b border-[var(--border-subtle)]">
               <div>
-                <p className="font-bold text-black text-base">Munim.ai</p>
+                <p className="font-bold text-black text-base">Munim-AI</p>
                 <p className="text-xs text-[var(--text-secondary)] truncate max-w-[180px]">{traderName}</p>
               </div>
               <button onClick={() => setSidebarOpen(false)} className="p-1.5 rounded hover:bg-[var(--bg-primary)] transition-colors">

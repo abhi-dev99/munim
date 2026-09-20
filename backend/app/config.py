@@ -1,5 +1,5 @@
 """
-Munim.ai — Application Configuration
+Munim-AI — Application Configuration
 All settings loaded from environment variables with sensible defaults.
 """
 
@@ -18,7 +18,7 @@ from functools import lru_cache
 class Settings(BaseSettings):
     # --- App ---
     environment: str = "development"
-    app_name: str = "Munim.ai"
+    app_name: str = "Munim-AI"
     app_version: str = "1.0.0"
     fastapi_port: int = 8000
     debug: bool = False

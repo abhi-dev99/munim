@@ -1,4 +1,4 @@
-# Munim.ai
+# Munim-AI
 
 **WhatsApp-first GST compliance co-pilot for Indian MSMEs**
 

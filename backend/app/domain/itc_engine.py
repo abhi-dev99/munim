@@ -1,5 +1,5 @@
 """
-Munim.ai — ITC Rules Engine
+Munim-AI — ITC Rules Engine
 Deterministic ITC eligibility computation per GST Act Sections 16 & 17(5).
 NO LLM involvement — pure rule-based logic.
 """

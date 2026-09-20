@@ -1,5 +1,5 @@
 """
-Munim.ai — HSN Code Validation Engine
+Munim-AI — HSN Code Validation Engine
 Exact lookup + pgvector semantic fallback for HSN code validation.
 """
 

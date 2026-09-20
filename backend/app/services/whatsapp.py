@@ -1,5 +1,5 @@
 """
-Munim.ai — WhatsApp Cloud API Service
+Munim-AI — WhatsApp Cloud API Service
 Handles: sending messages, receiving webhook events, downloading media.
 """
 

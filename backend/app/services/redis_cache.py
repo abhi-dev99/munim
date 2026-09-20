@@ -1,5 +1,5 @@
 """
-Munim.ai — Redis Cache Service (via Upstash Redis)
+Munim-AI — Redis Cache Service (via Upstash Redis)
 Caches: GSTIN lookups, conversation state, rate limiting.
 Falls back to in-memory dict when Redis is unavailable (for local dev/demo).
 """

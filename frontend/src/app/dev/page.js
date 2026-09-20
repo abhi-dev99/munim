@@ -172,7 +172,7 @@ export default function DevDashboard() {
       <header className="flex-none h-[65px] px-8 border-b border-gray-200 bg-white flex items-center justify-between sticky top-0 z-10 shadow-xs">
         <div className="flex items-center gap-3">
           <a href="/dev" className="flex items-center gap-2.5 text-gray-900 font-extrabold text-lg tracking-tight no-underline">
-            <span>Munim.ai</span>
+            <span>Munim-AI</span>
             <span className="text-xs text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
               DEV TELEMETRY
             </span>

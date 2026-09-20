@@ -104,7 +104,7 @@ export default function IMSPanel({ traderId, apiBase }) {
         <div>
           <h2 className="text-base font-bold text-gray-900">Invoice Management System (IMS)</h2>
           <p className="text-xs text-gray-400 mt-0.5">
-            Defaults are set by Munim.ai engine — override any decision before filing.
+            Defaults are set by Munim-AI engine — override any decision before filing.
           </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
