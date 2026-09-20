@@ -10,6 +10,16 @@
 
 ---
 
+> **Submitted to AWS First Commit (WeMakeDevs × AWS).** This branch (`aws`)
+> is a separate, isolated AWS build on top of the same product — Step
+> Functions, Lambda, Textract, Bedrock, DynamoDB, API Gateway, Cognito,
+> and more. **Start with [`aws/README.md`](aws/README.md)** for the AWS
+> architecture, service list, and how each Lambda maps to this product's
+> compliance pipeline. Everything below this banner is the original
+> product README (stack, USPs, GST logic) and applies regardless of cloud.
+
+---
+
 ## Core USPs
 
 ### 1. WhatsApp-First — Zero App Download
