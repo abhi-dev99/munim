@@ -185,7 +185,7 @@ munim/
 │   │   │                           # own DynamoDB data
 │   │   └── components/             # Shared UI components
 │   └── public/demo/                # GST simulation (standalone HTML/JS)
-└── demo/                           # Symlinked for direct serving
+└── gst-portal-automation/          # GST portal automation scripts (not tracked)
 ```
 
 ---
@@ -210,59 +210,20 @@ munim/
 
 ---
 
-## Getting Started
+## Live Deployment
 
-### Prerequisites
-- Python 3.12+, Node.js 18+, Supabase project, Gemini API key, Redis, Meta WhatsApp credentials
+This is a deployed, finished submission — not a local dev project.
 
-### Backend
-```bash
-cd backend
-cp .env.example .env   # Fill: GEMINI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_KEY,
-                        #       REDIS_URL, META_ACCESS_TOKEN, META_PHONE_NUMBER_ID,
-                        #       CLOUDMAILIN_SECRET, DEEPVUE_API_KEY
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-# OR: docker-compose up -d
-```
+- **Frontend (AWS App Runner):** https://eym73fepx3.ap-south-1.awsapprunner.com
+- **Live AWS pipeline view:** https://eym73fepx3.ap-south-1.awsapprunner.com/aws-pipeline
+  — reads real data straight off the Step Functions pipeline's own DynamoDB table.
 
-### Frontend
-```bash
-cd frontend
-cp .env.local.example .env.local   # Set NEXT_PUBLIC_API_URL=http://localhost:8000
-npm install && npm run dev
-```
-
-- CA Dashboard → `http://localhost:3000/dashboard`
-- Trader PWA → `http://localhost:3000/trader`
-- GST Simulation → `http://localhost:3000/demo`
-
-### Database
-Run `backend/schema.sql` in your Supabase SQL editor.
-
----
-
-## Production Deployment
-
-### Backend → Google Cloud Run
-1. Build and deploy the `backend/` Dockerfile to Cloud Run
-2. Set all env vars via `gcloud run services update --update-env-vars`
-3. Redeploys are a manual `gcloud run deploy` on the built image
-
-### Frontend → Vercel
-1. New Project → Import repo → Root Directory: `frontend/`
-2. Add env var: `NEXT_PUBLIC_API_URL=<your Cloud Run backend URL>`
-
-### WhatsApp Webhook
-- URL: `<your Cloud Run backend URL>/api/v1/webhook`
-- Verify Token: set in `.env`
-- Subscribe to: `messages`
-
-### AWS Deployment (this submission)
-The `aws/` build deploys separately, straight to AWS — no Railway/Vercel
-involved. See [`aws/README.md`](aws/README.md) and the per-component docs
-in `aws/*.md` (state machine, API Gateway, EventBridge, App Runner) for
-the exact `aws`/`docker` CLI commands used to stand each piece up.
+### AWS Deployment
+The `aws/` build deploys straight to AWS — Step Functions, Lambda, API
+Gateway, DynamoDB, App Runner. See [`aws/README.md`](aws/README.md) and
+the per-component docs in `aws/*.md` (state machine, API Gateway,
+EventBridge, App Runner) for the exact `aws`/`docker` CLI commands used
+to stand each piece up.
 
 ---
 

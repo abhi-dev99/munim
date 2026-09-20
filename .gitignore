@@ -59,3 +59,11 @@ backend/logs/
 
 # Auto-generated, not meant to be reviewed in the repo
 CHANGELOG.md
+
+# Local-only dev convenience -- deployment is AWS App Runner only,
+# this repo isn't meant to be cloned-and-run locally.
+start_dev.bat
+
+# Orphaned duplicate of frontend/public/demo/, not referenced by any
+# code or build config. Kept locally under its real name, not tracked.
+/gst-portal-automation/
