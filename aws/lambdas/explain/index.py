@@ -19,8 +19,7 @@ change, not a rewrite.
 
 Falls back to the deterministic `reason` string the rules engine already
 produced (not a generic error) on any Bedrock failure -- model access not
-granted, throttling, whatever. Mirrors the real backend's own Gemini
-fallback-chain philosophy.
+granted, throttling, whatever.
 """
 
 import logging

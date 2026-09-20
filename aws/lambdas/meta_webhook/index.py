@@ -8,34 +8,33 @@ every AWS-side setting is confirmed correct (event destination, SNS
 subscription, IAM), yet zero events ever arrive from Meta, across
 multiple real test messages over two days. Rather than keep waiting on
 an unexplained third-party relay, this Lambda receives Meta's webhook
-the same way the *existing* munim-ai FastAPI backend already does
+the same way this product's own FastAPI backend already does
 successfully (via ngrok) -- ported from backend/app/api/webhook.py and
 backend/app/services/whatsapp.py, same verification, same parsing,
 same media-download flow, just registered against a new AWS URL
 instead of an ngrok tunnel.
 
-Deliberately does NOT port the real backend's one known bug: its
+Deliberately does NOT port that codebase's one known bug: its
 signature check fails OPEN if META_APP_SECRET is empty and
-ENVIRONMENT=development (a documented P0 in that codebase). This
-Lambda always attempts real HMAC verification -- an empty or wrong
-secret fails CLOSED (every request rejected) rather than open.
+ENVIRONMENT=development (a documented P0). This Lambda always attempts
+real HMAC verification -- an empty or wrong secret fails CLOSED (every
+request rejected) rather than open.
 
 === Conversational layer (this version) ===
 
-Munim's WhatsApp bot -- onboarding, Q&A, voice notes -- exists today
-only in the real (Gemini + Groq) backend, running locally via ngrok.
-This is a SEPARATE, AWS-native port of that same conversational
-capability, built to run entirely on Bedrock/Transcribe/Polly instead,
-for this hackathon's AWS-native pipeline. It does not touch, call, or
-depend on the real backend at all -- fully isolated, so the real
-backend (which has its own, separate submission riding on it) keeps
-running untouched.
+The WhatsApp bot's conversational layer -- onboarding, Q&A, voice
+notes -- previously ran only through the FastAPI backend's Gemini/Groq
+stack over ngrok. This is an AWS-native port of that same conversational
+capability, built to run entirely on Bedrock/Transcribe/Polly instead.
+It runs on its own WhatsApp Business number, fully isolated from that
+backend's own webhook registration, so neither one can disturb the
+other.
 
 Ported behavior, not re-invented: language menu, onboarding step order
 (language -> name -> CA number -> GSTIN), and the four intents
 (itc_status, change_language, general_query, help) all mirror
-backend/app/api/webhook.py's real flow and backend/app/services/gemini.py's
-real prompts, adapted for Bedrock's Converse API.
+backend/app/api/webhook.py's flow and backend/app/services/gemini.py's
+prompts, adapted for Bedrock's Converse API.
 
 Voice notes are NOT handled inline here -- Transcribe polling can take
 up to ~90s, well past API Gateway's hard 29s integration timeout. Voice
@@ -93,8 +92,8 @@ BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "amazon.nova-micro-v1:0")
 
 # Bedrock-first, Gemini-fallback for the one intent that genuinely needs
 # an LLM (open-ended GST questions -- see _answer_general_query). Reuses
-# the real backend's own key pool (same GEMINI_API_KEY/_2 env var names,
-# explicit choice -- a single key hits rate limits even during testing)
+# the FastAPI backend's own key pool (same GEMINI_API_KEY/_2 env var
+# names, explicit choice -- a single key hits rate limits even during testing)
 # rather than provisioning a separate one. This is a plain HTTPS API call
 # to Google's Generative Language API, not Vertex AI -- no GCP project,
 # IAM, or infra involved, so it doesn't touch the "AWS-native pipeline"
@@ -111,7 +110,7 @@ EXTENSION_BY_MIME = {
     "application/pdf": "pdf",
 }
 
-# Languages, same 5-way split just added to the real backend tonight:
+# Languages, same 5-way split already used elsewhere in the product:
 # hi = Hinglish/Roman script, hi_dev = Devanagari/shuddh Hindi, en, mr, gu.
 LANGUAGE_NAMES = {
     "hi": "Hindi (Hinglish, Roman script, no Devanagari)",

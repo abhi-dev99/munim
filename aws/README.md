@@ -106,7 +106,7 @@ backlog in one pane. See `observability.md`.
 
 ## What's deliberately not built, and why
 
-Matching the real backend's own documented philosophy: an honest gap beats
+Matching this product's own documented philosophy: an honest gap beats
 a fabricated result.
 
 - **HSN validation checks existence only, not rate mismatch.** Textract's
@@ -144,6 +144,6 @@ partition key `trader_id`, sort key `invoice_id`).
 
 - [`api-gateway.md`](api-gateway.md) -- the upload endpoint, request shape, security layers
 - [`observability.md`](observability.md) -- X-Ray + the CloudWatch dashboard
-- [`eventbridge-scheduler.md`](eventbridge-scheduler.md) -- the scheduled deadline-alert job, ported from the real backend
+- [`eventbridge-scheduler.md`](eventbridge-scheduler.md) -- the scheduled deadline-alert job, ported from `backend/app/main.py`'s APScheduler job
 - [`state-machine.json`](state-machine.json) -- the Step Functions definition
 - [`lambdas/`](lambdas/) -- every Lambda's source

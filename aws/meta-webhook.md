@@ -14,17 +14,17 @@ diagnosable further without AWS Support.
 
 Rather than keep waiting on an unexplained third-party relay,
 `munim-meta-webhook` receives Meta's WhatsApp Cloud API webhook
-**directly** -- the same way the real `munim-ai` FastAPI backend already
+**directly** -- the same way this product's own FastAPI backend already
 does successfully via ngrok (`backend/app/api/webhook.py` +
 `backend/app/services/whatsapp.py`). Ported logic, not re-derived:
 same GET verification handshake, same `X-Hub-Signature-256` HMAC
 check, same webhook payload shape, same Graph API media-download flow.
 
-**One deliberate improvement over the ported code**: the real
-backend's signature check fails *open* if `META_APP_SECRET` is empty
-and `ENVIRONMENT=development` (a documented P0 in that codebase). This
-Lambda never does that -- an empty or wrong secret fails **closed**
-(every request rejected), verified live.
+**One deliberate improvement over the ported code**: that codebase's
+signature check fails *open* if `META_APP_SECRET` is empty and
+`ENVIRONMENT=development` (a documented P0). This Lambda never does
+that -- an empty or wrong secret fails **closed** (every request
+rejected), verified live.
 
 ## Infra
 

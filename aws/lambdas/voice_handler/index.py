@@ -53,7 +53,7 @@ GRAPH_BASE_URL = f"https://graph.facebook.com/{META_API_VERSION}"
 BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "amazon.nova-micro-v1:0")
 
 # Bedrock-first, Gemini-fallback -- see munim-meta-webhook for the full
-# reasoning (plain HTTPS API call, no GCP infra, reuses the real
+# reasoning (plain HTTPS API call, no GCP infra, reuses the FastAPI
 # backend's own key pool since a single key hits rate limits even in
 # testing).
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")

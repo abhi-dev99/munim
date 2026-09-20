@@ -12,7 +12,7 @@ Ports that job's exact logic, not a re-derived guess:
   table scan) for items whose `itc_verdict.status` is `FIXABLE_BLOCKED`
   or `AT_RISK`.
 - Sum `itc_verdict.itc_blocked + itc_verdict.itc_amount` across those --
-  same two fields the real backend sums (`itc_amount_blocked` +
+  same two fields the FastAPI backend sums (`itc_amount_blocked` +
   `itc_amount_eligible`), just DynamoDB's actual field names instead of
   Supabase's flat columns. Alert only fires if that sum is > 0.
 

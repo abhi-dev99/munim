@@ -20,8 +20,8 @@ data anyway.
 HSN validation is now PARTIALLY wired, against a real 22,616-row
 munim-hsn-codes table (the actual HSN_SAC.xlsx government master, with GST
 rates assigned via the same chapter/override table as
-backend/scripts/fix_hsn_rates.py -- so this agrees with the real backend,
-not a re-guessed rate). It only checks HSN *existence*, not rate mismatch:
+backend/scripts/fix_hsn_rates.py -- so this agrees with the product's
+existing rate data, not a re-guessed rate). It only checks HSN *existence*, not rate mismatch:
 Textract's AnalyzeExpense has no field for the tax rate actually applied
 on a line item (no CGST/SGST/IGST breakdown per line), so there is nothing
 to compare the master's correct rate against. Comparing "would-be-correct

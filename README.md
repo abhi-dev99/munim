@@ -69,7 +69,7 @@ live data, not a fixture.
 | **Amazon S3** | Invoice image storage, the pipeline's entry point |
 | **AWS KMS** | One customer-managed key encrypts S3, every DynamoDB table, and CloudTrail's log bucket |
 | **Amazon Cognito** | Provisioned for WhatsApp-OTP custom auth — not yet wired to a live auth path, stated honestly rather than overclaimed |
-| **EventBridge Scheduler** | Statutory GSTR deadline alerts on the 5th/10th/18th, matching the real backend's own cadence |
+| **EventBridge Scheduler** | Statutory GSTR deadline alerts on the 5th/10th/18th, matching the FastAPI backend's own cadence |
 | **SQS + DLQ** | Retry handling and dead-letter capture on the pipeline |
 | **SNS** | WhatsApp inbound event relay from the WABA |
 | **CloudWatch** | `munim-invoice-pipeline` dashboard — invocations, errors, Step Functions outcomes, DynamoDB capacity, DLQ backlog |

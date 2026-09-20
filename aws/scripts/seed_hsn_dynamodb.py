@@ -1,9 +1,10 @@
 """
 One-off seed script -- NOT part of the deployed Lambda. Reads the same
-HSN_SAC.xlsx government master data the real backend uses, applies the
-exact same chapter-rate + override table as backend/scripts/fix_hsn_rates.py
-(so the AWS pipeline's GST rates match the real product's, not a
-re-invented guess), and batch-writes every code into munim-hsn-codes.
+HSN_SAC.xlsx government master data the rest of the product uses, applies
+the exact same chapter-rate + override table as
+backend/scripts/fix_hsn_rates.py (so the AWS pipeline's GST rates agree
+with the product's existing rate data, not a re-invented guess), and
+batch-writes every code into munim-hsn-codes.
 """
 
 from decimal import Decimal
@@ -11,12 +12,12 @@ from decimal import Decimal
 import boto3
 import openpyxl
 
-XLSX_PATH = r"D:\hackathob\kleos-4.0\backend\HSN_SAC.xlsx"
+XLSX_PATH = "backend/HSN_SAC.xlsx"
 TABLE_NAME = "munim-hsn-codes"
 REGION = "ap-south-1"
 
 # Ported verbatim from backend/scripts/fix_hsn_rates.py -- same official
-# GST chapter schedule, so AWS's rate table agrees with the real backend's.
+# GST chapter schedule, so AWS's rate table agrees with the product's.
 CHAPTER_RATES = {
     0.0: ['01', '02', '05', '07', '08', '09', '10', '11', '12', '13', '14', '23', '26'],
     5.0: ['03', '04', '06', '15', '17', '25', '27', '31', '41', '50', '51', '52', '53', '54', '55', '60', '61', '62', '63', '89'],

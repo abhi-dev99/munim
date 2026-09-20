@@ -1,9 +1,7 @@
 # Frontend on AWS App Runner
 
-The existing Next.js frontend (`frontend/`), deployed to AWS App Runner
-as a second hosting target -- the existing Railway/Cloud Run deployment
-(the Gemini-hackathon submission's live stack) is untouched, unmodified,
-still running exactly as it was.
+The Next.js frontend (`frontend/`) deployed to AWS App Runner -- this
+submission's live frontend hosting.
 
 **Live URL**: `https://eym73fepx3.ap-south-1.awsapprunner.com`
 
@@ -11,7 +9,7 @@ still running exactly as it was.
 
 This deploys the *same* Docker image the project's own `frontend/Dockerfile`
 already builds -- same `NEXT_PUBLIC_API_URL` default
-(`https://munim-backend-1051889700424.us-central1.run.app`, their existing
+(`https://munim-backend-1051889700424.us-central1.run.app`, the existing
 Cloud Run backend), same build process, nothing rewritten. It is **not**
 wired to this AWS pipeline's own API Gateway -- that endpoint only has an
 invoice-upload route and WhatsApp webhooks today, none of the
@@ -44,7 +42,7 @@ honor) `ENV` values baked into the image itself for this specific
 binding. Worth knowing if this image is ever redeployed from a fresh
 service definition: the image's own `ENV HOSTNAME`/`PORT` alone isn't
 enough on App Runner specifically, even though it's sufficient on Cloud
-Run/Railway.
+Run.
 
 ## Updating
 
