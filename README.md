@@ -98,7 +98,7 @@ Score ≥ 70 → `FRAUD_FLAGGED`. Score 40–69 → soft flag for CA review.
 | GSTIN Validation | deepvue.tech API |
 | Fuzzy Matching | python-Levenshtein |
 | PDF Generation | WeasyPrint |
-| Deployment | Railway (backend) + Vercel (frontend) |
+| Deployment | Google Cloud Run (backend) + Vercel (frontend) — see [AWS Architecture](aws/README.md) below for this submission's separate AWS deployment |
 
 ---
 
@@ -113,7 +113,7 @@ Trader (WhatsApp / Email)
 Meta Cloud API / Cloudmailin Webhook
          │
          ▼
-FastAPI Backend (Railway)
+FastAPI Backend (Google Cloud Run)
          │
     LangGraph Pipeline
     ├── 1. Gemini Vision OCR → InvoiceJSON
@@ -134,12 +134,26 @@ Supabase PostgreSQL
     └── Redis (session state / conversation context)
 ```
 
+### AWS Architecture (this submission)
+
+The `aws/` directory is a separate, parallel build of this same product's
+invoice pipeline — Step Functions, Lambda, Textract, Bedrock, DynamoDB,
+API Gateway, Cognito, and more. **See [`aws/README.md`](aws/README.md)**
+for the full service breakdown and how each Lambda maps to the pipeline
+above.
+
 ---
 
 ## Project Structure
 
 ```
-munim-ai/
+munim/
+├── aws/                            # This submission's AWS build
+│   ├── lambdas/                    # ingest, extract, compute_verdict,
+│   │                               # explain, finalize, meta_webhook,
+│   │                               # voice_handler, bedrock_healthcheck
+│   ├── state-machine.json          # Step Functions definition
+│   └── README.md                   # AWS architecture + service breakdown
 ├── backend/
 │   ├── app/
 │   │   ├── api/
@@ -155,7 +169,8 @@ munim-ai/
 │   │   │   ├── fraud.py            # 6-signal fraud scorer
 │   │   │   ├── reconciler.py       # 3-pass GSTR-2B reconciler
 │   │   │   ├── hsn.py              # HSN validator
-│   │   │   └── supplier_monitor.py # Supplier health scoring
+│   │   │   ├── supplier_monitor.py # Supplier health scoring
+│   │   │   └── network_intel.py    # Cross-tenant supplier intelligence
 │   │   ├── models/                 # Pydantic data models
 │   │   └── services/               # Supabase, WhatsApp, Gemini clients
 │   ├── schema.sql
@@ -164,6 +179,8 @@ munim-ai/
 │   ├── src/app/
 │   │   ├── dashboard/              # CA main dashboard
 │   │   ├── trader/                 # Trader PWA
+│   │   ├── aws-pipeline/           # Live view onto the AWS pipeline's
+│   │   │                           # own DynamoDB data
 │   │   └── components/             # Shared UI components
 │   └── public/demo/                # GST simulation (standalone HTML/JS)
 └── demo/                           # Symlinked for direct serving
@@ -225,20 +242,25 @@ Run `backend/schema.sql` in your Supabase SQL editor.
 
 ## Production Deployment
 
-### Backend → Railway
-1. New Project → Deploy from GitHub → Root Directory: `backend/`
-2. Add Redis from Railway marketplace
-3. Set all env vars in Railway → Variables
-4. Auto-deploys on every push to `main`
+### Backend → Google Cloud Run
+1. Build and deploy the `backend/` Dockerfile to Cloud Run
+2. Set all env vars via `gcloud run services update --update-env-vars`
+3. Redeploys are a manual `gcloud run deploy` on the built image
 
 ### Frontend → Vercel
 1. New Project → Import repo → Root Directory: `frontend/`
-2. Add env var: `NEXT_PUBLIC_API_URL=https://your-railway-app.up.railway.app`
+2. Add env var: `NEXT_PUBLIC_API_URL=<your Cloud Run backend URL>`
 
 ### WhatsApp Webhook
-- URL: `https://your-backend.up.railway.app/api/v1/webhook`
+- URL: `<your Cloud Run backend URL>/api/v1/webhook`
 - Verify Token: set in `.env`
 - Subscribe to: `messages`
+
+### AWS Deployment (this submission)
+The `aws/` build deploys separately, straight to AWS — no Railway/Vercel
+involved. See [`aws/README.md`](aws/README.md) and the per-component docs
+in `aws/*.md` (state machine, API Gateway, EventBridge, App Runner) for
+the exact `aws`/`docker` CLI commands used to stand each piece up.
 
 ---
 
@@ -246,4 +268,4 @@ Run `backend/schema.sql` in your Supabase SQL editor.
 
 ---
 
-*© 2026 Abhishek Saraf. All rights reserved. See LICENSE.*
+*See LICENSE.*
