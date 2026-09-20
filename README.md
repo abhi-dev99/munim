@@ -27,7 +27,15 @@ supplier weeks before the filing deadline, not on it.
 - **Built for scale, not a niche.** India has an estimated 6.3+ crore MSMEs and only ~1.4 crore GST-registered businesses with any real CA relationship today — the rest are priced out of compliance help entirely. A WhatsApp-first product, not an app they have to download, is the realistic way to reach the crores of Indian shopkeepers and small manufacturers this actually affects.
 
 The rest of this README covers the feature list, tech stack, and architecture in
-detail — see below.
+detail — jump to any section:
+
+- [Core USPs](#core-usps)
+- [Product Walkthrough](#product-walkthrough) — real screenshots of the live app
+- [Tech Stack](#tech-stack)
+- [Architecture](#architecture) · [AWS Architecture](#aws-architecture)
+- [Project Structure](#project-structure)
+- [API Reference](#api-reference)
+- [Live Deployment](#live-deployment) — the actual running URLs
 
 ---
 
