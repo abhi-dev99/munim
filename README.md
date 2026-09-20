@@ -5,7 +5,7 @@
 ![Status](https://img.shields.io/badge/Status-Active-success)
 ![AWS](https://img.shields.io/badge/Built%20for-AWS%20First%20Commit%20Hackathon-FF9900?logo=amazonaws&logoColor=white)
 ![AWS Services](https://img.shields.io/badge/AWS-Step%20Functions%20%7C%20Lambda%20%7C%20Textract%20%7C%20Bedrock%20%7C%20DynamoDB-FF9900?logo=amazonaws&logoColor=white)
-![Stack](https://img.shields.io/badge/Stack-FastAPI%20%7C%20Next.js%20%7C%20Supabase%20%7C%20Gemini-orange)
+![Stack](https://img.shields.io/badge/This%20Build-Lambda%20%2B%20DynamoDB%20%2B%20Textract%20%2B%20Bedrock-232F3E?logo=amazonaws&logoColor=FF9900)
 ![License](https://img.shields.io/badge/License-Proprietary-red)
 
 > Traders forward invoices via WhatsApp. Munim extracts, validates, fraud-checks, and reconciles them automatically. CAs get a clean action-driven dashboard instead of a pile of paper.
@@ -212,15 +212,17 @@ The screenshots below are the live, deployed app — not mockups.
 |---|---|
 | Backend | FastAPI, LangGraph, Python 3.12, Uvicorn |
 | Frontend | Next.js 16 (App Router), React 19, Tailwind CSS |
-| Database | Supabase (PostgreSQL) — multi-tenant isolation enforced app-layer, not via RLS |
-| AI / LLM | Google Gemini 2.5 Flash (Vision + Text) |
+| **Database (this submission, live)** | **Amazon DynamoDB** — 13 tables; both the invoice pipeline and the full CA dashboard run on it for this build, same FastAPI code, switched off Postgres via a backend adapter (`DATA_BACKEND`) rather than rewritten |
+| **Invoice OCR (this submission)** | **Amazon Textract** `AnalyzeExpense` — zero LLM involved |
+| **Verdict explanation (this submission)** | **Amazon Bedrock** (Nova Micro, cross-region) — turns an already-computed verdict into one plain-language sentence, never the decision itself |
+| AI / LLM (WhatsApp chat + non-AWS OCR path) | Google Gemini 2.5 Flash — voice/text Q&A on WhatsApp, and OCR only when not running the AWS-native pipeline above |
 | Messaging | Meta WhatsApp Cloud API |
 | Email Ingestion | Cloudmailin |
 | Cache / Sessions | Redis (Upstash) |
 | GSTIN Validation | deepvue.tech API |
 | Fuzzy Matching | python-Levenshtein |
 | PDF Generation | WeasyPrint |
-| Deployment (this submission) | Backend on Google Cloud Run, frontend on **AWS App Runner** — see [Live Deployment](#live-deployment) below. Full AWS-native pipeline (Step Functions, Lambda, Textract, Bedrock, DynamoDB) in [`aws/`](aws/README.md) |
+| Deployment (this submission) | **Frontend and entire backend on AWS** — App Runner (frontend), Lambda + DynamoDB (dashboard API), Step Functions + Lambda + Textract + Bedrock (invoice pipeline). See [Live Deployment](#live-deployment) and [`aws/README.md`](aws/README.md) |
 
 ---
 
@@ -237,19 +239,20 @@ Trader (WhatsApp / Email)                              Vendor (Email)
 Meta Cloud API / Cloudmailin Webhook ──────────────────────────
          │
          ▼
-FastAPI Backend (Google Cloud Run)
+FastAPI Backend (this submission: AWS Lambda, behind API Gateway /
+                  a Lambda Function URL — see AWS Architecture below)
          │
     LangGraph Pipeline
-    ├── 1. Gemini Vision OCR → InvoiceJSON
+    ├── 1. Vision OCR → InvoiceJSON      (this submission: Amazon Textract)
     ├── 2. GSTIN Validator (deepvue.tech)
-    ├── 3. HSN Validator (pgvector + Supabase)
+    ├── 3. HSN Validator
     ├── 4. ITC Rules Engine   ← no LLM
     ├── 5. Fraud Scorer       ← no LLM
     └── 6. GSTR-2B Reconciler ← no LLM
          │
          ▼
-Supabase PostgreSQL
-    ├── CA Dashboard (Next.js, deployed to AWS App Runner for this submission)
+Database (this submission: Amazon DynamoDB — see Tech Stack above)
+    ├── CA Dashboard (Next.js, deployed to AWS App Runner)
     │     ├── Action Queue
     │     ├── Supplier Health
     │     ├── Reports Panel
@@ -322,14 +325,6 @@ competence, inventing coverage doesn't.
   narrowly, see the minimization above) process data outside India for
   that slice of calls. Minimized, not eliminated — a formal Data
   Processing Agreement review with both hasn't been done.
-- **One live config gap, not a code gap.** The main product's Cloud Run
-  backend currently runs with `ENVIRONMENT=development`, which — by
-  design, see `services/whatsapp.py`'s own comment — activates a
-  documented dev-only bypass on the webhook signature check. The code
-  already fails closed correctly in production; the deployed environment
-  variable just hasn't been flipped yet. Fixing this needs a real
-  `META_APP_SECRET` set first (confirmed working), then the environment
-  flip — in that order, or WhatsApp breaks instead.
 
 ---
 
