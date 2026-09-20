@@ -2,7 +2,17 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, ShieldCheck, Zap, Smartphone } from "lucide-react";
+import { Loader2, ShieldCheck, Zap, Smartphone, Sparkles } from "lucide-react";
+
+// This build's lucide-react doesn't ship a Github icon export -- a plain
+// inline mark avoids depending on one.
+function GithubMark({ size = 16, className = "" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.09 3.29 9.4 7.86 10.93.58.1.79-.25.79-.56 0-.27-.01-1.17-.02-2.12-3.2.7-3.88-1.36-3.88-1.36-.52-1.34-1.28-1.69-1.28-1.69-1.04-.72.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.75 2.7 1.25 3.36.96.1-.74.4-1.25.72-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.1 11.1 0 0 1 5.8 0c2.2-1.49 3.18-1.18 3.18-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.42-2.69 5.39-5.25 5.68.41.36.78 1.06.78 2.14 0 1.55-.01 2.79-.01 3.17 0 .31.21.67.8.56A10.51 10.51 0 0 0 23.5 12c0-6.35-5.15-11.5-11.5-11.5Z" />
+    </svg>
+  );
+}
 
 // AWS Lambda + DynamoDB dashboard backend takes priority when built with
 // NEXT_PUBLIC_AWS_DASHBOARD_API_URL set; empty (the default) falls straight
@@ -49,6 +59,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [roleChoices, setRoleChoices] = useState([]);
+  const [demoLoading, setDemoLoading] = useState(false);
 
   useEffect(() => {
     // Auto-redirect if already logged in (need BOTH token and trader data)
@@ -151,6 +162,59 @@ export default function LoginPage() {
     }
   };
 
+  // One-click path for judges: runs the same request-otp + verify-otp calls
+  // the manual form does, back to back with the fixed demo credentials, so
+  // there's no OTP screen to sit through. Everything downstream (role
+  // storage, the dual-role picker, the mobile-vs-desktop destination) is
+  // identical to a real login -- this is not a separate code path, just a
+  // shortcut into the same one.
+  const handleDemoLogin = async () => {
+    setDemoLoading(true);
+    setError("");
+    const DEMO_NUMBER = "1234567890";
+    const DEMO_OTP = "123456";
+
+    try {
+      const otpRes = await fetch(`${API_BASE}/api/v1/auth/request-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mobile_number: DEMO_NUMBER }),
+      });
+      if (!otpRes.ok) {
+        const d = await otpRes.json().catch(() => ({}));
+        throw new Error(d.detail || "Demo login is temporarily unavailable.");
+      }
+
+      const verifyRes = await fetch(`${API_BASE}/api/v1/auth/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mobile_number: DEMO_NUMBER, otp: DEMO_OTP }),
+      });
+      const data = await verifyRes.json();
+      if (!verifyRes.ok) {
+        throw new Error(data.detail || "Demo login is temporarily unavailable.");
+      }
+
+      if (data.trader) localStorage.setItem("munim_auth_trader", JSON.stringify(data.trader));
+      if (data.token) localStorage.setItem("munim_auth_token", data.token);
+
+      setMobileNumber(DEMO_NUMBER);
+      const roles = data.roles || [];
+      if (roles.length > 1) {
+        setRoleChoices(roles);
+        setStep(3);
+        setDemoLoading(false);
+        return;
+      }
+      const role = roles[0] || "trader";
+      localStorage.setItem("munim_auth_role", role);
+      router.push(destinationFor(role === "trader"));
+    } catch (err) {
+      setError(err.message);
+      setDemoLoading(false);
+    }
+  };
+
   const handleChooseRole = (role) => {
     localStorage.setItem("munim_auth_role", role);
     router.push(destinationFor(role === "trader"));
@@ -159,19 +223,28 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex w-full">
       {/* Left Side: Marketing/Value Prop (White) */}
-      <div className="hidden lg:flex w-1/2 bg-white flex-col justify-center px-20">
+      <div className="hidden lg:flex w-1/2 bg-white flex-col justify-center px-20 py-12 overflow-y-auto">
         <div className="max-w-xl">
-          <div className="font-bold text-4xl tracking-tight text-black mb-10">
-            Munim-AI
+          <div className="flex items-center justify-between mb-8">
+            <div className="font-bold text-4xl tracking-tight text-black">
+              Munim-AI
+            </div>
+            <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full pl-3 pr-3.5 py-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Built for</span>
+              <img src="/logos/wemakedevs.svg" alt="WeMakeDevs" className="h-4 w-auto" />
+              <span className="text-gray-300 text-xs font-bold">×</span>
+              <img src="/logos/aws-logo.png" alt="AWS" className="h-4 w-auto" />
+            </div>
           </div>
-          <h1 className="text-6xl font-black text-black tracking-tighter leading-none mb-6">
+
+          <h1 className="text-5xl font-black text-black tracking-tighter leading-none mb-5">
             The CA in your pocket.
           </h1>
-          <p className="text-xl text-[var(--text-secondary)] font-medium mb-12 max-w-md">
+          <p className="text-lg text-[var(--text-secondary)] font-medium mb-10 max-w-md">
             Automate your GST compliance, instantly reconcile ITC, and never miss a filing deadline again.
           </p>
 
-          <div className="space-y-6">
+          <div className="space-y-5">
             <div className="flex items-start gap-4">
               <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
                 <Zap size={20} />
@@ -191,6 +264,23 @@ export default function LoginPage() {
               </div>
             </div>
           </div>
+
+          <div className="mt-12 pt-8 border-t border-gray-100">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-4">Idea &amp; concept validated by</p>
+            <div className="flex items-center gap-7 mb-8">
+              <img src="/logos/iimb-logo.png" alt="Indian Institute of Management Bangalore" className="h-6 w-auto opacity-90" />
+              <img src="/logos/csitm-logo.jpg" alt="Centre for Software and Information Technology Management" className="h-11 w-auto opacity-90" />
+            </div>
+            <a
+              href="https://github.com/abhi-dev99/munim/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-black transition-colors"
+            >
+              <GithubMark size={16} />
+              View source on GitHub
+            </a>
+          </div>
         </div>
       </div>
 
@@ -202,49 +292,67 @@ export default function LoginPage() {
 
           <div className="bg-[#171717] border border-[#2a2a2a] p-8 rounded-2xl shadow-2xl">
             {step === 1 ? (
-              <form onSubmit={handleRequestOtp} className="space-y-5">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-300 mb-2">
-                    Mobile Number
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Smartphone size={18} className="text-gray-500" />
-                    </div>
-                    <input
-                      type="tel"
-                      value={mobileNumber}
-                      onChange={(e) => setMobileNumber(e.target.value)}
-                      placeholder="Enter WhatsApp number"
-                      className="w-full pl-10 pr-4 py-3 bg-[#0a0a0a] border border-[#2a2a2a] text-white rounded-lg focus:ring-2 focus:ring-[#25D366] focus:border-transparent outline-none transition-all placeholder-gray-600 font-medium"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {error && <p className="text-red-400 text-xs font-bold bg-red-400/10 p-2 rounded">{error}</p>}
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3 bg-white text-black font-bold rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {loading ? <Loader2 size={18} className="animate-spin" /> : "Send OTP via WhatsApp"}
-                </button>
-
+              <>
                 {/* Public demo access -- this build's own seed data (5 real
                     clients, real reconciled invoices), not a real trader's
-                    account. Shown plainly rather than auto-filled/auto-
-                    submitted, so it's obvious this is a demo path someone is
-                    deliberately choosing, not a hidden bypass. */}
+                    account. One click runs the same request-otp + verify-otp
+                    calls the form below does, with the fixed demo
+                    credentials, so a judge never has to sit through the OTP
+                    step. The number/OTP are still shown under the manual
+                    form for anyone who'd rather type them by hand. */}
                 <button
                   type="button"
-                  onClick={() => setMobileNumber("1234567890")}
-                  className="w-full text-xs text-gray-400 hover:text-white border border-dashed border-[#2a2a2a] hover:border-gray-500 rounded-lg py-2.5 transition-colors"
+                  onClick={handleDemoLogin}
+                  disabled={demoLoading}
+                  className="w-full py-3.5 bg-gradient-to-r from-[#25D366] to-[#1fa855] text-black font-bold rounded-lg hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-[#25D366]/10"
                 >
-                  Judging? Try the live demo — number <span className="text-gray-200 font-mono">1234567890</span>, OTP <span className="text-gray-200 font-mono">123456</span>
+                  {demoLoading ? <Loader2 size={18} className="animate-spin" /> : <><Sparkles size={18} /> Try the Live Demo</>}
                 </button>
-              </form>
+                <p className="text-center text-[11px] text-gray-500 mt-2.5 mb-6">
+                  No signup — explore a real CA dashboard instantly
+                </p>
+
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="flex-1 h-px bg-[#2a2a2a]" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Or sign in</span>
+                  <div className="flex-1 h-px bg-[#2a2a2a]" />
+                </div>
+
+                <form onSubmit={handleRequestOtp} className="space-y-5">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-300 mb-2">
+                      Mobile Number
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Smartphone size={18} className="text-gray-500" />
+                      </div>
+                      <input
+                        type="tel"
+                        value={mobileNumber}
+                        onChange={(e) => setMobileNumber(e.target.value)}
+                        placeholder="Enter WhatsApp number"
+                        className="w-full pl-10 pr-4 py-3 bg-[#0a0a0a] border border-[#2a2a2a] text-white rounded-lg focus:ring-2 focus:ring-[#25D366] focus:border-transparent outline-none transition-all placeholder-gray-600 font-medium"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {error && <p className="text-red-400 text-xs font-bold bg-red-400/10 p-2 rounded">{error}</p>}
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-3 bg-white text-black font-bold rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {loading ? <Loader2 size={18} className="animate-spin" /> : "Send OTP via WhatsApp"}
+                  </button>
+
+                  <p className="text-center text-[11px] text-gray-500">
+                    Demo credentials — number <span className="text-gray-300 font-mono">1234567890</span>, OTP <span className="text-gray-300 font-mono">123456</span>
+                  </p>
+                </form>
+              </>
             ) : step === 2 ? (
               <form onSubmit={handleVerifyOtp} className="space-y-5">
                 <div>
