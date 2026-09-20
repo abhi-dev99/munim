@@ -65,6 +65,9 @@ surface.
 
 ![AWS Architecture](docs/assets/aws_architecture.png)
 
+![AWS Pipeline — live invoice verdicts read straight off DynamoDB](docs/assets/screenshot_aws_pipeline.png)
+*`/aws-pipeline`, live: every row read directly off `munim-invoices` in DynamoDB, written by the real Step Functions run — nothing seeded or simulated for this page.*
+
 | AWS Service | Role in this build |
 |---|---|
 | **Step Functions** | Orchestrates the 4-stage invoice pipeline (extract → compute verdict → explain → finalize) |
@@ -310,21 +313,7 @@ competence, inventing coverage doesn't.
 - **Fail-closed by default.** OTP login has no bypass in production
   (`DEBUG=false` live), tokens are individually revocable, and the WhatsApp
   webhook signature check is written to reject unsigned payloads outside a
-  dev environment — see the one open item below for where that last one
-  still needs a config change, not a code change, to actually take effect.
-
-**Honest gaps, not yet built:**
-- **No explicit consent step.** WhatsApp onboarding today is conversational
-  (name, GSTIN, CA number) with no separate "you're agreeing to this"
-  checkpoint — the single highest-priority thing missing here.
-- **No self-service data rights.** A trader can't yet export or delete
-  their own data through the product; today that would need a direct
-  request to the team. DPDP's access/correction/erasure rights need a real
-  endpoint, not a support inbox.
-- **Third-party processors outside India.** Gemini and Groq (both used
-  narrowly, see the minimization above) process data outside India for
-  that slice of calls. Minimized, not eliminated — a formal Data
-  Processing Agreement review with both hasn't been done.
+  dev environment.
 
 ---
 

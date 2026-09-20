@@ -37,6 +37,28 @@ four Lambdas, each doing exactly one job:
 A fifth Lambda, `munim-invoice-ingest`, sits between S3 and Step Functions:
 it writes an idempotent `RECEIVED` record and kicks off the execution.
 
+## The CA dashboard, on the same account
+
+The invoice pipeline above is half the submission. The other half is the
+**entire CA dashboard** -- Money Meter, Action Queue, My Practice, Supplier
+Trust, GSTR-2B upload/reconciliation, PDF reports -- running as a ninth
+Lambda, `munim-dashboard-api`: the same FastAPI code the product always
+ran (`backend/app/api/*.py`), behind Mangum, exposed through a public
+Lambda Function URL, reading and writing 9 more DynamoDB tables
+(`munim-dashboard-traders`, `munim-dashboard-invoices`, `munim-suppliers`,
+`munim-supplier-trader-links`, `munim-supplier-flags`,
+`munim-gstr2b-records`, `munim-reports`, `munim-preferences`,
+`munim-invoice-line-items`) alongside the pipeline's own four. A backend
+switch (`DATA_BACKEND`, `app/services/db.py`) is what let the same route
+handlers move off Postgres onto DynamoDB without a rewrite.
+
+The frontend (`frontend/`, this repo's Next.js app) talks to this Lambda
+directly when built with `NEXT_PUBLIC_AWS_DASHBOARD_API_URL` set, and
+runs on **AWS App Runner** -- see the root README's
+[Live Deployment](../README.md#live-deployment) for the URL and demo
+login. Reports still get their PDFs from S3, now served via presigned
+URL rather than a public object.
+
 ## Two ways in, on purpose
 
 **WhatsApp** is the real product's front door, and it's linked and
