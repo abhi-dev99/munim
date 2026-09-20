@@ -1,117 +1,22 @@
-"use client";
-
 import { authFetch } from "@/src/app/utils/api";
-import { useEffect, useRef, useState } from "react";
-import { X, CheckCircle2, AlertTriangle, ShieldAlert, FileText, Image as ImageIcon, ChevronLeft, ChevronRight, Check, Loader2 } from "lucide-react";
-import PanelState, { describeError } from "./PanelState";
-import ToastStack, { useToasts } from "./Toast";
-import useModalA11y from "./useModalA11y";
-import WhyBlocked from "./WhyBlocked";
+import { useEffect } from "react";
+import { X, CheckCircle2, AlertTriangle, ShieldAlert, FileText, Image as ImageIcon, ChevronLeft, ChevronRight, Check } from "lucide-react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-export default function InvoiceDetailModal({
-  invoice,
-  onClose,
-  onNext,
-  onPrev,
-  hasNext,
-  hasPrev,
-  loading = false,
-  error = null,
-  onRetry,
-}) {
-  const cardRef = useRef(null);
-  const { toasts, toast, dismissToast } = useToasts();
-  const [sending, setSending] = useState(null); // "email" | "whatsapp" | null
-
-  const hasInvoice = !!invoice && Object.keys(invoice).length > 0;
-  const isOpen = hasInvoice || loading || !!error;
-
-  // Escape, focus trapping and focus restoration now live in the shared hook;
-  // this handler keeps only the left/right paging between invoices.
+export default function InvoiceDetailModal({ invoice, onClose, onNext, onPrev, hasNext, hasPrev }) {
+  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e) => {
+      if (e.key === "Escape") onClose();
       if (e.key === "ArrowLeft" && hasPrev) onPrev();
       if (e.key === "ArrowRight" && hasNext) onNext();
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onNext, onPrev, hasNext, hasPrev]);
+  }, [onClose, onNext, onPrev, hasNext, hasPrev]);
 
-  useModalA11y(cardRef, { active: isOpen, onClose });
-
-  // One-click vendor communication. The result used to land in an OS alert
-  // box, which inside the WebView wrapper reads as a crash rather than a
-  // confirmation -- it is now an in-app toast, and the button is disabled for
-  // the duration so the vendor can't be messaged twice on a double click.
-  const notifyVendor = async (channel) => {
-    const path = channel === "email" ? "email-vendor" : "whatsapp-vendor";
-    const label = channel === "email" ? "Email" : "WhatsApp";
-    const vendor = invoice?.supplier_name || invoice?.gstin_supplier || "the vendor";
-    setSending(channel);
-    try {
-      const res = await authFetch(`${API_BASE}/api/v1/communicate/${path}/${invoice.id}`, { method: "POST" });
-      if (res.ok) {
-        toast(`${label} warning sent to ${vendor}.`, { variant: "success", title: "Vendor notified" });
-      } else {
-        const detail = await res
-          .json()
-          .then((d) => (typeof d?.detail === "string" ? d.detail : null))
-          .catch(() => null);
-        toast(detail || `The server refused the request (HTTP ${res.status}).`, {
-          variant: "error",
-          title: `${label} not sent`,
-        });
-      }
-    } catch (e) {
-      toast(describeError(e) || `Could not send the ${label.toLowerCase()} warning.`, {
-        variant: "error",
-        title: `${label} not sent`,
-      });
-    } finally {
-      setSending(null);
-    }
-  };
-
-  if (!isOpen) return null;
-
-  // Mounted, but the invoice itself is still in flight or never arrived. A
-  // blank overlay here is indistinguishable from a broken build, so say which.
-  if (!hasInvoice) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/70 p-2 md:p-8">
-        <button
-          onClick={onClose}
-          aria-label="Close invoice"
-          className="absolute top-4 right-4 md:top-8 md:right-8 z-[60] p-4 text-white/70 hover:text-white transition-all duration-300 ease-in-out"
-        >
-          <X size={32} aria-hidden="true" />
-        </button>
-        <div
-          ref={cardRef}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Invoice detail"
-          tabIndex={-1}
-          className="bg-white w-full max-w-md border border-gray-200 shadow-2xl rounded-none outline-none"
-        >
-          {error ? (
-            <PanelState
-              variant="inline"
-              state="error"
-              error={error}
-              title="Couldn't load this invoice"
-              message="The invoice could not be fetched. Nothing has been changed or lost — retry when you're ready."
-              onRetry={onRetry}
-            />
-          ) : (
-            <PanelState variant="inline" state="loading" rows={4} />
-          )}
-        </div>
-      </div>
-    );
-  }
+  if (!invoice) return null;
 
   const isAnalysisFailed = !invoice.gstin_supplier && !invoice.supplier_name && !invoice.invoice_number && !invoice.invoice_date;
 
@@ -167,44 +72,37 @@ export default function InvoiceDetailModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/70 p-2 md:p-8 transition-all duration-300 ease-in-out">
       {/* Outside Navigation - Close */}
-      <button onClick={onClose} aria-label="Close invoice detail" className="absolute top-4 right-4 md:top-8 md:right-8 z-[60] p-4 text-white/70 hover:text-white transition-all duration-300 ease-in-out">
-        <X size={32} aria-hidden="true" />
+      <button onClick={onClose} className="absolute top-4 right-4 md:top-8 md:right-8 z-[60] p-4 text-white/70 hover:text-white transition-all duration-300 ease-in-out">
+        <X size={32} />
       </button>
 
       {/* Outside Navigation - Prev */}
       {hasPrev && (
-        <button onClick={onPrev} aria-label="Previous invoice" className="hidden md:flex absolute left-8 z-[60] p-4 text-white/70 hover:text-white transition-all duration-300 ease-in-out hover:scale-110">
-          <ChevronLeft size={36} aria-hidden="true" />
+        <button onClick={onPrev} className="hidden md:flex absolute left-8 z-[60] p-4 text-white/70 hover:text-white transition-all duration-300 ease-in-out hover:scale-110">
+          <ChevronLeft size={36} />
         </button>
       )}
 
       {/* Outside Navigation - Next */}
       {hasNext && (
-        <button onClick={onNext} aria-label="Next invoice" className="hidden md:flex absolute right-8 z-[60] p-4 text-white/70 hover:text-white transition-all duration-300 ease-in-out hover:scale-110">
-          <ChevronRight size={36} aria-hidden="true" />
+        <button onClick={onNext} className="hidden md:flex absolute right-8 z-[60] p-4 text-white/70 hover:text-white transition-all duration-300 ease-in-out hover:scale-110">
+          <ChevronRight size={36} />
         </button>
       )}
 
       {/* Main Card */}
-      <div
-        ref={cardRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="invoice-detail-title"
-        tabIndex={-1}
-        className="bg-white rounded-2xl w-full max-w-5xl max-h-[95vh] overflow-hidden flex flex-col md:flex-row relative shadow-2xl border border-gray-200 outline-none"
-      >
+      <div className="bg-white rounded-2xl w-full max-w-5xl max-h-[95vh] overflow-hidden flex flex-col md:flex-row relative shadow-2xl border border-gray-200">
         
         {/* Mobile Navigation inside card if needed (kept minimal) */}
         <div className="md:hidden absolute bottom-4 right-4 z-20 flex gap-2 shadow-lg">
           {hasPrev && (
-            <button onClick={onPrev} aria-label="Previous invoice" className="p-2 bg-gray-900 text-white rounded-full">
-              <ChevronLeft size={20} aria-hidden="true" />
+            <button onClick={onPrev} className="p-2 bg-gray-900 text-white rounded-full">
+              <ChevronLeft size={20} />
             </button>
           )}
           {hasNext && (
-            <button onClick={onNext} aria-label="Next invoice" className="p-2 bg-black text-white rounded-none">
-              <ChevronRight size={20} aria-hidden="true" />
+            <button onClick={onNext} className="p-2 bg-black text-white rounded-none">
+              <ChevronRight size={20} />
             </button>
           )}
         </div>
@@ -220,10 +118,9 @@ export default function InvoiceDetailModal({
               />
             ) : (
               <div className="w-full h-full relative group flex items-center justify-center overflow-hidden bg-black/5 p-4">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={invoice.image_url}
-                  alt={`Scanned invoice ${invoice.invoice_number || "document"} from ${invoice.supplier_name || invoice.gstin_supplier || "an unknown supplier"}`}
+                  alt="Invoice Document"
                   className="w-full h-full object-contain "
                 />
                 <a 
@@ -273,7 +170,7 @@ export default function InvoiceDetailModal({
               <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1 block">
                 {isAnalysisFailed ? "Scan Failed" : "Supplier"}
               </span>
-              <h2 id="invoice-detail-title" className="text-3xl md:text-4xl font-black text-black tracking-tighter uppercase leading-none break-words">
+              <h2 className="text-3xl md:text-4xl font-black text-black tracking-tighter uppercase leading-none break-words">
                 {invoice.supplier_name || invoice.gstin_supplier || "UNKNOWN SUPPLIER"}
               </h2>
               <div className="mt-1 text-sm font-bold text-[var(--text-secondary)] uppercase tracking-widest">
@@ -319,26 +216,16 @@ export default function InvoiceDetailModal({
             {/* ITC Status & Block Reason */}
             <h3 className="text-[10px] uppercase font-bold text-[var(--text-secondary)] tracking-widest mb-2 border-b border-[var(--border-subtle)] pb-1">Compliance Verdict</h3>
             
-            <div className="mb-3 bg-gray-50 border border-gray-100 rounded-none">
-              <div className="flex items-start gap-2 p-3">
-                <div className="mt-0.5">
-                  {getStatusIcon(invoice.itc_status)}
-                </div>
-                <div>
-                  <p className="text-sm font-black text-black">{getStatusLabel(invoice.itc_status)}</p>
-                  {invoice.itc_block_reason && !isAnalysisFailed && (
-                    <p className="text-xs font-medium text-[var(--text-secondary)] mt-0.5">{invoice.itc_block_reason}</p>
-                  )}
-                </div>
+            <div className="flex items-start gap-2 mb-3 p-3 bg-gray-50 border border-gray-100 rounded-none">
+              <div className="mt-0.5">
+                {getStatusIcon(invoice.itc_status)}
               </div>
-
-              {/* The clause of the Act behind that verdict. Collapsed by
-                  default and fetched on open: a CA opening twenty invoices
-                  should not pay for twenty explanations they did not ask for.
-                  An invoice whose analysis failed has no verdict to justify. */}
-              {!isAnalysisFailed && (
-                <WhyBlocked invoiceId={invoice.id} apiBase={API_BASE} />
-              )}
+              <div>
+                <p className="text-sm font-black text-black">{getStatusLabel(invoice.itc_status)}</p>
+                {invoice.itc_block_reason && !isAnalysisFailed && (
+                  <p className="text-xs font-medium text-[var(--text-secondary)] mt-0.5">{invoice.itc_block_reason}</p>
+                )}
+              </div>
             </div>
 
             {invoice.fraud_score > 0 && !isAnalysisFailed && (
@@ -372,31 +259,43 @@ export default function InvoiceDetailModal({
                   This vendor has not filed this invoice in their GSTR-1. Send them a warning to file it immediately.
                 </p>
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => notifyVendor("email")}
-                    disabled={!invoice.supplier_email || sending !== null}
-                    aria-label={
-                      invoice.supplier_email
-                        ? `Email a GSTR-1 filing warning to ${invoice.supplier_name || "this vendor"}`
-                        : "Email warning unavailable — no vendor email address on record"
-                    }
-                    className={`flex-1 inline-flex items-center justify-center gap-1.5 py-2 text-xs font-bold uppercase tracking-wider rounded-none disabled:opacity-60 ${invoice.supplier_email ? 'bg-black text-white hover:bg-gray-800' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
+                  <button 
+                    onClick={async () => {
+                      try {
+                        const res = await authFetch(`${API_BASE}/api/v1/communicate/email-vendor/${invoice.id}`, { method: 'POST' });
+                        if (res.ok) {
+                          alert("Warning Email sent successfully!");
+                        } else {
+                          const err = await res.json();
+                          alert(`Failed to send email: ${err.detail}`);
+                        }
+                      } catch (e) {
+                        alert("Failed to send email");
+                      }
+                    }}
+                    disabled={!invoice.supplier_email}
+                    className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-none ${invoice.supplier_email ? 'bg-black text-white hover:bg-gray-800' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
                   >
-                    {sending === "email" && <Loader2 size={13} className="animate-spin" aria-hidden="true" />}
-                    {sending === "email" ? "Sending…" : "Email Warning"}
+                    Email Warning
                   </button>
-                  <button
-                    onClick={() => notifyVendor("whatsapp")}
-                    disabled={!invoice.supplier_phone || sending !== null}
-                    aria-label={
-                      invoice.supplier_phone
-                        ? `Send a WhatsApp GSTR-1 filing warning to ${invoice.supplier_name || "this vendor"}`
-                        : "WhatsApp warning unavailable — no vendor phone number on record"
-                    }
-                    className={`flex-1 inline-flex items-center justify-center gap-1.5 py-2 text-xs font-bold uppercase tracking-wider rounded-none disabled:opacity-60 ${invoice.supplier_phone ? 'bg-[#25D366] text-white hover:bg-[#128C7E]' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
+                  <button 
+                    onClick={async () => {
+                      try {
+                        const res = await authFetch(`${API_BASE}/api/v1/communicate/whatsapp-vendor/${invoice.id}`, { method: 'POST' });
+                        if (res.ok) {
+                          alert("WhatsApp Warning sent successfully!");
+                        } else {
+                          const err = await res.json();
+                          alert(`Failed to send WhatsApp: ${err.detail}`);
+                        }
+                      } catch (e) {
+                        alert("Failed to send WhatsApp");
+                      }
+                    }}
+                    disabled={!invoice.supplier_phone}
+                    className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-none ${invoice.supplier_phone ? 'bg-[#25D366] text-white hover:bg-[#128C7E]' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
                   >
-                    {sending === "whatsapp" && <Loader2 size={13} className="animate-spin" aria-hidden="true" />}
-                    {sending === "whatsapp" ? "Sending…" : "WhatsApp Warning"}
+                    WhatsApp Warning
                   </button>
                 </div>
               </div>
@@ -405,18 +304,16 @@ export default function InvoiceDetailModal({
             {/* CA Actions */}
             <div className="mt-auto pt-4">
               <div className="flex gap-2">
-                <button
-                  type="button"
+                <button 
                   onClick={() => {/* Integration for mark resolved could go here */ onClose()}}
                   className="flex-1 bg-black text-white py-2.5 rounded-none font-bold text-xs hover:bg-gray-800 transition-colors flex items-center justify-center gap-1.5"
                 >
-                  <Check size={14} aria-hidden="true" /> Mark as Resolved
+                  <Check size={14} /> Mark as Resolved
                 </button>
-                <button
-                  type="button"
+                <button 
                   className="flex-1 bg-white text-black border border-gray-300 py-2.5 rounded-none font-bold text-xs hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5"
                 >
-                  <AlertTriangle size={14} aria-hidden="true" /> Flag for Review
+                  <AlertTriangle size={14} /> Flag for Review
                 </button>
               </div>
             </div>
@@ -424,8 +321,6 @@ export default function InvoiceDetailModal({
           </div>
         </div>
       </div>
-
-      <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

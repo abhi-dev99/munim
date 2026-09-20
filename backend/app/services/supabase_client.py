@@ -25,55 +25,16 @@ def get_supabase() -> Client:
 # --- Trader Operations ---
 
 async def get_trader_by_phone(phone: str) -> Optional[dict]:
-    """
-    Find a trader by WhatsApp number, whatever spelling it is stored under.
-
-    This used to be a bare `.eq("whatsapp_number", phone)`. Meta announces an
-    inbound sender as `919136875481`, but rows reach this table from CAs,
-    seed scripts and CSVs as ten bare digits or `+91 ...`, and an exact string
-    match never bridges the two. One trader in the live database -- the one
-    with 581 invoices -- was unreachable because of exactly that.
-
-    Precedence is deliberate and is what keeps this deterministic when two
-    rows hold the same number in different formats: the exact spelling
-    WhatsApp used wins, then the normalised international form, then the bare
-    local one. The row stored the way WhatsApp actually spells it owns the
-    handset; the others are legacy spellings of it.
-    """
-    from app.services.phone import match_variants
-
+    """Find a trader by WhatsApp number."""
     try:
         db = get_supabase()
-        for candidate in match_variants(phone) or [phone]:
-            response = db.table("traders").select("*").eq("whatsapp_number", candidate).execute()
-            rows = response.data or []
-            if rows:
-                if len(rows) > 1:
-                    # UNIQUE on whatsapp_number makes this unreachable today,
-                    # but say so loudly rather than picking silently if the
-                    # constraint is ever dropped.
-                    logger.warning(
-                        "Multiple traders stored under %s — using %s", candidate, rows[0].get("id")
-                    )
-                return rows[0]
-        return None
-    except Exception as e:
-        logger.error(f"Failed to get trader by phone: {e}")
-        return None
-
-async def get_trader_by_short_code(short_code: str) -> Optional[dict]:
-    """Find a trader by their QR-onboarding short_code (used as the CA
-    identifier in JOIN-<code> deep links)."""
-    try:
-        db = get_supabase()
-        response = db.table("traders").select("*").eq("short_code", short_code).execute()
+        response = db.table("traders").select("*").eq("whatsapp_number", phone).execute()
         if response.data and len(response.data) > 0:
             return response.data[0]
         return None
     except Exception as e:
-        logger.error(f"Failed to get trader by short code: {e}")
+        logger.error(f"Failed to get trader by phone: {e}")
         return None
-
 
 async def get_trader_by_inbound_email(email: str) -> Optional[dict]:
     """Find a trader by their inbound virtual email address."""
@@ -181,34 +142,6 @@ async def get_invoices_for_trader(trader_id: str, month: int = None, year: int =
         return response.data or []
     except Exception as e:
         logger.error(f"Failed to get invoices: {e}")
-        return []
-
-
-async def get_recent_invoice_locations(trader_id: str, limit: int = 20, exclude_invoice_id: str = None) -> list[dict]:
-    """
-    This trader's most recent invoices that have a GPS tag (backend/
-    migrations/add_invoice_geolocation.sql — nullable, most invoices won't
-    have one). Feeds webhook.py's scan-location anomaly check only; never
-    used for anything ITC/compliance-related.
-    """
-    try:
-        db = get_supabase()
-        response = (
-            db.table("invoices")
-            .select("id, latitude, longitude")
-            .eq("trader_id", trader_id)
-            .not_.is_("latitude", "null")
-            .not_.is_("longitude", "null")
-            .order("created_at", desc=True)
-            .limit(limit + 1)  # +1 headroom: the just-inserted row can itself be in this page
-            .execute()
-        )
-        rows = response.data or []
-        if exclude_invoice_id:
-            rows = [r for r in rows if r.get("id") != exclude_invoice_id]
-        return rows[:limit]
-    except Exception as e:
-        logger.error(f"Failed to get recent invoice locations: {e}")
         return []
 
 
@@ -400,14 +333,7 @@ async def get_itc_summary(trader_id: str) -> dict:
             elif status in ["FIXABLE_BLOCKED", "FRAUD_FLAGGED", "DUPLICATE"]:
                 buckets["fixable_blocked"] += blocked
             elif status == "AT_RISK":
-                # itc_engine records an AT_RISK verdict as eligible=total_tax,
-                # blocked=0 -- the credit is real, merely exposed. Rows written
-                # by the seed scripts use the opposite convention and put the
-                # figure in blocked. Reading only `eligible` reported this
-                # bucket as roughly nil for 103 of the 104 AT_RISK invoices in
-                # the database. Whichever column carries it is the number,
-                # because each convention leaves the other at zero.
-                buckets["at_risk"] += eligible or blocked
+                buckets["at_risk"] += eligible
             elif status == "MISSED":
                 buckets["missed"] += eligible
             elif status == "INELIGIBLE":

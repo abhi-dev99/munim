@@ -6,8 +6,6 @@ import { useState, useEffect, useRef } from "react";
 import { AlertTriangle, CheckCircle2, XCircle, Search, ChevronUp, ChevronDown, ArrowUpRight, X, FileText, ShieldAlert, ChevronRight } from "lucide-react";
 import InvoiceDetailModal from "./InvoiceDetailModal";
 import { useLanguage } from "../context/LanguageContext";
-import PanelState from "./PanelState";
-import useModalA11y from "./useModalA11y";
 
 const STATUS_CONFIG = {
   GOOD:     { labelKey: "sup_good_standing", chip: "bg-emerald-50 text-emerald-700 border-emerald-200",  dot: "bg-emerald-500", bar: "bg-emerald-500" },
@@ -48,35 +46,23 @@ function SupplierInvoiceOverlay({ supplier, apiBase, traderId, onClose }) {
   const { t } = useLanguage();
   const [invoices, setInvoices]           = useState([]);
   const [loading, setLoading]             = useState(true);
-  const [error, setError]                 = useState(null);
-  const [reloadKey, setReloadKey]         = useState(0);
   const [selectedIndex, setSelectedIndex] = useState(null);
   const [transitioning, setTransitioning] = useState(false);
-  const overlayRef                        = useRef(null);
-
-  // InvoiceDetailModal renders *inside* this overlay, so two focus traps would
-  // fight over Tab and Escape. Stand down while the inner modal is up; the trap
-  // re-arms (and re-focuses the close button) when it closes.
-  useModalA11y(overlayRef, { active: selectedIndex === null, onClose });
 
   useEffect(() => {
     if (!traderId || !supplier) return;
     setLoading(true);
-    setError(null);
     authFetch(`${apiBase}/api/v1/dashboard/invoices/${traderId}`)
-      .then(r => {
-        if (!r.ok) throw new Error(`Server returned ${r.status} while loading this supplier's invoices.`);
-        return r.json();
-      })
+      .then(r => r.json())
       .then(data => {
         const all = (data.invoices || []).filter(
           inv => inv.gstin_supplier === supplier.gstin || inv.supplier_name === supplier.name
         ).sort((a, b) => new Date(b.processed_at) - new Date(a.processed_at));
         setInvoices(all);
       })
-      .catch(err => { setInvoices([]); setError(err); })
+      .catch(() => setInvoices([]))
       .finally(() => setLoading(false));
-  }, [supplier, traderId, apiBase, reloadKey]);
+  }, [supplier, traderId, apiBase]);
 
   function navigate(newIndex) {
     setTransitioning(true);
@@ -86,17 +72,10 @@ function SupplierInvoiceOverlay({ supplier, apiBase, traderId, onClose }) {
   const cfg = STATUS_CONFIG[supplier.status];
 
   return (
-    <div
-      ref={overlayRef}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="supplier-overlay-title"
-      tabIndex={-1}
-      className="fixed inset-0 z-40 flex items-center justify-center bg-gray-900/50 p-2 md:p-8 backdrop-blur-md transition-all duration-300 ease-in-out outline-none"
-    >
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-gray-900/50 p-2 md:p-8 backdrop-blur-md transition-all duration-300 ease-in-out">
       {/* Outside Navigation - Close */}
-      <button onClick={onClose} aria-label="Close supplier invoices" className="absolute top-4 right-4 md:top-8 md:right-8 z-[60] p-4 text-white/70 hover:text-white transition-all duration-300 ease-in-out">
-        <X size={32} aria-hidden="true" />
+      <button onClick={onClose} className="absolute top-4 right-4 md:top-8 md:right-8 z-[60] p-4 text-white/70 hover:text-white transition-all duration-300 ease-in-out">
+        <X size={32} />
       </button>
 
       {/* Main Card (Sharp Corners to match InvoiceDetailModal) */}
@@ -106,7 +85,7 @@ function SupplierInvoiceOverlay({ supplier, apiBase, traderId, onClose }) {
           <div className="flex items-center gap-3">
             <div className={`w-2.5 h-2.5 rounded-full ${cfg.dot}`} />
             <div>
-              <p id="supplier-overlay-title" className="font-bold text-gray-900 text-sm">{supplier.name}</p>
+              <p className="font-bold text-gray-900 text-sm">{supplier.name}</p>
               <p className="text-[10px] font-mono text-gray-400">{supplier.gstin}</p>
             </div>
             <span className={`ml-2 inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${cfg.chip}`}>
@@ -145,22 +124,11 @@ function SupplierInvoiceOverlay({ supplier, apiBase, traderId, onClose }) {
                 </div>
               ))}
             </div>
-          ) : error ? (
-            <PanelState
-              variant="inline"
-              state="error"
-              error={error}
-              title="Couldn't load these invoices"
-              onRetry={() => setReloadKey(k => k + 1)}
-            />
           ) : invoices.length === 0 ? (
-            <PanelState
-              variant="inline"
-              state="empty"
-              icon={FileText}
-              title={t("sup_no_invoices")}
-              message="No invoices from this supplier have been processed yet."
-            />
+            <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-2 py-20">
+              <FileText size={32} className="opacity-30" />
+              <p className="text-sm">{t("sup_no_invoices")}</p>
+            </div>
           ) : (
             <div className="divide-y divide-gray-100">
               {invoices.map((inv, idx) => {
@@ -230,8 +198,6 @@ export default function SupplierHealth({ traderId, apiBase, onSwitchTab }) {
   const { t } = useLanguage();
   const [suppliers, setSuppliers]     = useState([]);
   const [loading, setLoading]         = useState(true);
-  const [error, setError]             = useState(null);
-  const [reloadKey, setReloadKey]     = useState(0);
   const [search, setSearch]           = useState("");
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [sortField, setSortField]     = useState("health");
@@ -245,12 +211,8 @@ export default function SupplierHealth({ traderId, apiBase, onSwitchTab }) {
   useEffect(() => {
     if (!traderId) return;
     setLoading(true);
-    setError(null);
     authFetch(`${apiBase}/api/v1/dashboard/suppliers/${traderId}`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`Server returned ${r.status} while loading supplier health.`);
-        return r.json();
-      })
+      .then((r) => r.json())
       .then((data) => {
         const list = (data.suppliers || []).map((s) => ({
           id:            s.id,
@@ -266,9 +228,9 @@ export default function SupplierHealth({ traderId, apiBase, onSwitchTab }) {
         }));
         setSuppliers(list);
       })
-      .catch((err) => { setSuppliers([]); setError(err); })
+      .catch(() => setSuppliers([]))
       .finally(() => setLoading(false));
-  }, [traderId, apiBase, reloadKey]);
+  }, [traderId, apiBase]);
 
   const handleSort = (field) => {
     if (sortField === field) setSortDir(d => d === "asc" ? "desc" : "asc");
@@ -296,25 +258,13 @@ export default function SupplierHealth({ traderId, apiBase, onSwitchTab }) {
 
   if (loading) return (
     <div className="flex flex-col h-[calc(100vh-80px)] w-full">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-4 gap-3 mb-4">
         {[1,2,3,4].map(i => <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />)}
       </div>
       <div className="h-12 bg-gray-100 rounded-xl animate-pulse mb-6" />
       <div className="flex-1 space-y-3">
         {[1,2,3,4,5].map(i => <div key={i} className="h-14 bg-gray-50 rounded-lg animate-pulse" />)}
       </div>
-    </div>
-  );
-
-  if (error) return (
-    <div className="w-full pt-2">
-      <PanelState
-        state="error"
-        error={error}
-        title="Supplier health unavailable"
-        message="Continuous supplier monitoring could not reach the server. No trust scores have been lost — they are recomputed on every load."
-        onRetry={() => setReloadKey(k => k + 1)}
-      />
     </div>
   );
 
@@ -333,7 +283,7 @@ export default function SupplierHealth({ traderId, apiBase, onSwitchTab }) {
         <div className="flex flex-col h-[calc(100vh-120px)] w-full overflow-hidden">
           <div className="z-10 bg-[#f8fafc] pt-2 pb-4 space-y-4 flex-none">
             {/* Summary stat cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-4 gap-3">
           {cardOrder.map((f, idx) => (
             <button
               key={f}
@@ -343,7 +293,6 @@ export default function SupplierHealth({ traderId, apiBase, onSwitchTab }) {
               onDragOver={(e) => e.preventDefault()}
               onDragEnd={handleCardSort}
               onClick={() => setFilterStatus(f)}
-              aria-pressed={filterStatus === f}
               className={`text-left bg-white rounded-xl border p-3 transition-all hover:shadow-sm cursor-grab active:cursor-grabbing ${
                 filterStatus === f
                   ? "border-emerald-500 ring-1 ring-emerald-500"
@@ -363,7 +312,6 @@ export default function SupplierHealth({ traderId, apiBase, onSwitchTab }) {
             <input
               type="text"
               placeholder="Search supplier or GSTIN…"
-              aria-label="Search suppliers by name or GSTIN"
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981]/20"
@@ -374,8 +322,8 @@ export default function SupplierHealth({ traderId, apiBase, onSwitchTab }) {
         </div> {/* Close z-10 header container */}
 
         {/* Table */}
-        <div className="bg-white border border-gray-200 rounded-xl lg:overflow-hidden flex flex-col flex-1 lg:min-h-0 mb-4">
-          <div className="lg:overflow-auto flex-1">
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col flex-1 min-h-0 mb-4">
+          <div className="overflow-auto flex-1">
             <table className="w-full text-sm border-collapse relative">
               <thead className="sticky top-0 z-20 shadow-sm">
                 <tr className="border-b border-gray-100">

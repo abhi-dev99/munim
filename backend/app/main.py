@@ -101,7 +101,7 @@ async def _send_deadline_alerts():
     days_remaining = deadline_day - today.day
 
     # Get all traders with unresolved issues
-    traders = db.table("traders").select("id, whatsapp_number, name, push_token").execute()
+    traders = db.table("traders").select("id, whatsapp_number, name").execute()
     if not traders.data:
         return
 
@@ -131,14 +131,6 @@ async def _send_deadline_alerts():
             )
             await whatsapp.send_text_message(trader["whatsapp_number"], msg)
 
-            if trader.get("push_token"):
-                from app.services.push import send_push_notification
-                await send_push_notification(
-                    trader["push_token"],
-                    f"⏰ {filing_type} deadline in {days_remaining} days",
-                    f"₹{blocked_amount:,.0f} ITC at risk across {len(invoices.data)} unresolved invoice(s). Fix before the {deadline_day}th.",
-                )
-
     logger.info(f"Deadline alerts sent for {filing_type}")
 
 
@@ -152,7 +144,7 @@ app = FastAPI(
     lifespan=lifespan,
     docs_url=None,
     redoc_url=None,
-    openapi_url=None,  # disabled so the API schema isn't publicly enumerable; the custom /docs page below no longer resolves a schema as a result
+    openapi_url=None,  # the custom /docs page below no longer resolves a schema — see munim_SECURITY_AUDIT.md
 )
 
 @app.get("/docs", include_in_schema=False)
@@ -438,8 +430,6 @@ from app.api.admin import router as admin_router
 from app.api.email_webhook import router as email_webhook_router
 from app.api.auth import router as auth_router
 from app.api.communications import router as communications_router
-from app.api.practice import router as practice_router
-from app.api.vendor import router as vendor_router
 
 # Mount routers
 app.include_router(auth_router)
@@ -451,10 +441,6 @@ app.include_router(reports_router)
 app.include_router(privacy_router)
 app.include_router(admin_router)
 app.include_router(communications_router)
-app.include_router(practice_router)
-# Public, unauthenticated by design -- see app/api/vendor.py for why that is
-# safe and what the signed token does instead of a login.
-app.include_router(vendor_router)
 
 
 @app.get("/")

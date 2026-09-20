@@ -1,5 +1,5 @@
 "use client";
-import { authFetch, adminHeaders } from "@/src/app/utils/api";
+import { authFetch } from "@/src/app/utils/api";
 
 
 import { useState, useEffect, useRef } from "react";
@@ -12,15 +12,13 @@ import Sidebar from "../components/Sidebar";
 import InvoiceFeed from "../components/InvoiceFeed";
 import GSTR2BUpload from "../components/GSTR2BUpload";
 import ReportsPanel from "../components/ReportsPanel";
-import MissedITCPanel from "../components/MissedITCPanel";
-import PracticePanel from "../components/PracticePanel";
-import SupplierNetworkPanel from "../components/SupplierNetworkPanel";
 import GeminiKeysModal from "../components/GeminiKeysModal";
-import OnboardTraderModal from "../components/OnboardTraderModal";
 import { useLanguage } from "../context/LanguageContext";
 import {
   ChevronDown,
   Users,
+  ToggleLeft,
+  ToggleRight,
   Upload,
   AlertTriangle,
   CheckCircle2,
@@ -28,8 +26,6 @@ import {
   Globe,
   Lightbulb,
   Key,
-  Menu,
-  QrCode,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -284,7 +280,7 @@ import { useRouter } from "next/navigation";
 
 export default function Home() {
   const router = useRouter();
-  const { t, lang, changeLanguage, setProfileLanguage } = useLanguage();
+  const { t, lang, changeLanguage } = useLanguage();
   const [activeTab, setActiveTab] = useState("money-meter");
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -296,18 +292,7 @@ export default function Home() {
   const [activeTraderGstin, setActiveTraderGstin] = useState("");
   const [actionCount, setActionCount] = useState(0);
   const [showGeminiModal, setShowGeminiModal] = useState(false);
-  const [showOnboardModal, setShowOnboardModal] = useState(false);
-  // Same feature-detection trader/page.js's triggerScan() already uses --
-  // window.MunimNative only exists inside the native app's WebView (see
-  // mobile/modules/bridge.ts), never in a plain browser tab. The GST Portal
-  // button opens an external-site mockup in a new tab, which doesn't apply
-  // inside a WebView shell at all -- there's no "new tab" to open it into.
-  const [isNativeApp, setIsNativeApp] = useState(false);
-  useEffect(() => {
-    setIsNativeApp(typeof window !== "undefined" && window.MunimNative?.isAvailable === true);
-  }, []);
   const [geminiStatus, setGeminiStatus] = useState(null);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const [fullPrefs, setFullPrefs] = useState(null);
   const dragItem = useRef(null);
@@ -315,7 +300,7 @@ export default function Home() {
 
   useEffect(() => {
     const fetchGemini = () => {
-      authFetch(`${API_BASE}/api/v1/admin/gemini-keys`, { headers: adminHeaders() })
+      authFetch(`${API_BASE}/api/v1/admin/gemini-keys`)
         .then((r) => r.json())
         .then((d) => setGeminiStatus(d))
         .catch(() => {});
@@ -458,14 +443,8 @@ export default function Home() {
       return;
     }
     const authTrader = JSON.parse(authUser);
-    // The stored auth row is the full traders record from verify-otp, so it
-    // carries language_pref — the language this person already chose during
-    // WhatsApp onboarding. Without this the DB preference and the UI language
-    // stay two unconnected systems: correct language on WhatsApp, English in
-    // the app. An explicit in-app pick still wins; see setProfileLanguage.
-    setProfileLanguage(authTrader.language_pref);
     fetchTraders(authTrader.id);
-  }, [setProfileLanguage]);
+  }, []);
 
   useEffect(() => {
     if (traderId) fetchSummary(traderId);
@@ -570,8 +549,6 @@ export default function Home() {
   };
 
   const tabLabels = {
-    "practice":    t("nav_practice"),
-    "network":     t("net_title"),
     "money-meter": t("nav_money_meter"),
     "suppliers":   t("nav_supplier_trust"),
     "actions":     t("nav_action_queue"),
@@ -587,25 +564,16 @@ export default function Home() {
         traderId={traderId}
         apiBase={API_BASE}
         onTourClick={startTour}
-        mobileOpen={mobileNavOpen}
-        onMobileClose={() => setMobileNavOpen(false)}
       />
 
-      <main className="flex-1 md:ml-64 flex flex-col lg:overflow-hidden">
+      <main className="flex-1 ml-64 flex flex-col overflow-hidden">
         {/* Header — h-[65px] matches sidebar logo bar */}
-        <header className="flex-none h-[65px] px-4 md:px-6 border-b border-gray-200 bg-white flex items-center">
-          <div className="flex items-center justify-between w-full gap-2">
-            <div className="flex items-center gap-3 min-w-0">
-              <button
-                onClick={() => setMobileNavOpen(true)}
-                className="md:hidden flex-none p-1.5 -ml-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-                aria-label="Open menu"
-              >
-                <Menu size={20} />
-              </button>
-              <h1 className="text-base font-bold text-gray-900 truncate">{tabLabels[activeTab]}</h1>
+        <header className="flex-none h-[65px] px-6 border-b border-gray-200 bg-white flex items-center">
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-3">
+              <h1 className="text-base font-bold text-gray-900">{tabLabels[activeTab]}</h1>
               {activeBusinessName && (
-                <span className="hidden sm:inline-block text-xs text-gray-500 font-medium bg-gray-100 px-2 py-0.5 rounded-full truncate max-w-[180px]">
+                <span className="text-xs text-gray-500 font-medium bg-gray-100 px-2 py-0.5 rounded-full truncate max-w-[180px]">
                   {activeBusinessName}
                 </span>
               )}
@@ -613,22 +581,22 @@ export default function Home() {
                 <span
                   onClick={() => { navigator.clipboard.writeText(activeTraderGstin); }}
                   title="Click to copy GSTIN"
-                  className="hidden sm:inline text-[10px] font-mono font-bold text-gray-400 cursor-pointer hover:text-gray-600 transition-colors select-none"
+                  className="text-[10px] font-mono font-bold text-gray-400 cursor-pointer hover:text-gray-600 transition-colors select-none"
                 >
                   {activeTraderGstin}
                 </span>
               )}
             </div>
 
-            <div className="flex items-center gap-1.5 sm:gap-3 flex-none">
+            <div className="flex items-center gap-3">
               {/* Trader Selector */}
               <div className="relative">
                 <button
                   onClick={() => setTraderDropdown((v) => !v)}
-                  className="flex items-center gap-1.5 sm:gap-2 bg-white border border-gray-200 rounded-lg px-2 sm:px-3 py-2 hover:bg-gray-50 transition-colors shadow-sm"
+                  className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 hover:bg-gray-50 transition-colors shadow-sm"
                 >
                   <Users size={15} className="text-gray-400" />
-                  <span className="hidden sm:inline text-sm font-semibold text-gray-800 max-w-[140px] truncate">
+                  <span className="text-sm font-semibold text-gray-800 max-w-[140px] truncate">
                     {activeTraderName}
                   </span>
                   <ChevronDown size={13} className="text-gray-400" />
@@ -664,97 +632,69 @@ export default function Home() {
               </div>
 
 
-              {/* Onboard a new trader — QR code deep link into WhatsApp onboarding */}
+
+              {/* Composition toggle */}
               <button
-                onClick={() => setShowOnboardModal(true)}
+                onClick={() => setIsComposition(!isComposition)}
                 className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 hover:bg-gray-50 transition-colors shadow-sm"
-                title="Onboard a new trader via WhatsApp QR code"
               >
-                <QrCode size={15} className="text-gray-400" />
-                <span className="hidden sm:inline text-sm font-semibold text-gray-800">Onboard Trader</span>
+                {isComposition ? (
+                  <ToggleRight size={18} className="text-[#10b981]" />
+                ) : (
+                  <ToggleLeft size={18} className="text-gray-400" />
+                )}
+                <span className="text-sm font-semibold text-gray-800">{t("hdr_composition")}</span>
               </button>
 
-              {/* GST Portal button — opens the GST portal mockup for IMS +
-                  GSTR-3B filing in a new browser tab. Hidden entirely inside
-                  the native app: there's no "new tab" concept inside a
-                  WebView, and it was one of three header buttons that
-                  didn't fit a phone-width header at all. */}
-              {!isNativeApp && (
-                <a
-                  href={`/demo/index.html${traderId && traderId !== 'demo' ? `?traderId=${traderId}` : ''}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 bg-[#1a3a6c] text-white border border-[#1a3a6c] rounded-lg px-2 sm:px-3 py-2 hover:bg-[#15306e] transition-colors shadow-sm text-sm font-semibold"
-                  title="Open GST Portal — IMS, GSTR-2B & GSTR-3B filing"
-                >
-                  <Globe size={15} />
-                  <span className="hidden sm:inline">GST Portal</span>
-                </a>
-              )}
+              {/* GST Portal button — opens the GST portal mockup for IMS + GSTR-3B filing */}
+              <a
+                href={`/demo/index.html${traderId && traderId !== 'demo' ? `?traderId=${traderId}` : ''}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 bg-[#1a3a6c] text-white border border-[#1a3a6c] rounded-lg px-3 py-2 hover:bg-[#15306e] transition-colors shadow-sm text-sm font-semibold"
+                title="Open GST Portal — IMS, GSTR-2B & GSTR-3B filing"
+              >
+                <Globe size={15} />
+                GST Portal
+              </a>
 
             </div>
           </div>
         </header>
 
         {loading ? (
-          <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 p-4 overflow-y-auto lg:overflow-hidden">
+          <div className="flex-1 grid grid-cols-3 gap-4 p-4">
             {/* Skeleton wireframe */}
-            <div className="lg:col-span-2 flex flex-col gap-4">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="col-span-2 flex flex-col gap-4">
+              <div className="grid grid-cols-3 gap-3">
                 {[1,2,3].map(i => <div key={i} className="h-32 bg-white border border-gray-200 rounded-xl animate-pulse" />)}
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 {[1,2,3].map(i => <div key={i} className="h-24 bg-white border border-gray-200 rounded-xl animate-pulse" />)}
               </div>
               <div className="h-48 bg-white border border-gray-200 rounded-xl animate-pulse" />
               <div className="flex-1 min-h-[160px] bg-white border border-gray-200 rounded-xl animate-pulse" />
             </div>
-            <div className="lg:col-span-1 flex flex-col gap-3">
+            <div className="col-span-1 flex flex-col gap-3">
               <div className="h-44 bg-white border border-gray-200 rounded-xl animate-pulse" />
               <div className="h-52 bg-white border border-gray-200 rounded-xl animate-pulse" />
             </div>
           </div>
         ) : (
-          /* The right rail holds widgets about the currently-selected client --
-             their supplier risk, their filing readiness, their GSTR-2B upload
-             box. The practice view is about the whole book and has no selected
-             client, so on that tab the rail is dropped and the content takes
-             the full width, rather than showing a CA one client's numbers
-             beside a list of all of them. */
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className={`flex-1 flex flex-col gap-4 p-4 overflow-y-auto lg:overflow-hidden ${
-              activeTab === "practice" ? "" : "lg:grid lg:grid-cols-[minmax(0,1fr)_280px]"
-            }`}
+            className="flex-1 grid gap-4 p-4 overflow-hidden"
+            style={{ gridTemplateColumns: "minmax(0, 1fr) 280px" }}
           >
             {/* Left (2/3) — Main content + Invoice Feed */}
             <motion.div
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.08, duration: 0.3 }}
-              className="flex flex-col gap-4 lg:min-h-0 lg:overflow-hidden pr-1"
+              className="flex flex-col gap-4 min-h-0 overflow-hidden pr-1"
             >
-              {/* The practice view is the only tab that is not about the
-                  currently-selected client -- it is about all of them. Picking
-                  a client from it switches the rest of the dashboard to that
-                  client, which is what a CA means by "open" here. */}
-              {activeTab === "practice" && (
-                <PracticePanel
-                  apiBase={API_BASE}
-                  onOpenClient={(client) => {
-                    setTraderId(client.trader_id);
-                    setActiveTraderName(client.name || "");
-                    setActiveBusinessName(client.business_name || "");
-                    setActiveTraderGstin(client.gstin || "");
-                    setActiveTab("money-meter");
-                  }}
-                />
-              )}
-              {activeTab === "network" && (
-                <SupplierNetworkPanel traderId={traderId} apiBase={API_BASE} />
-              )}
               {activeTab === "money-meter" && (
                 <MoneyMeter summary={summary} apiBase={API_BASE} isComposition={isComposition} onSwitchTab={setActiveTab} prefs={fullPrefs} onSortTop={handleMoneyMeterSortTop} onSortBottom={handleMoneyMeterSortBottom} />
               )}
@@ -768,33 +708,24 @@ export default function Home() {
                 <ReportsPanel traderId={traderId} apiBase={API_BASE} />
               )}
 
-              {/* Unclaimed credit sits on the money tab because it is a money
-                  figure, not a compliance one: credit the supplier already
-                  reported that this trader never took. */}
-              {activeTab === "money-meter" && (
-                <MissedITCPanel traderId={traderId} apiBase={API_BASE} />
-              )}
-
               {/* Invoice feed — always visible on money-meter tab */}
               {activeTab === "money-meter" && (
-                <div className="flex-1 lg:min-h-0 lg:overflow-hidden flex flex-col border border-gray-200 bg-white rounded-xl" style={{ minHeight: 280 }}>
+                <div className="flex-1 min-h-0 overflow-hidden flex flex-col border border-gray-200 bg-white rounded-xl" style={{ minHeight: 280 }}>
                   <InvoiceFeed traderId={traderId} apiBase={API_BASE} />
                 </div>
               )}
             </motion.div>
 
             {/* Right (1/3) — Supplier Risk + Filing Readiness */}
-            {activeTab !== "practice" && (
             <motion.div
               id="right-panel"
               initial={{ opacity: 0, x: 8 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.12, duration: 0.3 }}
-              className="flex flex-col gap-3 lg:min-h-0 lg:overflow-y-auto pr-1"
+              className="flex flex-col gap-3 min-h-0 overflow-y-auto pr-1"
             >
               {rightRailOrder.map((id, idx) => renderRightRailWidget(id, idx))}
             </motion.div>
-            )}
           </motion.div>
         )}
       </main>
@@ -808,12 +739,6 @@ export default function Home() {
       <GeminiKeysModal
         isOpen={showGeminiModal}
         onClose={() => setShowGeminiModal(false)}
-        apiBase={API_BASE}
-      />
-
-      <OnboardTraderModal
-        isOpen={showOnboardModal}
-        onClose={() => setShowOnboardModal(false)}
         apiBase={API_BASE}
       />
     </div>

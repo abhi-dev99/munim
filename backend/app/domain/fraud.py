@@ -42,16 +42,6 @@ class FraudScorer:
         6: 0.067, 7: 0.058, 8: 0.051, 9: 0.046,
     }
 
-    # Chi-squared critical value at 8 degrees of freedom (9 digit buckets - 1),
-    # p=0.05. Above this the digit distribution is unlikely to be chance.
-    BENFORD_CHI2_CRITICAL = 15.507
-
-    # Cohen's w (effect size) benchmarks: 0.1 small, 0.3 medium, 0.5 large.
-    # Significance alone says the deviation is real; effect size says how big
-    # it is. Only the latter should drive how many fraud points we award.
-    BENFORD_EFFECT_SMALL = 0.1
-    BENFORD_EFFECT_LARGE = 0.5
-
     # High-fraud sectors (by NIC/business category keywords)
     HIGH_FRAUD_SECTORS = [
         "iron", "steel", "scrap", "textile", "chemical",
@@ -126,40 +116,18 @@ class FraudScorer:
         total = len(leading_digits)
         observed = {d: counter.get(d, 0) / total for d in range(1, 10)}
 
-        # Chi-squared statistic. Pearson's χ² is defined over COUNTS, not
-        # proportions: summing (O-E)²/E over proportions yields the true
-        # statistic divided by N, which is not comparable to the count-based
-        # critical value below. Multiplying the proportion-form sum by N
-        # restores it — without this a 40-invoice set whose real χ² was 60
-        # read as 1.5 and sailed past the 15.507 threshold, so this signal
-        # (15 of 100 fraud points) effectively never fired.
-        chi_sq = total * sum(
+        # Chi-squared statistic
+        chi_sq = sum(
             ((observed.get(d, 0) - self.BENFORD_EXPECTED[d]) ** 2) / self.BENFORD_EXPECTED[d]
             for d in range(1, 10)
         )
 
-        if chi_sq > self.BENFORD_CHI2_CRITICAL:
-            # The corrected χ² grows linearly with sample size, so the old
-            # `chi_sq / 30 * 100` ramp now saturates the 15-point cap for
-            # essentially every trigger — a 100-invoice supplier with a mild
-            # wobble would score the same as a blatant fabricator. Separate the
-            # two questions the way forensic practice does: χ² > critical
-            # answers "is the deviation real?", and Cohen's w = sqrt(χ²/N),
-            # which is sample-size independent, answers "how big is it?".
-            # Points ramp linearly across w's small→large band; a triggered
-            # signal always contributes at least 1 so it is never worth zero.
-            effect_size = math.sqrt(chi_sq / total)
-            band = (effect_size - self.BENFORD_EFFECT_SMALL) / (
-                self.BENFORD_EFFECT_LARGE - self.BENFORD_EFFECT_SMALL
-            )
-            weight = self.WEIGHTS["benfords_law"]
-            severity = int(round(weight * min(1.0, max(0.0, band))))
+        # Critical value for 8 df, p=0.05 is 15.507
+        if chi_sq > 15.507:
+            severity = min(100, int(chi_sq / 30 * 100))
             signal.triggered = True
-            signal.score_contribution = max(1, min(severity, weight))
-            signal.detail = (
-                f"Benford's Law violation detected (χ²={chi_sq:.2f} over n={total}, "
-                f"critical={self.BENFORD_CHI2_CRITICAL}, effect size w={effect_size:.2f})"
-            )
+            signal.score_contribution = min(severity, self.WEIGHTS["benfords_law"])
+            signal.detail = f"Benford's Law violation detected (χ²={chi_sq:.2f}, critical=15.507)"
 
         return signal
 
@@ -321,26 +289,13 @@ class FraudScorer:
         gstin_validation: Optional[GSTINValidation] = None,
         historical_amounts: Optional[list[float]] = None,
         supplier_invoice_numbers: Optional[list[str]] = None,
-        hard_threshold: int = None,
-        soft_threshold: int = None,
+        hard_threshold: int = 70,
+        soft_threshold: int = 40,
     ) -> FraudResult:
         """
         Compute composite fraud score from all available signals.
         Returns FraudResult with individual signal breakdowns.
-
-        The two thresholds default to config.py's fraud_score_hard_threshold /
-        fraud_score_soft_threshold, which were declared but never read — the
-        literals here won instead, so changing the env var did nothing. These
-        decide whether credit is withheld from a return, so they need to be
-        tunable without a code change. Explicit arguments still win.
         """
-        from app.config import get_settings
-
-        settings = get_settings()
-        if hard_threshold is None:
-            hard_threshold = settings.fraud_score_hard_threshold
-        if soft_threshold is None:
-            soft_threshold = settings.fraud_score_soft_threshold
         # Skip fraud scoring for Composition Scheme / Bill of Supply (Zero Tax)
         if not invoice.total_tax_amount or invoice.total_tax_amount == 0.0:
             return FraudResult(

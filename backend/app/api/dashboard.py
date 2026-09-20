@@ -4,15 +4,10 @@ Serves data to the Next.js frontend.
 """
 
 import logging
-import secrets
-import string
 from datetime import date
-from typing import Optional
 
-from fastapi import APIRouter, Depends, UploadFile, File
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends
 from app.api.deps import verify_trader_access, get_current_trader_id, HTTPException
-from app.config import get_settings
 
 from app.services.supabase_client import (
     get_supabase,
@@ -20,7 +15,6 @@ from app.services.supabase_client import (
     get_invoices_for_trader,
     get_all_suppliers_for_trader,
     get_active_supplier_flags,
-    update_trader,
 )
 from app.models.trader import DashboardSummary, ITCBucket, ActionItem
 from app.utils.errors import safe_http_error
@@ -126,14 +120,6 @@ async def get_action_items(trader_id: str = Depends(verify_trader_access)):
             eligible = inv.get("itc_amount_eligible") or 0
             impact = blocked if blocked > 0 else eligible
 
-            # Timing is the product's first differentiator: a CA reconciles at
-            # month end, by which point a supplier who hasn't filed can no
-            # longer be chased in time. Surfacing the remaining window is what
-            # makes "we check on arrival" mean something on screen rather than
-            # only in the pitch. Only AT_RISK gets it — that is the one status
-            # whose fix depends on somebody else filing.
-            deadline = _supplier_filing_deadline(inv.get("invoice_date")) if status == "AT_RISK" else None
-
             actions.append(ActionItem(
                 id=inv["id"],
                 invoice_id=inv["id"],
@@ -141,8 +127,6 @@ async def get_action_items(trader_id: str = Depends(verify_trader_access)):
                 issue=inv.get("itc_block_reason") or _get_issue_label(status, lang),
                 impact_amount=impact,
                 fix_action=_get_fix_action(status, lang),
-                deadline=deadline.isoformat() if deadline else None,
-                days_to_fix=(deadline - date.today()).days if deadline else None,
                 priority=0,
             ))
 
@@ -159,29 +143,10 @@ async def get_action_items(trader_id: str = Depends(verify_trader_access)):
 
 
 @router.patch("/actions/{invoice_id}/resolve")
-async def resolve_action_item(invoice_id: str, current_trader_id: str = Depends(get_current_trader_id)):
+async def resolve_action_item(invoice_id: str):
     """Mark an action item (invoice issue) as manually resolved by CA."""
     try:
         db = get_supabase()
-
-        # The path param here is an invoice, not a trader, so this endpoint
-        # can't bind `Depends(verify_trader_access)` the way the rest of this
-        # file does. Look the owning trader up first and then call the same
-        # check by hand, so the CA-vs-client access rules stay defined in one
-        # place (deps.py) rather than being re-implemented here.
-        owner_res = db.table("invoices").select("trader_id").eq("id", invoice_id).execute()
-        if not owner_res.data:
-            raise HTTPException(status_code=404, detail="Invoice not found")
-
-        owner_trader_id = owner_res.data[0].get("trader_id")
-        if not owner_trader_id:
-            # An invoice with no owner can't be authorised against anybody,
-            # so refuse rather than fall through to an unscoped update.
-            logger.warning(f"Invoice {invoice_id} has no trader_id — refusing resolve")
-            raise HTTPException(status_code=403, detail="Not authorized to modify this invoice")
-
-        await verify_trader_access(owner_trader_id, current_trader_id)
-
         response = db.table("invoices").update({
             "itc_status": "RESOLVED",
             "status": "validated",
@@ -236,26 +201,6 @@ async def get_itc_timeline(trader_id: str = Depends(verify_trader_access)):
         return {"timeline": timeline}
     except Exception as e:
         raise safe_http_error(logger, "Failed to build ITC timeline", e)
-
-
-def _supplier_filing_deadline(invoice_date_str: Optional[str]) -> Optional[date]:
-    """
-    The date by which this invoice's supplier must file GSTR-1 for the credit
-    to land in the expected period: the 11th of the month after the invoice.
-
-    Chasing a supplier is only useful before that date, which is exactly why
-    Munim checks an invoice when it arrives instead of at month end. Returns
-    None for an unparseable date rather than guessing a deadline — a wrong
-    countdown is worse than none, because a CA would act on it.
-    """
-    if not invoice_date_str:
-        return None
-    try:
-        d = date.fromisoformat(str(invoice_date_str)[:10])
-    except (ValueError, TypeError):
-        return None
-    year, month = (d.year + 1, 1) if d.month == 12 else (d.year, d.month + 1)
-    return date(year, month, 11)
 
 
 def _get_fix_action(status: str, lang: str = "en") -> str:
@@ -337,31 +282,12 @@ async def list_traders(current_trader_id: str = Depends(get_current_trader_id)):
         phone_10 = phone[-10:] if len(phone) >= 10 else phone
         
         response = db.table("traders").select(
-            "id, name, business_name, gstin, whatsapp_number, is_composition, language_pref"
+            "id, name, business_name, gstin, whatsapp_number"
         ).or_(f"id.eq.{current_trader_id},ca_whatsapp_number.eq.{phone_full},ca_whatsapp_number.eq.{phone_10}").execute()
-
+        
         return {"traders": response.data or []}
     except Exception as e:
         raise safe_http_error(logger, "Failed to list traders", e)
-
-
-class TraderCompositionModel(BaseModel):
-    is_composition: bool
-
-
-@router.patch("/traders/{trader_id}/composition")
-async def set_trader_composition(payload: TraderCompositionModel, trader_id: str = Depends(verify_trader_access)):
-    """Toggle whether a client is registered under the GST Composition Scheme.
-
-    Composition dealers cannot claim ITC at all, so this gates MoneyMeter's
-    display for that client. Set from the CA's profile/client-list page.
-    """
-    try:
-        db = get_supabase()
-        db.table("traders").update({"is_composition": payload.is_composition}).eq("id", trader_id).execute()
-        return {"trader_id": trader_id, "is_composition": payload.is_composition}
-    except Exception as e:
-        raise safe_http_error(logger, "Failed to update composition status", e)
 
 
 @router.get("/gstr2b-status/{trader_id}")
@@ -431,12 +357,33 @@ async def get_reports(trader_id: str = Depends(verify_trader_access)):
         raise safe_http_error(logger, "Failed to fetch generated reports", e)
 
 
-# The POST /check-deadlines route was removed: it was unauthenticated, it
-# sent WhatsApp messages (real per-message cost on an open endpoint), and its
-# body was hardcoded demo text ("Tomorrow is the 11th") regardless of the
-# actual date. The real job is main.py's `deadline_alerts` APScheduler entry,
-# which runs on the 5th/10th/18th off live invoice data. Nothing in the
-# frontend or mobile app ever called the HTTP trigger.
+@router.post("/check-deadlines")
+async def check_deadlines():
+    """Check if any deadline is near and send WhatsApp alerts to trader and CA."""
+    from app.services.whatsapp import send_text_message
+    
+    # Normally this would fetch traders and their CAs from the database
+    # and calculate if a deadline is 1 day away.
+    # For demo purposes, we trigger the notification directly.
+    message = (
+        "⚠️ *GST Deadline Alert*\n\n"
+        "Tomorrow is the 11th. Your GSTR-1 is due!\n\n"
+        "Please review the pending Action Items on Munim.ai and clear them so your CA can file on time."
+    )
+    
+    ca_message = (
+        "⚠️ *GST Deadline Alert*\n\n"
+        "Client: Suryakant Optics\n"
+        "GSTR-1 is due tomorrow. The client has uncleared ITC flags on Munim.ai. Please follow up."
+    )
+    
+    # We log it or send to a test number.
+    # In production, iterate over db.table("traders") and check their deadlines.
+    # await send_text_message("TRADER_PHONE", message)
+    # await send_text_message("CA_PHONE", ca_message)
+    
+    logger.info("Checked deadlines. Sent WhatsApp alerts to trader and CA.")
+    return {"status": "success", "message": "Deadline alerts triggered successfully via WhatsApp."}
 
 
 @router.get("/gstr3b/{trader_id}")
@@ -653,285 +600,3 @@ async def save_preferences(payload: PreferencesModel, trader_id: str = Depends(v
     _save_prefs(prefs)
     return {"message": "Preferences saved successfully"}
 
-
-_SHORT_CODE_ALPHABET = string.ascii_uppercase + string.digits
-
-
-def _generate_short_code(db, length: int = 6) -> str:
-    """Random short_code, retried against the DB on collision. There's no
-    separate CAs table -- any trader row can be the CA side of a QR link
-    (see deps.py:verify_trader_access), so short_code lives on traders."""
-    for _ in range(5):
-        candidate = "".join(secrets.choice(_SHORT_CODE_ALPHABET) for _ in range(length))
-        existing = db.table("traders").select("id").eq("short_code", candidate).execute()
-        if not existing.data:
-            return candidate
-    raise RuntimeError("Could not generate a unique short_code after 5 attempts")
-
-
-class AskQuestionModel(BaseModel):
-    question: str
-
-
-@router.post("/ask/{trader_id}")
-async def ask_trader_question(
-    payload: AskQuestionModel,
-    trader_id: str = Depends(verify_trader_access),
-):
-    """
-    Real-answer backend for the trader PWA's voice-query button (and usable
-    for a future typed-question box too) -- reuses the exact same
-    LLM-backed answer function WhatsApp's text/voice query handling already
-    calls (webhook.py's _answer_general_query -> gemini.py's
-    answer_trader_question), rather than the PWA's own separate
-    VoiceQueryButton.js / utils/voiceIntent.js, which only recognizes three
-    fixed question shapes by design (see that file's own header comment) --
-    fine for "no network call" but the reason it felt broken against
-    anything else, next to WhatsApp's much more flexible answer.
-
-    Deadline-math duplicated from webhook.py's _answer_general_query rather
-    than shared, matching that function's own stated reasoning: keeping
-    this endpoint from ever risking a change to the live WhatsApp handler.
-    """
-    from datetime import date
-    from app.services.supabase_client import get_itc_summary, get_recent_invoices
-    from app.services.gemini import answer_trader_question
-
-    language_pref = "hi"  # safe default -- overwritten below once the real
-                          # trader row is fetched, but the except block
-                          # needs something to fall back on even if that
-                          # fetch itself is what fails.
-    try:
-        db = get_supabase()
-        trader_res = db.table("traders").select("business_name, language_pref").eq("id", trader_id).execute()
-        trader_row = trader_res.data[0] if trader_res.data else {}
-        language_pref = trader_row.get("language_pref", "hi")
-
-        buckets = await get_itc_summary(trader_id)
-        recent = await get_recent_invoices(trader_id, limit=3)
-
-        today = date.today()
-        if today.day <= 11:
-            next_filing_type, deadline_day = "GSTR-1", 11
-        else:
-            next_filing_type, deadline_day = "GSTR-3B", 20
-        days_remaining = deadline_day - today.day
-
-        context_data = {
-            "business_name": trader_row.get("business_name"),
-            "itc_summary_totals": buckets,
-            "recent_invoices": recent,
-            "next_filing_deadline": {
-                "filing_type": next_filing_type,
-                "deadline_day_of_month": deadline_day,
-                "days_remaining": days_remaining,
-            },
-        }
-        answer = await answer_trader_question(payload.question, context_data, language_pref)
-        if not answer or not answer.strip():
-            raise ValueError("answer_trader_question returned an empty answer")
-        return {"answer": answer}
-    except Exception as e:
-        logger.error(f"ask_trader_question failed for {trader_id}: {e}")
-        fallback = {
-            "hi": "Kuch dikkat aa gayi, kripya dubara try karein.",
-            "en": "Something went wrong, please try again.",
-            "mr": "काहीतरी चूक झाली, कृपया पुन्हा प्रयत्न करा.",
-            "gu": "કંઈક ખોટું થયું, કૃપા કરી ફરી પ્રયાસ કરો.",
-        }
-        return {"answer": fallback.get(language_pref, fallback["hi"])}
-
-
-class PushTokenModel(BaseModel):
-    token: str
-
-
-@router.post("/register-push-token")
-async def register_push_token(payload: PushTokenModel, current_trader_id: str = Depends(get_current_trader_id)):
-    """
-    Stores an Expo push token against the logged-in trader, so scheduled
-    alerts (backend/app/main.py's deadline_alerts job today) can reach this
-    device directly instead of only via WhatsApp. Called from
-    frontend/src/app/trader/page.js's MUNIM_PUSH_TOKEN listener, which
-    receives the token from mobile/App.tsx's own push-registration
-    useEffect -- that native code has existed since the CA-dashboard commit,
-    but nothing on the web side was ever listening for what it sent until
-    now, so no token had ever actually reached the database.
-    """
-    try:
-        await update_trader(current_trader_id, {"push_token": payload.token})
-        return {"status": "success"}
-    except Exception as e:
-        raise safe_http_error(logger, "Failed to register push token", e)
-
-
-@router.post("/transcribe-audio")
-async def transcribe_audio(
-    audio: UploadFile = File(...),
-    current_trader_id: str = Depends(get_current_trader_id),
-):
-    """
-    Speech-to-text for the trader PWA's voice-query button, over a plain
-    authenticated HTTP call rather than the browser's Web Speech API --
-    that API is unsupported inside the React Native WebView the mobile app
-    embeds this page in (a long-standing Android System WebView limitation;
-    Firefox lacks it too), which is why VoiceQueryButton.js's mic button
-    silently doesn't even render there. Same transcription path
-    webhook.py's handle_voice_message() already uses for WhatsApp voice
-    notes -- Groq's hosted Whisper, not a second implementation of speech-to-
-    text. Only the input transport differs: WhatsApp hands us an already-
-    downloaded media_id, this endpoint takes a browser-recorded audio blob
-    directly. Everything downstream (voiceIntent.js's local intent
-    matching) is unchanged.
-    """
-    from groq import AsyncGroq
-
-    settings = get_settings()
-    audio_bytes = await audio.read()
-    if not audio_bytes:
-        raise HTTPException(status_code=400, detail="Empty audio upload")
-
-    try:
-        client = AsyncGroq(api_key=settings.groq_api_key)
-        transcription = await client.audio.transcriptions.create(
-            file=(audio.filename or "audio.webm", audio_bytes),
-            model="whisper-large-v3",
-        )
-        return {"text": transcription.text.strip()}
-    except Exception as e:
-        raise safe_http_error(logger, "Audio transcription failed", e)
-
-
-@router.get("/onboard-link")
-async def get_onboard_link(current_trader_id: str = Depends(get_current_trader_id)):
-    """Return the caller's WhatsApp QR-onboarding deep link, generating and
-    persisting their short_code on first request."""
-    try:
-        db = get_supabase()
-        res = db.table("traders").select("id, short_code").eq("id", current_trader_id).execute()
-        if not res.data:
-            raise HTTPException(status_code=404, detail="Trader not found")
-
-        short_code = res.data[0].get("short_code")
-        if not short_code:
-            short_code = _generate_short_code(db)
-            await update_trader(current_trader_id, {"short_code": short_code})
-
-        business_number = get_settings().whatsapp_business_number
-        deep_link = f"https://wa.me/{business_number}?text=JOIN-{short_code}"
-        return {"short_code": short_code, "deep_link": deep_link}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise safe_http_error(logger, "Failed to build onboarding link", e)
-
-
-
-@router.get("/explain/{invoice_id}")
-async def explain_invoice_verdict(invoice_id: str, current_trader_id: str = Depends(get_current_trader_id)):
-    """
-    "Says who?" — the clause of the CGST Act behind one invoice's verdict.
-
-    The section number and its quoted words come from `domain/statute.py`, not
-    from a model. That is the whole point: a plausible-sounding section that
-    does not exist is worse on a compliance screen than no citation at all, so
-    a verdict this module cannot map returns `citation: null` and the UI says
-    so honestly.
-    """
-    from app.domain import statute
-
-    try:
-        db = get_supabase()
-        rows = db.table("invoices").select(
-            "id, trader_id, supplier_name, gstin_supplier, invoice_number, invoice_date, "
-            "itc_status, itc_block_reason, itc_amount_eligible, itc_amount_blocked, "
-            "gstr2b_match_status, fraud_score"
-        ).eq("id", invoice_id).limit(1).execute().data or []
-        if not rows:
-            raise HTTPException(status_code=404, detail="Invoice not found")
-
-        invoice = rows[0]
-        owner = invoice.get("trader_id")
-        if not owner:
-            logger.warning(f"Invoice {invoice_id} has no trader_id — refusing explain")
-            raise HTTPException(status_code=403, detail="Not authorized to view this invoice")
-        await verify_trader_access(owner, current_trader_id)
-
-        reason = invoice.get("itc_block_reason")
-        status = invoice.get("itc_status")
-        citation = statute.cite_for_reason(reason)
-        # `derived` tells the UI how confident to be: a citation resolved from
-        # the engine's own reason string is traceable to the rule that fired;
-        # one inferred from the status alone is a reasonable guess about an
-        # older row, and should not be presented with the same certainty.
-        derived = "reason" if citation else None
-        if not citation:
-            citation = statute.cite_for_status(status)
-            derived = "status" if citation else None
-
-        return {
-            "invoice_id": invoice_id,
-            "status": status,
-            "reason": reason,
-            "supplier_name": invoice.get("supplier_name"),
-            "invoice_number": invoice.get("invoice_number"),
-            "invoice_date": invoice.get("invoice_date"),
-            "amount_eligible": invoice.get("itc_amount_eligible"),
-            "amount_blocked": invoice.get("itc_amount_blocked"),
-            "citation": citation.to_dict() if citation else None,
-            "citation_derived_from": derived,
-            "note": None if citation else (
-                "Munim cannot trace this verdict to a specific clause, so it is "
-                "not quoting one. The reason above is what the engine recorded."
-            ),
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise safe_http_error(logger, f"Failed to explain invoice {invoice_id}", e)
-
-
-@router.get("/supplier-network/{trader_id}")
-async def get_supplier_network(trader_id: str = Depends(verify_trader_access)):
-    """
-    What every other business Munim monitors has experienced of this trader's
-    suppliers.
-
-    Strictly aggregate — see `domain/network_intel` for the three rules that
-    govern it. A supplier below the minimum cohort returns `available: false`
-    with the reason, because a stated absence is honest and a silent zero is
-    not.
-    """
-    from app.domain.network_intel import MIN_OTHER_TRADERS, bulk_network_signals
-
-    try:
-        db = get_supabase()
-        rows = db.table("invoices").select("gstin_supplier, supplier_name").eq(
-            "trader_id", trader_id
-        ).execute().data or []
-
-        names: dict[str, str] = {}
-        for r in rows:
-            g = r.get("gstin_supplier")
-            if g and g not in names:
-                names[g] = r.get("supplier_name") or ""
-
-        signals = bulk_network_signals(list(names), trader_id)
-        suppliers = [
-            {"gstin": g, "supplier_name": names.get(g) or "Unknown supplier", **sig}
-            for g, sig in signals.items()
-        ]
-        # Riskiest first; unavailable ones last. A CA scanning this wants the
-        # supplier the network is warning about at the top, not alphabetical order.
-        rank = {"RISKY": 0, "MIXED": 1, "CLEAN": 2, "UNKNOWN": 3}
-        suppliers.sort(key=lambda s: (rank.get(s.get("verdict"), 9), -(s.get("default_rate") or 0)))
-
-        return {
-            "trader_id": trader_id,
-            "min_other_traders": MIN_OTHER_TRADERS,
-            "suppliers": suppliers,
-            "reportable": sum(1 for s in suppliers if s.get("available")),
-            "flagged": sum(1 for s in suppliers if s.get("verdict") == "RISKY"),
-        }
-    except Exception as e:
-        raise safe_http_error(logger, "Failed to compute supplier network intelligence", e)

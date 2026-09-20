@@ -48,40 +48,15 @@ class GSTR2BReconciler:
     Match-exclusivity: a GSTR-2B record can only be matched once across all invoices.
     """
 
-    # Ranking sentinel for a candidate whose date we cannot compare. It must
-    # sort after every real day-gap without disqualifying the candidate.
-    UNKNOWN_DATE_RANK = 10 ** 6
-
     def __init__(
         self,
-        amount_tolerance: float = None,
-        date_window_days: int = None,
+        amount_tolerance: float = 0.02,
+        date_window_days: int = 30,
         strict_date_window_days: int = 15,
-        exact_date_window_days: int = 180,
     ):
-        # config.py has always declared fuzzy_match_amount_tolerance and
-        # fuzzy_match_date_window_days, and nothing ever read them: both call
-        # sites construct this class with no arguments, so the literals below
-        # won and the env vars were inert. Someone tuning them would have seen
-        # no effect and concluded the matcher was broken. Resolved here, in one
-        # place, so a third call site cannot reintroduce the gap. Explicit
-        # arguments still win, which is what the unit tests rely on.
-        from app.config import get_settings
-
-        settings = get_settings()
-        self.amount_tolerance = (
-            settings.fuzzy_match_amount_tolerance if amount_tolerance is None else amount_tolerance
-        )
-        self.date_window_days = (
-            settings.fuzzy_match_date_window_days if date_window_days is None else date_window_days
-        )
+        self.amount_tolerance = amount_tolerance
+        self.date_window_days = date_window_days
         self.strict_date_window_days = strict_date_window_days
-        # Sanity window for Pass 1. Indian invoice serials restart each
-        # financial year, so supplier + number + amount on their own will
-        # happily "exactly" match last year's invoice. 180 days covers even
-        # extreme late supplier filing while staying well inside the 12-month
-        # serial recycle.
-        self.exact_date_window_days = exact_date_window_days
 
     @staticmethod
     def compute_hash(supplier_gstin: str, invoice_number: str, total_amount: str) -> str:
@@ -105,43 +80,6 @@ class GSTR2BReconciler:
     ) -> bool:
         """Check if two dates are within N days of each other."""
         return abs((date_a - date_b).days) <= window_days
-
-    def _date_plausible(
-        self, date_a: Optional[date], date_b: Optional[date], window_days: int
-    ) -> bool:
-        """Date sanity check that abstains (passes) when either date is missing."""
-        if not date_a or not date_b:
-            return True
-        return self._date_within_window(date_a, date_b, window_days)
-
-    def _amount_delta(self, amount_a: float, amount_b: float) -> float:
-        """Relative amount gap — used to rank candidates that all clear tolerance."""
-        largest = max(abs(amount_a), abs(amount_b))
-        if largest == 0:
-            return 0.0
-        return abs(amount_a - amount_b) / largest
-
-    def _date_delta_days(self, date_a: Optional[date], date_b: Optional[date]) -> int:
-        """Absolute day gap; an uncomparable date ranks last but stays eligible."""
-        if not date_a or not date_b:
-            return self.UNKNOWN_DATE_RANK
-        return abs((date_a - date_b).days)
-
-    def _max_edit_distance(self, length: int) -> int:
-        """
-        Levenshtein tolerance scaled to invoice-number length.
-
-        _normalize_invoice_number strips dashes, slashes and spaces, so short
-        serials collapse to bare digits — "12" vs "15" is distance 1. At the
-        old flat tolerance of 2 that made any supplier using short serials
-        cross-match its own invoices at 0.89 confidence. One edit only means
-        "typo" once it is a small fraction of the string.
-        """
-        if length >= 8:
-            return 2
-        if length >= 4:
-            return 1
-        return 0
 
     def _normalize_invoice_number(self, inv_num: str) -> str:
         """Normalize invoice number for comparison (strip spaces, lowercase)."""
@@ -204,108 +142,62 @@ class GSTR2BReconciler:
 
         normalized_inv_num = self._normalize_invoice_number(invoice_number or "")
 
-        # Every pass below collects ALL qualifying candidates and takes the
-        # best one. Returning on the first candidate over the threshold meant
-        # the arbitrary list order picked the match whenever a supplier had
-        # several records inside tolerance — the trader's ITC then hung on
-        # which row Postgres happened to return first. Candidates are ranked
-        # by closest amount, then closest date, then record_id so the choice
-        # is deterministic even under a full tie.
-
         # --- Pass 1: Exact Match (GSTIN + invoice number + amount within 1%) ---
-        exact_hits = []
         for record in candidates:
-            if self._normalize_invoice_number(record.invoice_number) != normalized_inv_num:
-                continue
-            if not self._amount_within_tolerance(record.total, total_amount, 0.01):
-                continue
-            # Without a date sanity window the same supplier + number + amount
-            # from a different financial year reads as an exact match.
-            if not self._date_plausible(record.invoice_date, inv_date, self.exact_date_window_days):
-                continue
-            exact_hits.append(record)
+            normalized_record_num = self._normalize_invoice_number(record.invoice_number)
+            if normalized_record_num == normalized_inv_num:
+                if self._amount_within_tolerance(record.total, total_amount, 0.01):
+                    consumed_ids.add(record.record_id)
+                    return GSTR2BMatchResult(
+                        status=GSTR2BMatchStatus.MATCHED,
+                        confidence=1.0,
+                        matched_record_id=record.record_id,
+                        itc_amount=record.total_tax,
+                    )
 
-        if exact_hits:
-            best = min(
-                exact_hits,
-                key=lambda r: (
-                    self._amount_delta(r.total, total_amount),
-                    self._date_delta_days(r.invoice_date, inv_date),
-                    r.record_id,
-                ),
-            )
-            consumed_ids.add(best.record_id)
-            return GSTR2BMatchResult(
-                status=GSTR2BMatchStatus.MATCHED,
-                confidence=1.0,
-                matched_record_id=best.record_id,
-                itc_amount=best.total_tax,
-            )
-
-        # --- Pass 2: Fuzzy Match (length-scaled Levenshtein + amount + date window) ---
-        fuzzy_hits = []
+        # --- Pass 2: Fuzzy Match (Levenshtein distance <= 2 + amount + date window) ---
         for record in candidates:
             normalized_record_num = self._normalize_invoice_number(record.invoice_number)
             distance = self._levenshtein_distance(normalized_inv_num, normalized_record_num)
-            # Judge the tolerance against the shorter string — the one an edit
-            # distorts most.
-            allowed = self._max_edit_distance(
-                min(len(normalized_inv_num), len(normalized_record_num))
+            amount_ok = self._amount_within_tolerance(
+                record.total, total_amount, self.amount_tolerance
             )
-            if distance > allowed:
-                continue
-            if not self._amount_within_tolerance(record.total, total_amount, self.amount_tolerance):
-                continue
-            if not self._date_plausible(record.invoice_date, inv_date, self.date_window_days):
-                continue
-            fuzzy_hits.append((distance, record))
+            date_ok = (
+                self._date_within_window(record.invoice_date, inv_date, self.date_window_days)
+                if inv_date and record.invoice_date
+                else True
+            )
 
-        if fuzzy_hits:
-            distance, best = min(
-                fuzzy_hits,
-                key=lambda pair: (
-                    pair[0],
-                    self._amount_delta(pair[1].total, total_amount),
-                    self._date_delta_days(pair[1].invoice_date, inv_date),
-                    pair[1].record_id,
-                ),
-            )
-            confidence = max(0.70, 0.99 - (distance * 0.1))  # 0.99 for 0, 0.89 for 1, 0.79 for 2
-            consumed_ids.add(best.record_id)
-            return GSTR2BMatchResult(
-                status=GSTR2BMatchStatus.PROBABLE_MATCH,
-                confidence=round(confidence, 2),
-                matched_record_id=best.record_id,
-                itc_amount=best.total_tax,
-            )
+            if distance <= 2 and amount_ok and date_ok:
+                confidence = max(0.70, 0.99 - (distance * 0.1))  # 0.99 for 0, 0.89 for 1, 0.79 for 2
+                consumed_ids.add(record.record_id)
+                return GSTR2BMatchResult(
+                    status=GSTR2BMatchStatus.PROBABLE_MATCH,
+                    confidence=round(confidence, 2),
+                    matched_record_id=record.record_id,
+                    itc_amount=record.total_tax,
+                )
 
         # --- Pass 3: Amount + Date only (invoice number format completely different) ---
         if inv_date:
-            amount_date_hits = [
-                record for record in candidates
-                if record.invoice_date is not None
-                and self._amount_within_tolerance(record.total, total_amount, 0.01)
-                and self._date_within_window(
+            for record in candidates:
+                if record.invoice_date is None:
+                    continue
+                amount_ok = self._amount_within_tolerance(
+                    record.total, total_amount, 0.01
+                )
+                date_ok = self._date_within_window(
                     record.invoice_date, inv_date, self.strict_date_window_days
                 )
-            ]
 
-            if amount_date_hits:
-                best = min(
-                    amount_date_hits,
-                    key=lambda r: (
-                        self._amount_delta(r.total, total_amount),
-                        self._date_delta_days(r.invoice_date, inv_date),
-                        r.record_id,
-                    ),
-                )
-                consumed_ids.add(best.record_id)
-                return GSTR2BMatchResult(
-                    status=GSTR2BMatchStatus.POSSIBLE_MATCH,
-                    confidence=0.6,
-                    matched_record_id=best.record_id,
-                    itc_amount=best.total_tax,
-                )
+                if amount_ok and date_ok:
+                    consumed_ids.add(record.record_id)
+                    return GSTR2BMatchResult(
+                        status=GSTR2BMatchStatus.POSSIBLE_MATCH,
+                        confidence=0.6,
+                        matched_record_id=record.record_id,
+                        itc_amount=record.total_tax,
+                    )
 
         # --- No match ---
         return GSTR2BMatchResult(

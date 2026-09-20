@@ -96,7 +96,7 @@ export default function InvoiceFeed({ traderId, apiBase }) {
 
   if (loading) {
     return (
-      <div className="flex-1 lg:min-h-0 bg-white border border-gray-200 lg:overflow-hidden flex flex-col">
+      <div className="flex-1 min-h-0 bg-white border border-gray-200 overflow-hidden flex flex-col">
         {/* Header skeleton */}
         <div className="p-4 border-b border-gray-100 flex items-center justify-between">
           <div className="h-4 w-28 bg-gray-200 rounded animate-pulse" />
@@ -128,7 +128,7 @@ export default function InvoiceFeed({ traderId, apiBase }) {
 
   return (
     <>
-      <div className="flex-1 lg:min-h-0 bg-white border border-[var(--border-subtle)] lg:overflow-hidden flex flex-col">
+      <div className="flex-1 min-h-0 bg-white border border-[var(--border-subtle)] overflow-hidden flex flex-col">
         <div className="p-4 border-b border-[var(--border-subtle)] bg-white space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-sm uppercase tracking-wider text-black">Invoice Records</h3>
@@ -164,20 +164,20 @@ export default function InvoiceFeed({ traderId, apiBase }) {
         </div>
         
         {/* wrapper */}
-        <div className="lg:overflow-y-auto flex-1 bg-white">
+        <div className="overflow-y-auto flex-1 bg-white">
           {/* Quick Metrics to fill gap */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-4 p-3 sm:p-4 border-b border-[var(--border-subtle)] bg-gray-50/50">
-            <div className="flex flex-col min-w-0">
+          <div className="grid grid-cols-3 gap-4 p-4 border-b border-[var(--border-subtle)] bg-gray-50/50">
+            <div className="flex flex-col">
               <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Total Invoices</span>
-              <span className="text-lg sm:text-xl font-bold text-gray-900 break-words">{filteredInvoices.length}</span>
+              <span className="text-xl font-bold text-gray-900">{filteredInvoices.length}</span>
             </div>
-            <div className="flex flex-col min-w-0">
+            <div className="flex flex-col">
               <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Total ITC Value</span>
-              <span className="text-lg sm:text-xl font-bold text-gray-900 break-words">₹{filteredInvoices.reduce((sum, inv) => sum + (Number(inv.total_amount) || 0), 0).toLocaleString('en-IN')}</span>
+              <span className="text-xl font-bold text-gray-900">₹{filteredInvoices.reduce((sum, inv) => sum + (Number(inv.total_amount) || 0), 0).toLocaleString('en-IN')}</span>
             </div>
-            <div className="flex flex-col min-w-0">
+            <div className="flex flex-col">
               <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Blocked/Risk</span>
-              <span className="text-lg sm:text-xl font-bold text-red-600 break-words">
+              <span className="text-xl font-bold text-red-600">
                 {filteredInvoices.filter(inv => inv.itc_status === 'FIXABLE_BLOCKED' || inv.itc_status === 'AT_RISK' || inv.itc_status === 'FRAUD_FLAGGED').length}
               </span>
             </div>
@@ -185,11 +185,11 @@ export default function InvoiceFeed({ traderId, apiBase }) {
 
           {/* Grid Header */}
           <div className="grid grid-cols-12 gap-3 px-4 py-2 border-b border-[var(--border-subtle)] bg-gray-50 text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider sticky top-0 z-10">
-            <div className="col-span-6 sm:col-span-4">Supplier & Invoice</div>
-            <div className="hidden sm:block sm:col-span-2">GSTIN</div>
-            <div className="hidden sm:block sm:col-span-2 text-right">Taxable Val</div>
+            <div className="col-span-4">Supplier & Invoice</div>
+            <div className="col-span-2">GSTIN</div>
+            <div className="col-span-2 text-right">Taxable Val</div>
             <div className="col-span-2 text-right">Total ITC</div>
-            <div className="col-span-4 sm:col-span-2 text-right">Status</div>
+            <div className="col-span-2 text-right">Status</div>
           </div>
           
           {filteredInvoices.length === 0 ? (
@@ -208,7 +208,7 @@ export default function InvoiceFeed({ traderId, apiBase }) {
                     className={`group px-4 py-3 transition-colors grid grid-cols-12 gap-3 items-center border-b border-[var(--border-subtle)] last:border-0 cursor-pointer ${getRowBackground(inv.itc_status, inv.fraud_score)}`}
                   >
                     {/* Supplier & Invoice */}
-                    <div className="col-span-6 sm:col-span-4 flex flex-col min-w-0">
+                    <div className="col-span-4 flex flex-col min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-[13px] font-bold text-black truncate">{inv.supplier_name || inv.gstin_supplier || "Unknown Supplier"}</span>
                         {inv.fraud_score >= 70 && <ShieldAlert size={14} className="text-[var(--red-primary)] flex-shrink-0" />}
@@ -221,14 +221,14 @@ export default function InvoiceFeed({ traderId, apiBase }) {
                     </div>
 
                     {/* GSTIN */}
-                    <div className="hidden sm:flex sm:col-span-2 items-center">
+                    <div className="col-span-2 flex items-center">
                       <span className="text-[11px] font-mono text-[var(--text-secondary)]">
                         {inv.gstin_supplier || "—"}
                       </span>
                     </div>
 
                     {/* Taxable */}
-                    <div className="hidden sm:flex sm:col-span-2 text-right flex-col justify-center">
+                    <div className="col-span-2 text-right flex flex-col justify-center">
                       <span className="text-[12px] font-medium text-[var(--text-secondary)]">
                         {inv.taxable_amount ? `₹${Number(inv.taxable_amount).toLocaleString('en-IN')}` : '—'}
                       </span>
@@ -247,7 +247,7 @@ export default function InvoiceFeed({ traderId, apiBase }) {
                     </div>
 
                     {/* Status */}
-                    <div className="col-span-4 sm:col-span-2 flex justify-end items-center">
+                    <div className="col-span-2 flex justify-end items-center">
                       <div className="flex items-center gap-1.5 px-2 py-1 bg-white border border-[var(--border-subtle)] rounded-md shadow-sm">
                         {getStatusIcon(inv.itc_status)}
                         <span className="text-[9px] font-bold uppercase tracking-widest whitespace-nowrap">

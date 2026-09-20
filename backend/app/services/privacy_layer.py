@@ -98,17 +98,6 @@ class PrivacyLayer:
         except Exception as e:
             logger.error(f"Failed to write privacy audit log: {e}")
 
-        # The file above is the local-development copy and nothing more. On
-        # App Runner the filesystem is per-instance and ephemeral, so it is wiped
-        # on every deploy, cold start and scale event, and two instances hold
-        # different halves of the trail — which makes "every model call is
-        # logged and the trail is readable by the CA" untrue in production
-        # exactly where it is being claimed. The durable copy is the audit_log
-        # table. Best-effort: an audit write must never break the model call it
-        # is describing, but a silent failure would recreate the same problem,
-        # so failures are logged loudly.
-        self._persist_audit_entry(context.get("trader_id"), audit_entry)
-
         def de_anonymize(response_data: Dict[str, Any]) -> Dict[str, Any]:
             """Re-attaches real data if anonymized tokens are found in the response."""
             sess_data = self._session_map.get(session_id, {})
@@ -123,33 +112,6 @@ class PrivacyLayer:
             return restored
 
         return anonymized_context, de_anonymize
-
-    def _persist_audit_entry(self, trader_id: Any, entry: Dict[str, Any]) -> None:
-        """
-        Write one anonymisation record to the audit_log table.
-
-        trader_id is whatever the calling context carried; it is a real FK to
-        traders(id), so anything that is not a UUID is stored as null rather
-        than failing the insert. A null-owner row still records that the call
-        happened — it just cannot be attributed to one client in the CA's view.
-        """
-        try:
-            from app.services.supabase_client import get_supabase
-
-            owner = str(trader_id) if trader_id else None
-            if owner:
-                try:
-                    uuid.UUID(owner)
-                except (ValueError, AttributeError, TypeError):
-                    owner = None
-
-            get_supabase().table("audit_log").insert({
-                "trader_id": owner,
-                "event_type": "llm_anonymization",
-                "event_data": entry,
-            }).execute()
-        except Exception as e:
-            logger.error(f"Failed to persist privacy audit entry to audit_log: {e}")
 
     def clear_session(self, session_id: str):
         self._session_map.pop(session_id, None)

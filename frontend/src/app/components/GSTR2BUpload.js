@@ -13,7 +13,6 @@ export default function GSTR2BUpload({ traderId, apiBase, onUploadComplete }) {
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
-  const [reconciling, setReconciling] = useState(false);
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
   const [expanded, setExpanded] = useState(false);
@@ -159,44 +158,24 @@ export default function GSTR2BUpload({ traderId, apiBase, onUploadComplete }) {
                   Period: {months.find(m => m.v === result.month)?.l} {result.year}
                 </p>
               </div>
-              <button onClick={() => setResult(null)} aria-label="Dismiss the upload result" className="text-[var(--green-primary)] opacity-50 hover:opacity-100 transition-opacity">
-                <X size={16} aria-hidden="true" />
+              <button onClick={() => setResult(null)} className="text-[var(--green-primary)] opacity-50 hover:opacity-100 transition-opacity">
+                <X size={16} />
               </button>
             </div>
             {/* Re-run reconciliation button */}
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              disabled={reconciling}
-              aria-busy={reconciling}
               onClick={async () => {
-                if (reconciling) return;
-                setReconciling(true);
                 try {
-                  // Reconciliation does two database writes per invoice, so a
-                  // full month runs for minutes. It has to opt out of the
-                  // default request timeout or it aborts halfway through,
-                  // leaving some invoices matched and the rest not.
-                  const res = await authFetch(
-                    `${apiBase}/api/v1/gstr2b/reconcile/${traderId}?month=${month}&year=${year}`,
-                    { method: "POST", timeoutMs: 600000 }
-                  );
+                  const res = await authFetch(`${apiBase}/api/v1/gstr2b/reconcile/${traderId}?month=${month}&year=${year}`, { method: "POST" });
                   const data = await res.json();
                   setResult(prev => ({ ...prev, reconciliation: data }));
-                } catch (e) {
-                  // Previously swallowed, so a failed run was indistinguishable
-                  // from one that simply found nothing.
-                  setResult(prev => ({
-                    ...prev,
-                    reconciliation: { detail: e?.message || "Reconciliation failed" },
-                  }));
-                } finally {
-                  setReconciling(false);
-                }
+                } catch (e) { /* ignore */ }
               }}
-              className="w-full text-sm font-bold py-2.5 px-4 bg-white text-black border border-[rgba(16,185,129,0.2)] rounded-lg shadow-sm hover:shadow-md transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full text-sm font-bold py-2.5 px-4 bg-white text-black border border-[rgba(16,185,129,0.2)] rounded-lg shadow-sm hover:shadow-md transition-all"
             >
-              {reconciling ? "Reconciling — this can take a few minutes…" : "Re-run Reconciliation Engine"}
+              Re-run Reconciliation Engine
             </motion.button>
             {result.reconciliation && (
               <motion.div 
@@ -249,8 +228,8 @@ export default function GSTR2BUpload({ traderId, apiBase, onUploadComplete }) {
               <p className="text-sm font-bold text-[var(--red-primary)]">Upload Failed</p>
               <p className="text-xs text-[var(--red-primary)] opacity-80 mt-1 font-medium">{error}</p>
             </div>
-            <button onClick={() => setError(null)} aria-label="Dismiss this error" className="ml-auto text-[var(--red-primary)] opacity-50 hover:opacity-100 transition-opacity">
-              <X size={16} aria-hidden="true" />
+            <button onClick={() => setError(null)} className="ml-auto text-[var(--red-primary)] opacity-50 hover:opacity-100 transition-opacity">
+              <X size={16} />
             </button>
           </motion.div>
         )}

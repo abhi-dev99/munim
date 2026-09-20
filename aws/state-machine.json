@@ -1,0 +1,57 @@
+{
+  "Comment": "Munim invoice pipeline: extract -> compute verdict -> explain -> finalize. Mirrors the 7-node LangGraph pipeline -- the LLM only ever touches Extract (Textract, not an LLM at all) and Explain; ComputeVerdict is 100% deterministic domain/ logic.",
+  "StartAt": "Extract",
+  "States": {
+    "Extract": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:ap-south-1:753654068031:function:munim-extract-invoice",
+      "Retry": [
+        {
+          "ErrorEquals": ["Lambda.TooManyRequestsException", "Lambda.ServiceException"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Next": "ComputeVerdict"
+    },
+    "ComputeVerdict": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:ap-south-1:753654068031:function:munim-compute-verdict",
+      "Retry": [
+        {
+          "ErrorEquals": ["Lambda.TooManyRequestsException", "Lambda.ServiceException"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Next": "Explain"
+    },
+    "Explain": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:ap-south-1:753654068031:function:munim-explain-verdict",
+      "Retry": [
+        {
+          "ErrorEquals": ["Lambda.TooManyRequestsException", "Lambda.ServiceException"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.explainError",
+          "Next": "Finalize"
+        }
+      ],
+      "Next": "Finalize"
+    },
+    "Finalize": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:ap-south-1:753654068031:function:munim-finalize-invoice",
+      "End": true
+    }
+  }
+}

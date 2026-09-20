@@ -96,7 +96,7 @@ Score ≥ 70 → `FRAUD_FLAGGED`. Score 40–69 → soft flag for CA review.
 | GSTIN Validation | deepvue.tech API |
 | Fuzzy Matching | python-Levenshtein |
 | PDF Generation | WeasyPrint |
-| Deployment | Google App Runner (backend + frontend), via GitHub Actions |
+| Deployment | Railway (backend) + Vercel (frontend) |
 
 ---
 
@@ -111,7 +111,7 @@ Trader (WhatsApp / Email)
 Meta Cloud API / Cloudmailin Webhook
          │
          ▼
-FastAPI Backend (App Runner)
+FastAPI Backend (Railway)
          │
     LangGraph Pipeline
     ├── 1. Gemini Vision OCR → InvoiceJSON
@@ -123,7 +123,7 @@ FastAPI Backend (App Runner)
          │
          ▼
 Supabase PostgreSQL
-    ├── CA Dashboard (Next.js / App Runner)
+    ├── CA Dashboard (Next.js / Vercel)
     │     ├── Action Queue
     │     ├── Supplier Health
     │     ├── ITC Timeline Chart
@@ -163,8 +163,8 @@ munim-ai/
 │   │   ├── dashboard/              # CA main dashboard
 │   │   ├── trader/                 # Trader PWA
 │   │   └── components/             # Shared UI components
-│   └── public/demo/                # GST simulation (standalone HTML/JS), served at /demo
-└── gst-portal-automation/          # Maintained source copy of the GST simulation
+│   └── public/demo/                # GST simulation (standalone HTML/JS)
+└── demo/                           # Symlinked for direct serving
 ```
 
 ---
@@ -223,19 +223,18 @@ Run `backend/schema.sql` in your Supabase SQL editor.
 
 ## Production Deployment
 
-Both services run on **Google App Runner**, deployed automatically by GitHub
-Actions (`.github/workflows/deploy-backend.yml`,
-`deploy-frontend.yml`) on every push to `main` that touches `backend/` or
-`frontend/` respectively. Auth is via Workload Identity Federation — no
-service-account JSON key stored in the repo.
+### Backend → Railway
+1. New Project → Deploy from GitHub → Root Directory: `backend/`
+2. Add Redis from Railway marketplace
+3. Set all env vars in Railway → Variables
+4. Auto-deploys on every push to `main`
 
-- Backend service: `munim-backend` (`us-central1`)
-- Frontend service: `munim-frontend` (`us-central1`)
-- Redeploying reuses the live service's existing resource limits, scaling,
-  and env vars — the workflow only ever passes a new `--image`.
+### Frontend → Vercel
+1. New Project → Import repo → Root Directory: `frontend/`
+2. Add env var: `NEXT_PUBLIC_API_URL=https://your-railway-app.up.railway.app`
 
 ### WhatsApp Webhook
-- URL: `<backend App Runner URL>/api/v1/webhook`
+- URL: `https://your-backend.up.railway.app/api/v1/webhook`
 - Verify Token: set in `.env`
 - Subscribe to: `messages`
 

@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { CheckCircle2, Clock, CalendarDays } from "lucide-react";
-import PanelState from "./PanelState";
 
-export default function GSTTimeline({ isComposition, traderId, loading = false, error = null, onRetry }) {
+export default function GSTTimeline({ isComposition, traderId }) {
   const today = new Date().getDate();
 
   const regularSteps = [
@@ -49,26 +48,6 @@ export default function GSTTimeline({ isComposition, traderId, loading = false, 
         </div>
       </div>
 
-      {error ? (
-        <PanelState
-          variant="inline"
-          state="error"
-          error={error}
-          title="Timeline unavailable"
-          message="The filing calendar could not be loaded. The statutory dates themselves have not moved — check the GST portal directly if this persists."
-          onRetry={onRetry}
-        />
-      ) : loading ? (
-        <PanelState variant="inline" state="loading" rows={3} />
-      ) : steps.length === 0 ? (
-        <PanelState
-          variant="inline"
-          state="empty"
-          icon={CalendarDays}
-          title="No deadlines in this cycle"
-          message="Nothing is due for this registration type in the current period."
-        />
-      ) : (
       <div className="p-5 flex-1 flex flex-col justify-center">
         <div className="relative border-l border-[var(--border-subtle)] ml-3 space-y-6">
           {steps.map((step, idx) => {
@@ -89,16 +68,7 @@ export default function GSTTimeline({ isComposition, traderId, loading = false, 
             const isGstr1 = step.label.includes("GSTR-1");
             
             const ItemWrapper = isGstr1 ? "div" : "a";
-            const wrapperProps = isGstr1
-              ? {}
-              : {
-                  href: `https://services.gst.gov.in/services/login`,
-                  target: "_blank",
-                  rel: "noopener noreferrer",
-                  // Every row reads as the same three lines of date + label to a
-                  // screen reader, and nothing says the link leaves the app.
-                  "aria-label": `${step.label}, due ${exactDateStr}. ${step.completed ? "Completed." : isImminent ? "Due soon." : ""} Opens the GST portal in a new tab.`,
-                };
+            const wrapperProps = isGstr1 ? {} : { href: `https://services.gst.gov.in/services/login`, target: "_blank", rel: "noopener noreferrer" };
 
             return (
               <ItemWrapper 
@@ -107,7 +77,7 @@ export default function GSTTimeline({ isComposition, traderId, loading = false, 
                 className={`relative pl-6 block group p-2 -ml-2 rounded-lg transition-colors ${isGstr1 ? '' : 'cursor-pointer hover:bg-[var(--bg-secondary)]'} ${isImminent ? 'bg-yellow-50/50 border border-yellow-200 shadow-sm' : ''}`}
               >
                 {/* Dot */}
-                <div aria-hidden="true" className={`absolute -left-[3px] top-2.5 w-4 h-4 rounded-full border-2 flex items-center justify-center bg-white ${step.completed ? 'border-[var(--green-primary)]' : isImminent ? 'border-red-500 animate-pulse' : 'border-[var(--border-subtle)]'}`}>
+                <div className={`absolute -left-[3px] top-2.5 w-4 h-4 rounded-full border-2 flex items-center justify-center bg-white ${step.completed ? 'border-[var(--green-primary)]' : isImminent ? 'border-red-500 animate-pulse' : 'border-[var(--border-subtle)]'}`}>
                   {step.completed ? (
                     <CheckCircle2 size={10} className="text-[var(--green-primary)]" />
                   ) : isImminent ? (
@@ -140,7 +110,6 @@ export default function GSTTimeline({ isComposition, traderId, loading = false, 
           })}
         </div>
       </div>
-      )}
     </div>
   );
 }
