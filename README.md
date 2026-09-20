@@ -10,13 +10,7 @@
 
 ---
 
-> **Submitted to AWS First Commit (WeMakeDevs × AWS).** This branch (`aws`)
-> is a separate, isolated AWS build on top of the same product — Step
-> Functions, Lambda, Textract, Bedrock, DynamoDB, API Gateway, Cognito,
-> and more. **Start with [`aws/README.md`](aws/README.md)** for the AWS
-> architecture, service list, and how each Lambda maps to this product's
-> compliance pipeline. Everything below this banner is the original
-> product README (stack, USPs, GST logic) and applies regardless of cloud.
+![Dashboard](docs/assets/dashboard_screenshot.png)
 
 ---
 
@@ -91,8 +85,6 @@ Score ≥ 70 → `FRAUD_FLAGGED`. Score 40–69 → soft flag for CA review.
 ---
 
 ## Tech Stack
-
-![Tech Stack Infographic](docs/assets/tech_stack_infographic_1781916181832.png)
 
 | Layer | Technology |
 |---|---|
@@ -247,6 +239,10 @@ Run `backend/schema.sql` in your Supabase SQL editor.
 - URL: `https://your-backend.up.railway.app/api/v1/webhook`
 - Verify Token: set in `.env`
 - Subscribe to: `messages`
+
+---
+
+![Munim-AI](docs/assets/munim_title_slide.jpg)
 
 ---
 
