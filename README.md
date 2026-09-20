@@ -177,7 +177,6 @@ munim/
 │   │   │   └── network_intel.py    # Cross-tenant supplier intelligence
 │   │   ├── models/                 # Pydantic data models
 │   │   └── services/               # Supabase, WhatsApp, Gemini clients
-│   ├── schema.sql
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/app/

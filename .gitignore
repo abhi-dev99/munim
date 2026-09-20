@@ -98,3 +98,8 @@ frontend/CLAUDE.md
 # Default create-next-app boilerplate, never customized, contradicts
 # this repo's "deployment is final, not meant to run locally" framing
 frontend/README.md
+
+# Postgres/Supabase schema + migration history -- not used by the AWS
+# pipeline at all (DynamoDB is schemaless), irrelevant to this submission
+backend/schema.sql
+backend/migrations/
