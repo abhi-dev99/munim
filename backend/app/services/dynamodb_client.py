@@ -461,6 +461,12 @@ async def get_all_suppliers_for_trader(trader_id: str) -> list[dict]:
                     "business_category", "is_einvoice_mandated", "health_score", "last_verified_at",
                 )
             }
+            # dashboard.py's get_trader_suppliers reads supplier["id"] to
+            # look up flags -- link_supplier_to_trader (webhook.py) stores
+            # this link's SK as supplier["id"] from get_or_create_supplier
+            # (a separate uuid, not the gstin), so that's what "id" must be
+            # here too, or every supplier lookup KeyErrors before this fix.
+            supplier_fields["id"] = link.get("supplier_id")
             out.append({**link, "suppliers": supplier_fields})
         return out
     except ClientError as e:
