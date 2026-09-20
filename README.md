@@ -134,7 +134,7 @@ Supabase PostgreSQL
     └── Redis (session state / conversation context)
 ```
 
-### AWS Architecture (this submission)
+### AWS Architecture
 
 The `aws/` directory is a separate, parallel build of this same product's
 invoice pipeline — Step Functions, Lambda, Textract, Bedrock, DynamoDB,
