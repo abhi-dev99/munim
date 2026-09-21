@@ -32,8 +32,8 @@ npm install
 npm run dev
 ```
 
-The backend talks to either Supabase/Postgres or DynamoDB depending on the
-`DATA_BACKEND` env var (`app/services/db.py`) — you don't need AWS
+The backend talks to either a Postgres database or DynamoDB depending on
+the `DATA_BACKEND` env var (`app/services/db.py`) — you don't need AWS
 credentials to run the Postgres path locally. The AWS-native pipeline in
 `aws/` is a separate, self-contained build; see `aws/README.md` for how to
 exercise it without needing the full backend running.
