@@ -31,8 +31,8 @@ supplier weeks before the filing deadline, not on it.
 The rest of this README covers the feature list, tech stack, and architecture in
 detail — jump to any section:
 
-- [**Built on AWS**](#built-on-aws) — the service breakdown for this submission
 - [Core USPs](#core-usps)
+- [**Built on AWS**](#built-on-aws) — the service breakdown for this submission
 - [Product Walkthrough](#product-walkthrough) — real screenshots of the live app
 - [Tech Stack](#tech-stack)
 - [Architecture](#architecture) · [AWS Architecture](#aws-architecture)
@@ -40,63 +40,6 @@ detail — jump to any section:
 - [Project Structure](#project-structure)
 - [API Reference](#api-reference)
 - [Live Deployment](#live-deployment) — the actual running URLs
-
----
-
-## Built on AWS
-
-This submission is a real, live AWS build — not a slide, and not just the
-invoice pipeline. Two separate AWS Lambda surfaces are live: the **invoice
-pipeline** (Step Functions orchestrating 8 Lambdas through OCR, deterministic
-compliance scoring, and a Bedrock-generated explanation) and, new this
-build, the **entire CA dashboard** — Money Meter, Action Queue, My Practice,
-Supplier Trust, GSTR-2B reconciliation, PDF reports — running on a 9th
-Lambda against 13 DynamoDB tables, the same FastAPI code the product always
-ran, ported off Postgres onto DynamoDB rather than rewritten.
-
-**Try it live:** https://eym73fepx3.ap-south-1.awsapprunner.com (AWS App
-Runner). Log in with the public demo — phone **`1234567890`**, OTP
-**`123456`** (also shown on the login page itself) — to see the full CA
-dashboard running entirely on AWS, backed by real reconciled invoice data.
-[**/aws-pipeline**](https://eym73fepx3.ap-south-1.awsapprunner.com/aws-pipeline)
-separately reads real invoice verdicts straight off the pipeline's own
-DynamoDB table, no login needed — live data, not a fixture, from either
-surface.
-
-![AWS Architecture](docs/assets/aws_architecture.png)
-
-![AWS Pipeline — live invoice verdicts read straight off DynamoDB](docs/assets/screenshot_aws_pipeline.png)
-*`/aws-pipeline`, live: every row read directly off `munim-invoices` in DynamoDB, written by the real Step Functions run — nothing seeded or simulated for this page.*
-
-| AWS Service | Role in this build |
-|---|---|
-| **Step Functions** | Orchestrates the 4-stage invoice pipeline (extract → compute verdict → explain → finalize) |
-| **Lambda** | 9 functions: ingest, extract, compute_verdict, explain, finalize, meta_webhook, voice_handler, bedrock_healthcheck, plus `munim-dashboard-api` — the entire CA dashboard (FastAPI + Mangum), covering auth, dashboard, GSTR-2B, reports, communications, and My Practice |
-| **Amazon Textract** | `AnalyzeExpense` — OCR extraction from the invoice image, zero LLM involved |
-| **Amazon Bedrock** | Amazon Nova Micro (cross-region inference) turns the already-computed verdict into one plain-language sentence — it never decides the verdict itself |
-| **Amazon DynamoDB** | 13 tables total: the invoice pipeline's own (`munim-invoices`, `munim-traders`, `munim-hsn-codes`, `munim-system-status`) plus 9 more standing up the dashboard (`munim-dashboard-traders`, `munim-dashboard-invoices`, `munim-suppliers`, `munim-supplier-trader-links`, `munim-supplier-flags`, `munim-gstr2b-records`, `munim-reports`, `munim-preferences`, `munim-invoice-line-items`) |
-| **API Gateway** | REST API (`POST /invoices`) + HTTP API (the live read endpoint behind `/aws-pipeline`) |
-| **Lambda Function URL** | Public HTTPS endpoint for `munim-dashboard-api`, CORS-scoped to the App Runner frontend origin |
-| **Amazon S3** | Invoice image storage (pipeline entry point) and generated PDF compliance reports (private, served via presigned URL — not a public bucket) |
-| **AWS KMS** | One customer-managed key encrypts S3, every DynamoDB table, and CloudTrail's log bucket |
-| **Amazon Cognito** | Provisioned for WhatsApp-OTP custom auth — not yet wired to a live auth path, stated honestly rather than overclaimed |
-| **EventBridge Scheduler** | Statutory GSTR deadline alerts on the 5th/10th/18th, matching the FastAPI backend's own cadence |
-| **SQS + DLQ** | Retry handling and dead-letter capture on the pipeline |
-| **SNS** | WhatsApp inbound event relay from the WABA |
-| **CloudWatch** | `munim-invoice-pipeline` dashboard — invocations, errors, Step Functions outcomes, DynamoDB capacity, DLQ backlog |
-| **X-Ray** | One trace ID spans an invoice's entire journey, upload through finalize, with per-stage latency |
-| **GuardDuty** | Account-wide threat detection |
-| **CloudTrail** | Every management-plane action, plus every S3 `GetObject`/`PutObject` on the invoices bucket, including root's own access |
-| **App Runner** | Hosts this submission's live frontend |
-| **ECR** | Container registry for both the App Runner and `munim-dashboard-api` images |
-
-Full service breakdown, security posture, and known issues:
-**[`aws/README.md`](aws/README.md)**.
-
----
-
-![Money Meter — confirmed ITC, at-risk credit, and potential recovery at a glance](docs/assets/dashboard_screenshot.png)
-*Money Meter: the CA's home screen — confirmed ITC, blocked credit, and unclaimed recovery, live.*
 
 ---
 
@@ -113,7 +56,7 @@ Full service breakdown, security posture, and known issues:
 - Handles crumpled thermal receipts, handwritten bills, scanned PDFs, blurry photos
 - Outputs structured JSON: supplier name, GSTIN, invoice number, date, line items, HSN codes, tax breakdown
 - Low-confidence extractions are flagged for human review
-- The AWS-native pipeline runs this extraction through Amazon Textract, with Amazon Bedrock (Nova Micro) generating the plain-language verdict explanation — full breakdown in [Built on AWS](#built-on-aws) above
+- The AWS-native pipeline runs this extraction through Amazon Textract, with Amazon Bedrock (Nova Micro) generating the plain-language verdict explanation — full breakdown in [Built on AWS](#built-on-aws) below
 
 ### 3. Deterministic ITC Rules Engine — No LLM
 - Pure rule-based GST Act §16 + §17(5) implementation
@@ -176,6 +119,63 @@ Score ≥ 70 → `FRAUD_FLAGGED`. Score 40–69 → soft flag for CA review.
 - A supplier flagged risky by one CA's client sharpens the signal for every other CA watching the same GSTIN
 - Strictly aggregate-only — a business never sees another business's invoices, amounts, or identity, only counts
 - Requires a minimum of 3 businesses tracking a supplier before it reports a pattern, to avoid leaking a single client's data through the aggregate
+
+---
+
+## Built on AWS
+
+This submission is a real, live AWS build — not a slide, and not just the
+invoice pipeline. Two separate AWS Lambda surfaces are live: the **invoice
+pipeline** (Step Functions orchestrating 8 Lambdas through OCR, deterministic
+compliance scoring, and a Bedrock-generated explanation) and, new this
+build, the **entire CA dashboard** — Money Meter, Action Queue, My Practice,
+Supplier Trust, GSTR-2B reconciliation, PDF reports — running on a 9th
+Lambda against 13 DynamoDB tables, the same FastAPI code the product always
+ran, ported off Postgres onto DynamoDB rather than rewritten.
+
+**Try it live:** https://eym73fepx3.ap-south-1.awsapprunner.com (AWS App
+Runner). Log in with the public demo — phone **`1234567890`**, OTP
+**`123456`** (also shown on the login page itself) — to see the full CA
+dashboard running entirely on AWS, backed by real reconciled invoice data.
+[**/aws-pipeline**](https://eym73fepx3.ap-south-1.awsapprunner.com/aws-pipeline)
+separately reads real invoice verdicts straight off the pipeline's own
+DynamoDB table, no login needed — live data, not a fixture, from either
+surface.
+
+![AWS Architecture](docs/assets/aws_architecture.png)
+
+![AWS Pipeline — live invoice verdicts read straight off DynamoDB](docs/assets/screenshot_aws_pipeline.png)
+*`/aws-pipeline`, live: every row read directly off `munim-invoices` in DynamoDB, written by the real Step Functions run — nothing seeded or simulated for this page.*
+
+| AWS Service | Role in this build |
+|---|---|
+| **Step Functions** | Orchestrates the 4-stage invoice pipeline (extract → compute verdict → explain → finalize) |
+| **Lambda** | 9 functions: ingest, extract, compute_verdict, explain, finalize, meta_webhook, voice_handler, bedrock_healthcheck, plus `munim-dashboard-api` — the entire CA dashboard (FastAPI + Mangum), covering auth, dashboard, GSTR-2B, reports, communications, and My Practice |
+| **Amazon Textract** | `AnalyzeExpense` — OCR extraction from the invoice image, zero LLM involved |
+| **Amazon Bedrock** | Amazon Nova Micro (cross-region inference) turns the already-computed verdict into one plain-language sentence — it never decides the verdict itself |
+| **Amazon DynamoDB** | 13 tables total: the invoice pipeline's own (`munim-invoices`, `munim-traders`, `munim-hsn-codes`, `munim-system-status`) plus 9 more standing up the dashboard (`munim-dashboard-traders`, `munim-dashboard-invoices`, `munim-suppliers`, `munim-supplier-trader-links`, `munim-supplier-flags`, `munim-gstr2b-records`, `munim-reports`, `munim-preferences`, `munim-invoice-line-items`) |
+| **API Gateway** | REST API (`POST /invoices`) + HTTP API (the live read endpoint behind `/aws-pipeline`) |
+| **Lambda Function URL** | Public HTTPS endpoint for `munim-dashboard-api`, CORS-scoped to the App Runner frontend origin |
+| **Amazon S3** | Invoice image storage (pipeline entry point) and generated PDF compliance reports (private, served via presigned URL — not a public bucket) |
+| **AWS KMS** | One customer-managed key encrypts S3, every DynamoDB table, and CloudTrail's log bucket |
+| **Amazon Cognito** | Provisioned for WhatsApp-OTP custom auth — not yet wired to a live auth path, stated honestly rather than overclaimed |
+| **EventBridge Scheduler** | Statutory GSTR deadline alerts on the 5th/10th/18th, matching the FastAPI backend's own cadence |
+| **SQS + DLQ** | Retry handling and dead-letter capture on the pipeline |
+| **SNS** | WhatsApp inbound event relay from the WABA |
+| **CloudWatch** | `munim-invoice-pipeline` dashboard — invocations, errors, Step Functions outcomes, DynamoDB capacity, DLQ backlog |
+| **X-Ray** | One trace ID spans an invoice's entire journey, upload through finalize, with per-stage latency |
+| **GuardDuty** | Account-wide threat detection |
+| **CloudTrail** | Every management-plane action, plus every S3 `GetObject`/`PutObject` on the invoices bucket, including root's own access |
+| **App Runner** | Hosts this submission's live frontend |
+| **ECR** | Container registry for both the App Runner and `munim-dashboard-api` images |
+
+Full service breakdown, security posture, and known issues:
+**[`aws/README.md`](aws/README.md)**.
+
+---
+
+![Money Meter — confirmed ITC, at-risk credit, and potential recovery at a glance](docs/assets/dashboard_screenshot.png)
+*Money Meter: the CA's home screen — confirmed ITC, blocked credit, and unclaimed recovery, live.*
 
 ---
 

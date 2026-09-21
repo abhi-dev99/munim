@@ -229,11 +229,11 @@ export default function LoginPage() {
             <div className="font-bold text-4xl tracking-tight text-black">
               Munim-AI
             </div>
-            <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full pl-3 pr-3.5 py-1.5">
+            <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-full pl-4 pr-5 py-2">
               <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Built for</span>
-              <img src="/logos/wemakedevs.svg" alt="WeMakeDevs" className="h-4 w-auto" />
-              <span className="text-gray-300 text-xs font-bold">×</span>
-              <img src="/logos/aws-logo.png" alt="AWS" className="h-4 w-auto" />
+              <img src="/logos/wemakedevs.svg" alt="WeMakeDevs" className="h-6 w-auto" />
+              <span className="text-gray-300 text-sm font-bold">×</span>
+              <img src="/logos/aws-logo.png" alt="AWS" className="h-6 w-auto" />
             </div>
           </div>
 
@@ -267,9 +267,9 @@ export default function LoginPage() {
 
           <div className="mt-12 pt-8 border-t border-gray-100">
             <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-4">Idea &amp; concept validated by</p>
-            <div className="flex items-center gap-7 mb-8">
-              <img src="/logos/iimb-logo.png" alt="Indian Institute of Management Bangalore" className="h-6 w-auto opacity-90" />
-              <img src="/logos/csitm-logo.jpg" alt="Centre for Software and Information Technology Management" className="h-11 w-auto opacity-90" />
+            <div className="flex items-center gap-8 mb-8">
+              <img src="/logos/iimb-logo.png" alt="Indian Institute of Management Bangalore" className="h-12 w-auto" />
+              <img src="/logos/csitm-logo.jpg" alt="Centre for Software and Information Technology Management" className="h-16 w-auto" />
             </div>
             <a
               href="https://github.com/abhi-dev99/munim/"
