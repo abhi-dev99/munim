@@ -1,0 +1,69 @@
+name: Deploy Dashboard API to Lambda
+
+# Same two-stage pattern as deploy-frontend.yml -- see that file for why.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-backend.yml"
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REPOSITORY: munim-dashboard-api
+  FUNCTION_NAME: munim-dashboard-api
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image (no push, no AWS access -- just proves it compiles)
+        working-directory: backend
+        env:
+          DOCKER_BUILDKIT: "0"
+        run: docker build -f Dockerfile.lambda -t munim-dashboard-api:ci .
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC, no long-lived keys)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push
+        id: push
+        working-directory: backend
+        env:
+          DOCKER_BUILDKIT: "0"
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+        run: |
+          docker build -f Dockerfile.lambda -t "$ECR_REGISTRY/$ECR_REPOSITORY:latest" .
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+          digest=$(docker inspect --format='{{index .RepoDigests 0}}' "$ECR_REGISTRY/$ECR_REPOSITORY:latest")
+          echo "image_uri=$digest" >> "$GITHUB_OUTPUT"
+
+      # Unlike App Runner, Lambda needs an explicit call -- pushing to ECR
+      # alone doesn't move the function onto the new image.
+      - name: Point the Lambda at the new image
+        run: |
+          aws lambda update-function-code \
+            --function-name "$FUNCTION_NAME" \
+            --image-uri "${{ steps.push.outputs.image_uri }}" \
+            --region "$AWS_REGION"

@@ -1,0 +1,78 @@
+name: Deploy Frontend to App Runner
+
+# Two-stage on purpose: `build` runs on every push to main and just proves
+# the image builds cleanly -- cheap, fast, no AWS access needed. `deploy`
+# only runs after that, and only after a manual approval against the
+# `production` GitHub Environment (Settings -> Environments -> production
+# -> required reviewers). The IAM role's own trust policy additionally
+# requires the `environment:production` claim in the OIDC token, so the
+# gate is enforced by AWS itself, not just by GitHub's UI.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/deploy-frontend.yml"
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REPOSITORY: munim-frontend
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image (no push, no AWS access -- just proves it compiles)
+        working-directory: frontend
+        env:
+          DOCKER_BUILDKIT: "0"
+        run: |
+          docker build \
+            --build-arg NEXT_PUBLIC_API_URL="https://munim-backend-1051889700424.us-central1.run.app" \
+            --build-arg NEXT_PUBLIC_AWS_DASHBOARD_API_URL="https://arlubaq66mnz43suc34k6aipeu0nfuiu.lambda-url.ap-south-1.on.aws" \
+            --build-arg NEXT_PUBLIC_AWS_READ_API_URL="https://8q09bc2ap0.execute-api.ap-south-1.amazonaws.com/invoices" \
+            --build-arg NEXT_PUBLIC_AWS_READ_TOKEN="${{ secrets.AWS_READ_TOKEN }}" \
+            -t munim-frontend:ci .
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC, no long-lived keys)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push (this is the image App Runner will pick up)
+        working-directory: frontend
+        env:
+          DOCKER_BUILDKIT: "0"
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+        run: |
+          docker build \
+            --build-arg NEXT_PUBLIC_API_URL="https://munim-backend-1051889700424.us-central1.run.app" \
+            --build-arg NEXT_PUBLIC_AWS_DASHBOARD_API_URL="https://arlubaq66mnz43suc34k6aipeu0nfuiu.lambda-url.ap-south-1.on.aws" \
+            --build-arg NEXT_PUBLIC_AWS_READ_API_URL="https://8q09bc2ap0.execute-api.ap-south-1.amazonaws.com/invoices" \
+            --build-arg NEXT_PUBLIC_AWS_READ_TOKEN="${{ secrets.AWS_READ_TOKEN }}" \
+            -t "$ECR_REGISTRY/$ECR_REPOSITORY:latest" .
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+
+      # App Runner's own AutoDeploymentsEnabled setting picks up the new
+      # `:latest` digest from here on its own -- no separate App Runner API
+      # call needed, matching how every manual deploy this build has done
+      # worked already.
