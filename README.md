@@ -345,7 +345,7 @@ munim/
 │   │   │   ├── supplier_monitor.py # Supplier health scoring
 │   │   │   └── network_intel.py    # Cross-tenant supplier intelligence
 │   │   ├── models/                 # Pydantic data models
-│   │   └── services/               # Supabase, WhatsApp, Gemini clients
+│   │   └── services/               # Database, WhatsApp, Gemini clients
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/app/

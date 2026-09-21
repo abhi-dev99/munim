@@ -14,7 +14,7 @@ Ports that job's exact logic, not a re-derived guess:
 - Sum `itc_verdict.itc_blocked + itc_verdict.itc_amount` across those --
   same two fields the FastAPI backend sums (`itc_amount_blocked` +
   `itc_amount_eligible`), just DynamoDB's actual field names instead of
-  Supabase's flat columns. Alert only fires if that sum is > 0.
+  the original backend's flat columns. Alert only fires if that sum is > 0.
 
 Verified live against real data: correctly found the one real
 `FIXABLE_BLOCKED` invoice in the table (Rs.31,878 blocked) and correctly

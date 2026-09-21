@@ -155,7 +155,7 @@ Rough filter:
 
 | Item | Monthly Cost (Est.) |
 |------|---------------------|
-| Supabase (database + auth) | $25 – $100 |
+| Database + auth | $25 – $100 |
 | Google Gemini API (AI calls) | $50 – $200 (usage-based) |
 | Groq API (voice processing) | $10 – $50 |
 | Meta WhatsApp Business API | Per-conversation pricing (~$0.005–$0.015/message) |
@@ -166,7 +166,7 @@ Rough filter:
 
 | Item | Estimated Monthly Cost |
 |------|----------------------|
-| Cloud infrastructure (Supabase / server / AWS) | ~₹50,000 – ₹1,00,000 |
+| Cloud infrastructure (database / server / AWS) | ~₹50,000 – ₹1,00,000 |
 | AI API costs (Gemini + Groq) | ~₹30,000 – ₹80,000 |
 | WhatsApp API costs (100K msgs/month) | ~₹15,000 – ₹40,000 |
 | Total infra | **~₹95,000 – ₹2,20,000/month** |
@@ -221,7 +221,7 @@ Rough filter:
 | GSTN API access (government portal) | Medium | Using GSTR-2B auto-pull via authorised API; ASP partner route available |
 | Meta WhatsApp API pricing changes | Medium | WhatsApp is strategic to Meta's India revenue; pricing has been stable |
 | CA adoption inertia (habit change) | High | Product is designed to reduce CA workload, not add to it |
-| Data privacy (tax data is sensitive) | High | Supabase RLS, no data shared cross-client, no data sold |
+| Data privacy (tax data is sensitive) | High | App-layer tenant isolation, no data shared cross-client, no data sold |
 | Competition from ClearTax / GSTN building natively | Medium | GSTN is a government body, not a product company; ClearTax targets enterprise |
 
 ---

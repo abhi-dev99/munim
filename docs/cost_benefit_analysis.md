@@ -13,12 +13,12 @@ All numbers are grounded in actual API pricing, real CA market rates, and conser
 | **Gemini 2.5 Flash (invoice extraction)** | $0.30/1M tokens; one invoice ≈ 1,500 tokens | ₹1.10 |
 | **WhatsApp Business API (Meta)** | $0.0126/user-initiated conversation (India rate); first 1,000 free/month | ₹32 |
 | **GSTIN verification (deepvue.tech)** | ~₹1.50/lookup; new supplier verified once, cached 24h; ~5 new suppliers/month | ₹7.50 |
-| **Supabase (DB + storage)** | Free tier covers up to ~200 traders; Pro ($25/mo) amortised above that | ₹5 |
+| **Database + storage** | Free tier covers up to ~200 traders; Pro ($25/mo) amortised above that | ₹5 |
 | **server hosting (FastAPI backend)** | $15/month, amortised across all traders | ₹8 |
 | **Redis (Upstash)** | Free tier covers <10,000 commands/day; minimal cost at small scale | ₹2 |
 | **Total infra cost** | | **₹55–65/trader/month** |
 
-> ₹150/month is a safe, conservative number to use. The actual loaded cost at early scale (under 500 traders) is closer to ₹55–65 because WhatsApp free tier and Supabase free tier absorb most of it.
+> ₹150/month is a safe, conservative number to use. The actual loaded cost at early scale (under 500 traders) is closer to ₹55–65 because WhatsApp free tier and the database's free tier absorb most of it.
 
 ---
 
